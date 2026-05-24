@@ -1,0 +1,71 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# BMK Rekabet İstihbaratı — Git ignore
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Sırlar (KESİNLİKLE commit edilmez)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+*.manifest
+*.spec
+
+# Sanal ortam
+.venv/
+venv/
+env/
+ENV/
+
+# Veritabanı (lokal)
+*.db
+*.sqlite
+*.sqlite3
+instance/
+celerybeat-schedule*
+
+# IDE / Editör
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# İşletim sistemi
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Loglar
+*.log
+logs/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+
+# Geçici / debug
+debug_*.txt
+debug_*.html
+*.tmp
+*.bak
+scratch/

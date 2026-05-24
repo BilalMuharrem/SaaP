@@ -1,0 +1,300 @@
+{% extends "admin/base.html" %}
+{% block title %}Fiyat Takibi{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <h1 class="page-title">Fiyat Takibi 📡</h1>
+    <p class="page-subtitle">Tüm kullanıcıların takip ettiği ürünler ve arka plan worker durumu</p>
+</div>
+
+<!-- STAT CARDS -->
+<style>
+.tracking-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.tracking-stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.tracking-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+.tracking-stat .stat-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.tracking-stat .stat-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+}
+.tracking-stat .stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+/* Worker Status Pill */
+.worker-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.worker-pill.active {
+    background: rgba(99, 102, 241, 0.12);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+}
+.worker-pill.idle {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.worker-pill .spin-icon { animation: spin 1.5s linear infinite; display: inline-flex; }
+
+/* Filter Bar */
+.filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.filter-bar select {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.filter-bar select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+.filter-bar .filter-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Price cell */
+.price-cell {
+    font-weight: 700;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+.last-check-ago {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.platform-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(99, 102, 241, 0.1);
+    color: #818cf8;
+}
+</style>
+
+<!-- Stats Row -->
+<div class="tracking-stats">
+    <div class="tracking-stat">
+        <div class="stat-icon" style="background:rgba(99,102,241,0.1); color:#6366f1;">
+            <i data-lucide="package-search" width="22" height="22"></i>
+        </div>
+        <div>
+            <div class="stat-value">{{ total_tracked }}</div>
+            <div class="stat-label">Toplam Takip</div>
+        </div>
+    </div>
+    <div class="tracking-stat">
+        <div class="stat-icon" style="background:rgba(34,197,94,0.1); color:#22c55e;">
+            <i data-lucide="activity" width="22" height="22"></i>
+        </div>
+        <div>
+            <div class="stat-value">{{ active_tracked }}</div>
+            <div class="stat-label">Aktif</div>
+        </div>
+    </div>
+    <div class="tracking-stat">
+        <div class="stat-icon" style="background:rgba(239,68,68,0.1); color:#ef4444;">
+            <i data-lucide="pause-circle" width="22" height="22"></i>
+        </div>
+        <div>
+            <div class="stat-value">{{ inactive_tracked }}</div>
+            <div class="stat-label">Pasif</div>
+        </div>
+    </div>
+    <div class="tracking-stat">
+        <div class="stat-icon" style="background:rgba(245,158,11,0.1); color:#f59e0b;">
+            <i data-lucide="trending-up" width="22" height="22"></i>
+        </div>
+        <div>
+            <div class="stat-value">{{ price_changes_24h }}</div>
+            <div class="stat-label">Fiyat Değişimi (24s)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Worker Status -->
+<div style="margin-bottom: 24px;">
+    {% if worker_state.is_active %}
+    <div class="worker-pill active">
+        <span class="spin-icon"><i data-lucide="loader-2" width="16" height="16"></i></span>
+        {{ worker_state.status_text }}
+    </div>
+    {% else %}
+    <div class="worker-pill idle">
+        <i data-lucide="check-circle-2" width="16" height="16"></i>
+        {{ worker_state.status_text }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Filter Bar -->
+<form method="get" action="{{ url_for('admin_tracking') }}" class="filter-bar">
+    <span class="filter-label">Filtrele:</span>
+    <select name="user" onchange="this.form.submit()">
+        <option value="">Tüm Kullanıcılar</option>
+        {% for u in tracking_users %}
+        <option value="{{ u.id }}" {% if user_filter == u.id|string %}selected{% endif %}>{{ u.full_name }} ({{ u.count }})</option>
+        {% endfor %}
+    </select>
+    <select name="status" onchange="this.form.submit()">
+        <option value="" {% if not status_filter %}selected{% endif %}>Tüm Durumlar</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Aktif</option>
+        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Pasif</option>
+    </select>
+    {% if user_filter or status_filter %}
+    <a href="{{ url_for('admin_tracking') }}" style="font-size:12px; color:var(--accent); font-weight:600; text-decoration:none;">✕ Temizle</a>
+    {% endif %}
+</form>
+
+<!-- Products Table -->
+<div class="card">
+    {% if products.items %}
+    <div class="table-wrapper scrollable">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Müşteri</th>
+                    <th>Ürün</th>
+                    <th>Platform</th>
+                    <th>Fiyat</th>
+                    <th>Son Kontrol</th>
+                    <th>Durum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in products.items %}
+                <tr>
+                    <td style="color:var(--text-muted);">{{ p.id }}</td>
+                    <td style="font-weight:600; color:var(--text-primary);">{{ p.user.full_name if p.user else '—' }}</td>
+                    <td>
+                        <div style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ p.product_name or p.url }}">
+                            {{ p.product_name or '⏳ Bekliyor...' }}
+                        </div>
+                    </td>
+                    <td>
+                        {% if p.platform_name %}
+                        <span class="platform-badge">{{ p.platform_name }}</span>
+                        {% else %}
+                        <span style="color:var(--text-muted); font-size:12px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="price-cell">
+                        {% if p.current_price > 0 %}
+                            {{ "%.2f"|format(p.current_price) }} ₺
+                        {% else %}
+                            <span style="color:var(--text-muted); font-size:12px;">Henüz yok</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.last_checked %}
+                            <span class="last-check-ago">{{ p.last_checked|timeago }}</span>
+                        {% else %}
+                            <span class="last-check-ago">Hiç kontrol edilmedi</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.is_active %}
+                        <span class="badge badge-success">Aktif</span>
+                        {% else %}
+                        <span class="badge" style="background:rgba(156,163,175,0.15);color:#9ca3af;">Pasif</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ p.url }}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;">Ürüne Git ↗</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center; padding:60px 40px; color:var(--text-muted);">
+        <div style="font-size:48px; margin-bottom:16px;">📡</div>
+        <div style="font-size:16px; font-weight:600;">
+            {% if user_filter or status_filter %}
+                Filtrelemeye uygun takip edilen ürün bulunamadı
+            {% else %}
+                Henüz takip edilen ürün yok
+            {% endif %}
+        </div>
+        <div style="font-size:13px; margin-top:8px; opacity:0.7;">
+            Kullanıcılar ürün takibe aldığında burada listelenecek.
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PAGINATION -->
+    {% if products.pages > 1 %}
+    <div class="pagination">
+        {% if products.has_prev %}
+        <a href="{{ url_for('admin_tracking', page=products.prev_num, user=user_filter, status=status_filter) }}">← Önceki</a>
+        {% endif %}
+        {% for page_num in products.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                <a href="{{ url_for('admin_tracking', page=page_num, user=user_filter, status=status_filter) }}" class="{% if page_num == products.page %}active{% endif %}">{{ page_num }}</a>
+            {% else %}
+                <span>…</span>
+            {% endif %}
+        {% endfor %}
+        {% if products.has_next %}
+        <a href="{{ url_for('admin_tracking', page=products.next_num, user=user_filter, status=status_filter) }}">Sonraki →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

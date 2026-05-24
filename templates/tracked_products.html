@@ -1,0 +1,1507 @@
+{% extends "base.html" %}
+{% block title %}Fiyat Takibi{% endblock %}
+{% block body %}
+{# ── HOTFIX 1.61: Kompakt ApexCharts Tooltip CSS Override ──
+   ApexCharts'ın varsayılan tooltip padding ve font boyutları kullanıcı için
+   fazla kalın geliyor. Bu blok box-shadow + padding + font hiyerarşisini
+   minimal/profesyonel bir görünüme indirir. !important kullanmamızın nedeni:
+   ApexCharts kendi inline-style'larını aggressive ekliyor; specificity
+   yetmeden override edemiyoruz. #}
+<style>
+    .apexcharts-tooltip {
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.10) !important;
+        border-radius: 8px !important;
+        border: 1px solid rgba(148,163,184,0.18) !important;
+        padding: 0 !important;            /* iç padding tooltip-title ve series'e bırakılır */
+        font-family: 'Plus Jakarta Sans', Inter, -apple-system, sans-serif !important;
+    }
+    .apexcharts-tooltip-title {
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        padding: 6px 10px !important;
+        border-bottom: 1px solid rgba(148,163,184,0.15) !important;
+        background: transparent !important;
+    }
+    .apexcharts-tooltip-series-group {
+        padding: 3px 10px !important;
+    }
+    .apexcharts-tooltip-series-group.apexcharts-active,
+    .apexcharts-tooltip-series-group:last-child {
+        padding-bottom: 6px !important;
+    }
+    .apexcharts-tooltip-text,
+    .apexcharts-tooltip-text-y-label,
+    .apexcharts-tooltip-text-y-value {
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+    }
+    .apexcharts-tooltip-text-y-label {
+        margin-right: 4px !important;
+        opacity: 0.85;
+    }
+    .apexcharts-tooltip-marker {
+        width: 8px !important;
+        height: 8px !important;
+        margin-right: 6px !important;
+    }
+    /* X-axis altındaki ikincil tarih balonu — zaten tooltip başlığında var,
+       gereksiz; xaxis.tooltip.enabled=false ile JS'de kapatıldı, defansif olarak
+       CSS ile de gizle (eski tema cache'lerine karşı). */
+    .apexcharts-xaxistooltip { display: none !important; }
+
+    /* ── HOTFIX 1.68: Grafiğin Sağ Sınırı (Zarif Border) ──
+       ApexCharts'ın kendi gridline'ları sadece içeri çiziliyor, sağ sınır belirsiz.
+       Chart container'ına pseudo-element ile zarif bir sağ çizgi ekliyoruz.
+       Konum: grafiğin sağ kenarı (legend bottom'da olduğu için aşağıyı kaplamaz).
+       pointer-events:none ile chart interaction'ına zarar vermez. */
+    [id^="chart-"] {
+        position: relative;
+    }
+    [id^="chart-"]::after {
+        content: '';
+        position: absolute;
+        /* HOTFIX 1.71: legend floating:false → fiziksel yer kaplar (~40px) +
+           grid.padding.top: 40 → grid alanı toplam ~80px aşağıda başlar */
+        top: 80px;
+        right: 14px;
+        bottom: 36px;       /* x-axis tarihleri için boşluk */
+        width: 1px;
+        background: rgba(148, 163, 184, 0.28);
+        pointer-events: none;
+    }
+    [data-theme="dark"] [id^="chart-"]::after {
+        background: rgba(71, 85, 105, 0.45);
+    }
+    /* Brush chart için sağ sınır gerekmiyor — küçük zaman dilimi seçici, ayrı kap */
+    [id^="chart-brush-"]::after { display: none; }
+</style>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon">B</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+        
+        
+        <nav>
+            <div class="nav-section">
+                <div class="nav-label">Ana Menü</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked_products') }}" class="nav-link active"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                    <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
+                </a>
+                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">Hesabım</div>
+                <a href="{{ url_for('notifications') }}" class="nav-link">
+                    <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
+                    {% if unread_notifications > 0 %}
+                    <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ current_user.full_name[0] }}</div>
+                <div>
+                    <div class="user-name">{{ current_user.full_name }}</div>
+                    <div class="user-email">{{ current_user.email }}</div>
+                </div>
+            </div>
+                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:15px;">
+            <div>
+                <h1 class="page-title">Fiyat Takibi 🎯</h1>
+                <p class="page-subtitle">Rakiplerin fiyat değişimlerini uzun vadeli izleyin ve bildirim alın</p>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                <div id="last-updated-time" style="font-size: 12px; font-weight: 500; color: var(--text-muted); opacity: 0.8; margin-bottom:12px; margin-top:6px;">
+                    Son Güncelleme: Yükleniyor...
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <a href="{{ url_for('export_tracked_pdf') }}" target="_blank" class="btn btn-outline btn-sm" style="border-radius: 8px; border-color: var(--border-dark); font-size:13px; text-decoration:none;">
+                        <i data-lucide="file-text" width="16" height="16" color="#ef4444" style="margin-right:6px;"></i> PDF İndir
+                    </a>
+                    <a href="{{ url_for('export_tracked_excel') }}" class="btn btn-outline btn-sm" style="border-radius: 8px; border-color: var(--border-dark); font-size:13px; text-decoration:none;">
+                        <i data-lucide="sheet" width="16" height="16" color="#10b981" style="margin-right:6px;"></i> Excel'e Aktar
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const d = new Date();
+                const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+                const day = d.getDate();
+                const month = months[d.getMonth()];
+                const year = d.getFullYear();
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                const el = document.getElementById('last-updated-time');
+                if(el) el.innerText = `Son Güncelleme: ${day} ${month} ${year}, ${hours}:${minutes}`;
+            });
+        </script>
+
+        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+        <!-- ADD PRODUCT WIDGET (HOTFIX 1.65: sticky kaldırıldı, statik konumda) -->
+        <div style="margin-bottom: 30px; padding-top: 10px;">
+            <div style="background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 16px; padding: 16px 24px; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);">
+                <form method="POST" style="display:flex; gap:16px; align-items:center; flex-wrap: wrap;">
+                    <div style="flex:1; min-width:300px; display:flex; align-items:center; background: var(--glass-input-bg); border: 1px solid var(--glass-input-border); border-radius: 12px; padding: 8px 16px; transition: border-color 0.2s;">
+                        <i data-lucide="plus-square" width="20" height="20" color="var(--text-muted)" style="margin-right:12px;"></i>
+                        <input type="text" name="urls" placeholder="Birden fazla ürünü virgülle ayırarak yazın (İlk URL referans ürünüdür)" required style="flex:1; background:transparent; border:none; color:var(--text-primary); outline:none; font-size:14px; width:100%; min-height: 24px;">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="white-space:nowrap; padding: 10px 24px; border-radius: 10px; font-weight: 600;">
+                        🚀 Takibe Başla
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if grouped_products %}
+            {% for gid, products in grouped_products.items() %}
+            <div class="card" style="margin-bottom:40px; padding:0; overflow:hidden;">
+                <div class="card-header" style="padding: 24px 24px 0 24px; border-bottom:none; display:flex; justify-content:space-between; align-items:center;">
+                    {# HOTFIX 1.87: Özel grup adı → eski "Takip Grubu: SMARTER..."
+                       devasa otomatik başlık kaldırıldı. Öncelik:
+                         1) base ürünün group_label (kullanıcının kendi verdiği ad)
+                         2) base ürünün product_name (ilk 50 karakter)
+                         3) platform_name veya 'İsimsiz Grup' fallback #}
+                    {% set _base = products[0] %}
+                    {% set _label = _base.group_label
+                                    or (_base.product_name[:50] ~ ('…' if _base.product_name and _base.product_name|length > 50 else '') if _base.product_name else None)
+                                    or _base.platform_name
+                                    or 'İsimsiz Grup' %}
+                    <h3 class="card-title" style="font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px;">
+                        📦 <span class="grp-name-text">{{ _label }}</span>
+                        {# HOTFIX 1.88: Grup adı düzenleme butonu — modal açar #}
+                        <button type="button" class="open-rename-modal"
+                                data-group-id="{{ gid }}"
+                                data-current-name="{{ _base.group_label or '' }}"
+                                title="Grup adını düzenle"
+                                style="background:transparent; border:none; cursor:pointer; padding:4px 6px; border-radius:6px; color:var(--text-muted); transition:all 0.15s; display:inline-flex; align-items:center;"
+                                onmouseover="this.style.background='rgba(99,102,241,0.10)'; this.style.color='var(--accent)';"
+                                onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)';">
+                            <i data-lucide="pencil" width="14" height="14"></i>
+                        </button>
+                    </h3>
+                    {# HOTFIX 1.84: Grup eylem butonları — SEO başlat / SEO Grafiğine Git / İptal #}
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        {% if group_seo and group_seo.get(gid) %}
+                        {# Bu grup için SEO takibi zaten var → grafiğe git #}
+                        <a href="{{ url_for('seo_graph') }}#group-{{ gid }}"
+                           class="btn btn-sm"
+                           style="background:rgba(14,165,233,0.12); color:#0ea5e9; border:1px solid rgba(14,165,233,0.30); padding:6px 14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
+                            <i data-lucide="line-chart" width="14" height="14"></i>
+                            SEO Grafiğine Git
+                            <span style="font-size:11px; opacity:0.7;">— "{{ group_seo.get(gid)[:20] }}{% if group_seo.get(gid)|length > 20 %}…{% endif %}"</span>
+                        </a>
+                        {% else %}
+                        {# SEO takibi başlatılmamış → modal aç #}
+                        <button type="button" class="btn btn-sm open-seo-modal"
+                                data-group-id="{{ gid }}"
+                                style="background:rgba(14,165,233,0.10); color:#0ea5e9; border:1px solid rgba(14,165,233,0.30); padding:6px 14px; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
+                            <i data-lucide="search" width="14" height="14"></i>
+                            Grubu SEO Araması Yap
+                        </button>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('delete_tracked_group', group_id=gid) }}" onsubmit="return confirm('Bu grubu ve içindeki tüm ürünlerin takibini silmek istediğinize emin misiniz?');" style="margin:0;">
+                            <button type="submit" class="btn btn-sm" style="background:var(--danger); color:white; border:none; padding:6px 14px;">Grubu İptal Et</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Chart Area -->
+                <div style="padding: 10px 24px 0px 24px;">
+                    <div id="chart-{{ gid }}"
+                         data-raw-chart="{{ chart_data[gid]|e }}"
+                         data-unit-cost="{{ group_costs.get(gid) if group_costs.get(gid) is not none else '' }}"></div>
+                    <div id="chart-brush-{{ gid }}" style="margin-top: -10px; margin-bottom: 20px;"></div>
+                </div>
+
+                <!-- FAZ 1: Net Kâr / ROI Özet Şeridi (base ürün + unit_cost varsa) -->
+                {% set base_p = products[0] %}
+                {% if base_p.unit_cost and base_p.unit_cost > 0 and base_p.current_price and base_p.current_price > 0 %}
+                    {% set net_profit = base_p.current_price - base_p.unit_cost %}
+                    {% set margin_pct = (net_profit / base_p.current_price * 100) if base_p.current_price > 0 else 0 %}
+                    {% set is_loss = net_profit < 0 %}
+                    <div style="margin: 0 24px 20px 24px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+                        <div style="flex:1; min-width:180px; background:{{ 'linear-gradient(135deg, rgba(239,68,68,0.10), rgba(239,68,68,0.03))' if is_loss else 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.03))' }}; border:1px solid {{ 'rgba(239,68,68,0.25)' if is_loss else 'rgba(16,185,129,0.25)' }}; border-radius:14px; padding:14px 18px; display:flex; align-items:center; gap:14px;">
+                            <div style="width:42px; height:42px; border-radius:10px; background:{{ 'rgba(239,68,68,0.15)' if is_loss else 'rgba(16,185,129,0.15)' }}; display:flex; align-items:center; justify-content:center;">
+                                <i data-lucide="{{ 'trending-down' if is_loss else 'trending-up' }}" width="22" height="22" color="{{ '#ef4444' if is_loss else '#10b981' }}"></i>
+                            </div>
+                            <div>
+                                <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-muted);">{{ 'Zarar' if is_loss else 'Net Kâr' }} (Base)</div>
+                                <div style="font-size:20px; font-weight:800; color:{{ '#ef4444' if is_loss else '#10b981' }};">
+                                    {{ '{:,.2f}'.format(net_profit).replace(',','X').replace('.',',').replace('X','.') }} ₺
+                                    <span style="font-size:12px; font-weight:600; opacity:0.75; margin-left:4px;">({{ '%.1f'|format(margin_pct) }}%)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="flex:1; min-width:180px; background:var(--glass-bg); border:1px solid var(--border); border-radius:14px; padding:14px 18px;">
+                            <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-muted);">Birim Maliyet</div>
+                            <div style="font-size:18px; font-weight:700; color:var(--text-primary);">
+                                {{ '{:,.2f}'.format(base_p.unit_cost).replace(',','X').replace('.',',').replace('X','.') }} ₺
+                            </div>
+                        </div>
+                        <div style="flex:1; min-width:180px; background:var(--glass-bg); border:1px solid var(--border); border-radius:14px; padding:14px 18px;">
+                            <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-muted);">Güncel Fiyat (Base)</div>
+                            <div style="font-size:18px; font-weight:700; color:var(--accent);">
+                                {{ '{:,.2f}'.format(base_p.current_price).replace(',','X').replace('.',',').replace('X','.') }} ₺
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline" style="border-radius:10px; padding:8px 14px; font-size:12px;" onclick="openCostModal('{{ gid }}')">
+                            <i data-lucide="edit-3" width="14" height="14" style="margin-right:4px;"></i> Maliyeti Düzenle
+                        </button>
+                    </div>
+                {% elif base_p.current_price and base_p.current_price > 0 %}
+                    <div style="margin: 0 24px 20px 24px; padding:14px 18px; background:var(--glass-bg); border:1px dashed var(--border); border-radius:14px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <i data-lucide="calculator" width="22" height="22" color="var(--accent)"></i>
+                            <div style="font-size:13px; color:var(--text-muted);">
+                                Kârlılık simülatörü için <b style="color:var(--text-primary);">birim maliyetinizi</b> girin — grafik üzerinde Kâr/Zarar bölgelerini göreceksiniz.
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary" style="border-radius:10px; padding:8px 14px; font-size:12px;" onclick="openCostModal('{{ gid }}')">+ Maliyet Gir</button>
+                    </div>
+                {% endif %}
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     FAZ 1.5 — Premium Karar Destek Asistanı (Buy Box Zekâsı)
+                     Eski "Buy Box Dominasyonu" widget'ı kavramsal olarak hatalıydı
+                     (target_price ile unit_cost'u karıştırıyordu). Yerine gerçek
+                     maliyet+rakip analizi yapan bir asistan konuldu.
+                     ═══════════════════════════════════════════════════════════════════ -->
+                {% set competitor_prices = [] %}
+                {% for _p in products %}
+                    {% if (not _p.is_base_product) and _p.current_price and _p.current_price > 0 %}
+                        {% set _ = competitor_prices.append(_p.current_price) %}
+                    {% endif %}
+                {% endfor %}
+                {% set min_comp = (competitor_prices|min) if competitor_prices else 0 %}
+                {% set cost_val = products[0].unit_cost %}
+                {% set has_cost = cost_val is not none and cost_val > 0 %}
+                {% set has_comp = min_comp > 0 %}
+
+                <div style="padding: 0 24px 24px 24px;">
+                    <div style="background: linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(139,92,246,0.03) 100%); border: 1px solid rgba(99,102,241,0.20); border-radius: 16px; padding: 20px; display: flex; gap: 16px; align-items: flex-start;">
+                        <div style="background: rgba(99,102,241,0.15); padding: 12px; border-radius: 12px; flex-shrink:0;">
+                            <i data-lucide="sparkles" width="24" height="24" color="#6366f1"></i>
+                        </div>
+                        <div style="flex:1;">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                                <div style="color: var(--text-primary); font-weight: 800; font-size: 15px;">Premium Karar Destek Asistanı</div>
+                                <span class="badge" style="background:rgba(99,102,241,0.15); color:#6366f1; font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; letter-spacing:0.5px;">BUY BOX ZEKÂSI</span>
+                            </div>
+
+                            {% if not current_user.has_premium_access %}
+                                <div style="color: var(--text-muted); font-size: 13px; line-height:1.55; display:flex; align-items:center; gap:8px;">
+                                    <i data-lucide="lock" width="15" height="15" color="var(--text-muted)"></i>
+                                    Bu asistan Profesyonel ve Kurumsal planlara özeldir. Rakip fiyat hareketlerinize otomatik kâr-odaklı tavsiye üretir.
+                                    <a href="{{ url_for('user_plans') }}" style="color:#6366f1; font-weight:700; text-decoration:none; margin-left:4px;">Planı Yükselt →</a>
+                                </div>
+
+                            {% elif not has_cost %}
+                                <div style="color: var(--text-secondary); font-size: 13px; line-height:1.55;">
+                                    Kârlılık ve rekabet analizi yapabilmek için lütfen <b style="color:var(--text-primary);">birim maliyetinizi</b> girin. Maliyet olmadan Buy Box tavsiyesi hesaplanamaz.
+                                </div>
+                                <button type="button" class="btn btn-sm btn-primary" style="font-size: 12px; padding: 6px 14px; margin-top:10px; border-radius:8px;" onclick="openCostModal('{{ gid }}')">
+                                    <i data-lucide="calculator" width="13" height="13" style="margin-right:4px; vertical-align:-2px;"></i> + Maliyet Gir
+                                </button>
+
+                            {% elif not has_comp %}
+                                <div style="color: var(--text-secondary); font-size: 13px; line-height:1.55;">
+                                    <b style="color:var(--text-primary);">Maliyet girildi</b> ancak henüz karşılaştırılacak rakip fiyat verisi yok. Rakip ürün(ler) ilk taramadan geçtiğinde tavsiye otomatik çıkacak.
+                                </div>
+
+                            {% else %}
+                                {# ─── Ana tavsiye mantığı ─── #}
+                                {% set suggested_price = min_comp - 1 %}
+                                {% set projected_profit = suggested_price - cost_val %}
+                                {% set profit_margin_pct = (projected_profit / suggested_price * 100) if suggested_price > 0 else 0 %}
+
+                                {% if projected_profit > 0 %}
+                                    {# Kârlı Rekabet — YEŞİL #}
+                                    <div style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 12px; padding: 14px 16px; margin-top:4px;">
+                                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                            <i data-lucide="trending-up" width="18" height="18" color="#10b981"></i>
+                                            <span style="color:#10b981; font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:0.5px;">Kârlı Rekabet Fırsatı</span>
+                                        </div>
+                                        <div style="color: var(--text-primary); font-size: 14px; line-height:1.65;">
+                                            Buy Box'ı almak için fiyatınızı
+                                            <b style="color:#10b981; font-size:16px;">{{ '{:,.2f}'.format(suggested_price).replace(',','X').replace('.',',').replace('X','.') }} ₺</b>
+                                            seviyesine çekebilirsiniz.
+                                            <br>
+                                            Bu durumda tahmini Net Kârınız:
+                                            <b style="color:#10b981; font-size:16px;">{{ '{:,.2f}'.format(projected_profit).replace(',','X').replace('.',',').replace('X','.') }} ₺</b>
+                                            <span style="color:var(--text-muted); font-size:12px; font-weight:600;">(%{{ '%.1f'|format(profit_margin_pct) }} marj)</span> olacaktır.
+                                        </div>
+                                        <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px dashed rgba(16,185,129,0.25); font-size:11px; color:var(--text-muted); font-weight:600;">
+                                            <span>🏷️ En Düşük Rakip: <b style="color:var(--text-primary);">{{ '{:,.2f}'.format(min_comp).replace(',','X').replace('.',',').replace('X','.') }} ₺</b></span>
+                                            <span>🏭 Maliyetiniz: <b style="color:var(--text-primary);">{{ '{:,.2f}'.format(cost_val).replace(',','X').replace('.',',').replace('X','.') }} ₺</b></span>
+                                        </div>
+                                    </div>
+
+                                {% else %}
+                                    {# Zararına Rekabet — KIRMIZI #}
+                                    {% set loss_amount = cost_val - min_comp %}
+                                    <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.30); border-radius: 12px; padding: 14px 16px; margin-top:4px;">
+                                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                            <i data-lucide="alert-triangle" width="18" height="18" color="#ef4444"></i>
+                                            <span style="color:#ef4444; font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:0.5px;">Dikkat — Zararına Rekabet!</span>
+                                        </div>
+                                        <div style="color: var(--text-primary); font-size: 14px; line-height:1.65;">
+                                            Rakipler, maliyetinizin
+                                            (<b style="color:#ef4444;">{{ '{:,.2f}'.format(cost_val).replace(',','X').replace('.',',').replace('X','.') }} ₺</b>)
+                                            <b style="color:#ef4444;">{{ '{:,.2f}'.format(loss_amount).replace(',','X').replace('.',',').replace('X','.') }} ₺ altına</b>
+                                            inmiş durumda. Buy Box'ı almak için fiyat kırmanız <b style="color:#ef4444;">size zarar ettirir</b>, tavsiye edilmez!
+                                        </div>
+                                        <div style="margin-top:10px; padding:10px 12px; background:rgba(239,68,68,0.05); border-radius:8px; font-size:12px; color:var(--text-secondary); line-height:1.5;">
+                                            <b style="color:var(--text-primary);">💡 Stratejik Öneri:</b> Tedarik maliyetlerinizi gözden geçirin, farklılaşma (hediye paketleme, hızlı kargo, garanti) ile değer katın veya bu üründen geçici olarak çekilmeyi değerlendirin.
+                                        </div>
+                                        <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px dashed rgba(239,68,68,0.25); font-size:11px; color:var(--text-muted); font-weight:600;">
+                                            <span>🏷️ En Düşük Rakip: <b style="color:#ef4444;">{{ '{:,.2f}'.format(min_comp).replace(',','X').replace('.',',').replace('X','.') }} ₺</b></span>
+                                            <span>🏭 Maliyetiniz: <b style="color:var(--text-primary);">{{ '{:,.2f}'.format(cost_val).replace(',','X').replace('.',',').replace('X','.') }} ₺</b></span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                <div style="margin-top:10px;">
+                                    <button type="button" class="btn btn-sm btn-outline" style="font-size: 11px; padding: 4px 10px; border-radius:8px;" onclick="openCostModal('{{ gid }}')">
+                                        <i data-lucide="edit-3" width="12" height="12" style="margin-right:4px; vertical-align:-1px;"></i> Maliyeti Düzenle
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                    
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        // Read JSON from the DOM attribute
+                        var chartEl = document.getElementById('chart-{{ gid }}');
+                        var rawData = JSON.parse(chartEl.getAttribute('data-raw-chart'));
+                        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+                        // FAZ 1 — Birim Maliyet (grupsal): base ürünün unit_cost'u.
+                        // Eğer geçerli bir değer varsa grafikte "Maliyet Çizgisi" + Kâr/Zarar alanı çizilir.
+                        var rawCost = chartEl.getAttribute('data-unit-cost');
+                        var unitCost = null;
+                        if (rawCost && !isNaN(parseFloat(rawCost)) && parseFloat(rawCost) > 0) {
+                            unitCost = parseFloat(rawCost);
+                        }
+
+                        // Y Eksenindeki sayıların "en az 100'ün katları" olmasını zorlayan matematiksel yaklaşım
+                        var allPrices = rawData.flatMap(s => s.data.map(d => d[1] || 0)).filter(p => p > 0);
+
+                        // ── HOTFIX 1.25: Empty-state UI ───────────────────────────────
+                        // Geçerli fiyat verisi yoksa (ör. ilk tarama bot tarafından bloklandı,
+                        // henüz hiç başarılı kazıma olmadı), Highcharts'ı çağırmak yerine
+                        // "Veri Bekleniyor" placeholder'ı göster — UI çökmesin, kullanıcı
+                        // durumu netçe görsün.
+                        var hasValidData = rawData.some(function (s) {
+                            return s && Array.isArray(s.data) && s.data.some(function (d) {
+                                return d && typeof d[1] === 'number' && d[1] > 0;
+                            });
+                        });
+                        if (!hasValidData) {
+                            chartEl.innerHTML =
+                                '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+                                'min-height:240px;padding:32px 16px;border:1px dashed rgba(139,92,246,0.25);' +
+                                'border-radius:12px;background:rgba(139,92,246,0.04);color:#94a3b8;text-align:center;">' +
+                                '<div style="font-size:42px;margin-bottom:10px;opacity:0.7;">⏳</div>' +
+                                '<div style="font-weight:600;color:#cbd5e1;font-size:15px;margin-bottom:4px;">Veri Bekleniyor</div>' +
+                                '<div style="font-size:13px;line-height:1.5;max-width:380px;">Bu ürün için henüz geçerli fiyat geçmişi yok. ' +
+                                'İlk başarılı tarama tamamlandığında grafiğiniz burada görünecek.</div>' +
+                                '</div>';
+                            return; // Highcharts başlatma — kalan kod atlanır.
+                        }
+                        // ──────────────────────────────────────────────────────────────
+
+                        // ── HOTFIX 1.43: Tek-Nokta (Single Point) Görünürlüğü ──────────
+                        // Yeni eklenen ürünlerde her seride sadece 1 fiyat kaydı olabiliyor.
+                        // ApexCharts line tipi 2+ nokta olmadan çizgi çizemiyor → ekran boş kalıyor.
+                        // Çözüm: maksimum nokta sayısı 1 ise marker'ları KALICI olarak görünür yap,
+                        // tickAmount'u küçült ve brush'ı gizle.
+                        var maxSeriesLength = rawData.reduce(function (max, s) {
+                            var len = (s && Array.isArray(s.data)) ? s.data.filter(function (d) {
+                                return d && typeof d[1] === 'number' && d[1] > 0;
+                            }).length : 0;
+                            return len > max ? len : max;
+                        }, 0);
+                        var isSinglePoint = maxSeriesLength <= 1;
+                        // ──────────────────────────────────────────────────────────────
+                        // HOTFIX 1.52: Önceki sürümün (1.51) discreteMarkers + renkli halka
+                        // mantığı kaldırıldı. Stepline çizgi tipi fiyat değişim anını
+                        // basamak olarak ZATEN vurguluyor; ek bir vurgu marker'ı görseli
+                        // boğuyordu. Yerine sade "size:3 + beyaz viñ + hover:6" markerlar
+                        // (aşağıda markers config'inde).
+                        // Maliyet çizgisi veri aralığı dışına çıkıyorsa eksen ölçeklemesine dahil et
+                        if (unitCost !== null) allPrices.push(unitCost);
+                        var dataMin = allPrices.length > 0 ? Math.min(...allPrices) : 0;
+                        var dataMax = allPrices.length > 0 ? Math.max(...allPrices) : 1000;
+
+                        // ── HOTFIX 1.49: Dinamik Y-Ekseni Zoom (Daraltılmış Min/Max + %5 nefes payı) ──
+                        // Önceki davranış: padding = priceRange * 0.15 (%15 boşluk) ve
+                        // targetMin = dataMin - padding (0'ın altına inebiliyordu).
+                        // Sonuç: 200-220 ₺ aralığındaki fiyat çizgisi 0-300 arasına yayılıyor,
+                        // 20 ₺'lik bir oynama düz bir çizgi gibi görünüyor.
+                        //
+                        // Yeni davranış: %5'lik dar bir nefes payı + Math.max(0, ...) kilidi.
+                        // Çizgiler grafiğin tam ortasında, fiyatın gerçek dalgalanmasını gösterir.
+                        var priceRange = dataMax - dataMin;
+                        // priceRange = 0 (tek nokta) → dataMin'in %5'i kadar simetrik pay aç
+                        var padding = priceRange > 0 ? priceRange * 0.05 : (dataMin * 0.05 || 50);
+
+                        // 0'ın altına asla inme (negatif fiyat anlamsız) — Math.max kilidi
+                        var targetMin = Math.max(0, dataMin - padding);
+                        var targetMax = dataMax + padding;
+                        var targetRange = targetMax - targetMin;
+
+                        // ── Dinamik Tick Sayısı ──
+                        // Fiyat aralığı büyüdükçe daha fazla, küçüldükçe daha az tick.
+                        // Bu sayede 10 ₺ aralıklı bir grafikte 8 etiket sıkışmaz; 10.000 ₺
+                        // aralıklı grafikte de seyrek kalmaz.
+                        var desiredTicks;
+                        if (targetRange < 50) desiredTicks = 4;
+                        else if (targetRange < 500) desiredTicks = 5;
+                        else if (targetRange < 5000) desiredTicks = 6;
+                        else if (targetRange < 50000) desiredTicks = 7;
+                        else desiredTicks = 8;
+
+                        // Nice Step Calculation (Standart "güzel eksen" algoritması)
+                        var rawStep = targetRange / desiredTicks;
+                        var mag = Math.floor(Math.log10(rawStep));
+                        var pow10 = Math.pow(10, mag);
+                        var normalizedStep = rawStep / pow10;
+
+                        var niceMultiplier;
+                        if (normalizedStep < 1.5) niceMultiplier = 1;
+                        else if (normalizedStep < 3) niceMultiplier = 2;
+                        else if (normalizedStep < 7) niceMultiplier = 5;
+                        else niceMultiplier = 10;
+
+                        var stepSize = niceMultiplier * pow10;
+
+                        // Min/Max'ı stepSize'a hizala — etiketler tam sayı/yuvarlak değerler olsun
+                        // ANCAK: hizalama sonrası targetMin > 0 ise 0'a düşürme; hâlâ 0'ın altına
+                        // inmemeli (Math.max kilidi tekrar uygulanır).
+                        var strictMin = Math.max(0, Math.floor(targetMin / stepSize) * stepSize);
+                        var strictMax = Math.ceil(targetMax / stepSize) * stepSize;
+
+                        // Hizalama sonrası min==max çakıştıysa bir step ileri taşı
+                        if (strictMin === strictMax) strictMax += stepSize;
+
+                        var finalTickAmount = Math.round((strictMax - strictMin) / stepSize);
+
+                        // Aşırı tick varsa step'i iki katına çıkar (3+ kere artarsa cap'le)
+                        var safety = 0;
+                        while (finalTickAmount > desiredTicks + 2 && safety < 3) {
+                            stepSize *= 2;
+                            strictMin = Math.max(0, Math.floor(targetMin / stepSize) * stepSize);
+                            strictMax = Math.ceil(targetMax / stepSize) * stepSize;
+                            finalTickAmount = Math.round((strictMax - strictMin) / stepSize);
+                            safety++;
+                        }
+                        // ─────────────────────────────────────────────────────────────────
+
+                        // X-Axis: Daha fazla etiket alanı (width arttığı için)
+                        var totalDataPoints = rawData.reduce((sum, s) => sum + s.data.length, 0);
+                        var xTickAmount = Math.min(12, Math.max(5, Math.floor(totalDataPoints / rawData.length)));
+
+                        // Türkçe ay isimleri (tooltip için)
+                        var trMonths = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+                        // ── HOTFIX 1.59: Chart Type 'line' → 'area' (görünmez dolgu) ───
+                        // Önceki davranış (HOTFIX 1.57): chart.type = 'line' + tooltip.
+                        // shared: true + intersect: false ile her X'te tooltip beklemiştik
+                        // AMA: ApexCharts line tipinde tooltip hit-detection alanı çizginin
+                        // hemen civarında (~10-20px) sınırlıdır. Stepline'da çizgi yatay
+                        // yatay ilerlerken o yatay banttan biraz uzaklaşınca tooltip
+                        // kayboluyor → kullanıcı sadece kırılım noktalarında fiyat görüyor.
+                        //
+                        // Çözüm: chart.type = 'area'. AreaChart'ta hit-detection TÜM grafik
+                        // alanına yayılır (alttaki "shape" tüm Y aralığını kaplar). Görsel
+                        // bozulmaması için fill opacity = 0 yapıyoruz → dolgu görünmez,
+                        // stepline çizgiler aynen kalır, ama tooltip her X'te tetiklenir.
+                        var options = {
+                            series: rawData,
+                            chart: {
+                                id: 'main-chart-{{ gid }}',
+                                type: 'area',           // ← line → area (görünmez dolgu)
+                                height: 480,
+                                // HOTFIX 1.65: explicit responsive width — parent container
+                                // değişimlerinde grafik kendini otomatik adapt eder.
+                                width: '100%',
+                                background: 'transparent',
+                                fontFamily: 'Plus Jakarta Sans, Inter, -apple-system, sans-serif',
+                                toolbar: {
+                                    show: true,
+                                    autoSelected: 'zoom',
+                                    // HOTFIX 1.71: eksi offsetY SVG dışına taşırıyordu → 0
+                                    offsetY: 0
+                                },
+                                // HOTFIX 1.50: easing 'easeinout' → 'easeoutcubic', speed 800 → 450
+                                animations: { enabled: true, easing: 'easeoutcubic', speed: 450 },
+                                // HOTFIX 1.65: küçük ekran adaptasyonu — chart kendi
+                                // varsayılan responsive logic'ini de çalıştırsın
+                                redrawOnParentResize: true,
+                                redrawOnWindowResize: true
+                            },
+                            // HOTFIX 1.59: Dolguyu komple görünmez yap — sadece çizgi
+                            // görünsün, tooltip hit-detection için "shape" katmanı kalsın.
+                            fill: {
+                                type: 'solid',
+                                opacity: 0,             // dolgu transparan → görsel = line chart
+                            },
+                            // ── HOTFIX 1.60: Kalıcı DataLabel'ları kapat ───────────────────
+                            // Area tipinde bazı sürümlerde dataLabels default açık geliyor
+                            // (her data point'in üstünde fiyat etiketi kutucuğu) → grafiği
+                            // boğuyor. Explicit `enabled: false` ile garanti kapatıyoruz.
+                            // Fiyatlar SADECE hover tooltip'inde gösterilecek.
+                            dataLabels: { enabled: false },
+                            theme: { mode: isDark ? 'dark' : 'light' },
+                            colors: ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#0ea5e9'],
+                            // ── HOTFIX 1.52: Stepline (Basamaklı) + Zarif Marker ───────────
+                            // E-ticaret fiyat geçmişlerinin altın standardı: fiyat sabit
+                            // kaldığı sürece yatay çizgi, değiştiği an dikey basamak.
+                            // 'straight' yerine 'stepline' kullanmanın nedeni: 'straight'
+                            // iki nokta arasını düz çizgiyle bağlar (sanki fiyat o sürede
+                            // doğrusal değişmiş gibi). Stepline ise gerçeği yansıtır:
+                            // fiyat değişim ANINA kadar sabit, ardından ANLIK basamak.
+                            stroke: {
+                                curve: 'stepline',           // ← straight → stepline
+                                width: 3,
+                                dashArray: [0, 5, 5, 5, 5],
+                                lineCap: 'round'
+                            },
+                            // ── HOTFIX 1.52: Zarif Marker (Refined) ────────────────────────
+                            // Önceki (1.51): size:7 + renkli halka → görsel kirlilik.
+                            // Yeni: size:3 + beyaz viñ + hover:6 → sade, profesyonel.
+                            // Stepline curve fiyat değişim anlarını ZATEN vurguladığı için
+                            // ekstra renkli halkaya gerek yok. Hover'da büyüyen küçük
+                            // noktalar UX standardına uygun (Apple/Stripe/Linear).
+                            markers: isSinglePoint
+                                ? { size: 6, strokeWidth: 2, strokeColors: '#ffffff', hover: { size: 9, sizeOffset: 3 } }
+                                : {
+                                    size: 3,
+                                    strokeWidth: 2,
+                                    strokeColors: '#ffffff',
+                                    hover: { size: 6 }
+                                  },
+                            // ─────────────────────────────────────────────────────────────
+                            xaxis: {
+                                type: 'datetime',
+                                // HOTFIX 1.43: tek-nokta için tickAmount=1 (aynı tarih yan yana yazılmasın)
+                                tickAmount: isSinglePoint ? 1 : 8,
+                                labels: {
+                                    style: { colors: isDark ? '#9ca3af' : '#64748b', fontSize: '12px', fontWeight: 500 },
+                                    format: 'dd MMM',
+                                    datetimeUTC: false,
+                                    rotate: 0,
+                                    hideOverlappingLabels: true,
+                                    showDuplicates: false,
+                                    trim: true
+                                },
+                                axisBorder: { show: false },
+                                axisTicks: { show: false },
+                                // X-eksen tooltip'i (alt kenarda küçük balon) gereksiz —
+                                // tarih bilgisi zaten ana tooltip'in başlığında var.
+                                tooltip: { enabled: false },
+                                // ── HOTFIX 1.60: X-Crosshair (dikey kılavuz çizgisi) ──
+                                // İmleç grafik üzerinde hareket ederken o X konumunu
+                                // gösteren ince kesik dikey çizgi. Stepline grafikte
+                                // hangi tarihteki fiyatı okuduğunu kullanıcı net görür.
+                                // shared:true tooltip ile birlikte profesyonel finansal
+                                // grafik deneyimi (Bloomberg, TradingView paterni).
+                                crosshairs: {
+                                    show: true,
+                                    position: 'back',
+                                    // HOTFIX 1.61: dashArray 3 → 4 (daha okunabilir kesik aralık)
+                                    stroke: {
+                                        color: isDark ? '#475569' : '#94a3b8',
+                                        width: 1,
+                                        dashArray: 4
+                                    }
+                                }
+                            },
+                            yaxis: {
+                                min: strictMin,
+                                max: strictMax,
+                                tickAmount: finalTickAmount,
+                                labels: {
+                                    formatter: function(val) { return Math.floor(val).toLocaleString('tr-TR') + " ₺"; },
+                                    style: { colors: isDark ? '#9ca3af' : '#64748b', fontSize: '11px', fontWeight: 500 },
+                                    offsetX: -5
+                                },
+                                // HOTFIX 1.68: Sol Y-eksen border'ı görünür — grafiğin "duvarı" belli olsun
+                                axisBorder: {
+                                    show: true,
+                                    color: isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgba(148, 163, 184, 0.45)',
+                                    offsetX: 0,
+                                    offsetY: 0
+                                },
+                                axisTicks: { show: false }
+                            },
+                            grid: {
+                                borderColor: isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(148, 163, 184, 0.3)',
+                                strokeDashArray: 4,
+                                // ── HOTFIX 1.71: padding.top: 60 → 40 (legend artık
+                                // floating: false ile fiziksel yer kaplıyor, ekstra
+                                // boşluğa gerek yok). 40 = legend'in altından çizim
+                                // alanına temiz geçiş için yeterli tampon.
+                                padding: { left: 15, right: 30, top: 40, bottom: 0 }
+                            },
+                            // ── HOTFIX 1.71: Legend Sabitlendi (Hayalet modundan çıkar) ──
+                            // Önceki sürümde (1.70) `offsetY: -10` ile yukarı çekmiştik AMA
+                            // yazıların tepesi SVG container'ın dışına taştı (clipping).
+                            // Asıl sorun: legend default `floating: true` davranışıyla
+                            // hesaplamalarda yer kaplamıyor → grid hâlâ üstüne biniyor.
+                            // Çözüm: `floating: false` ile legend fiziksel blok haline
+                            // gelir, ApexCharts grid alanını otomatik olarak legend
+                            // yüksekliği kadar aşağı iter. offsetY: 0 (eksi yok → clipping yok).
+                            legend: {
+                                show: true,
+                                position: 'top',
+                                horizontalAlign: 'left',
+                                floating: false,
+                                offsetY: 0,
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                labels: { colors: isDark ? '#f8fafc' : '#0f172a' },
+                                markers: { width: 10, height: 10, radius: 3 },
+                                itemMargin: { horizontal: 10, vertical: 5 }
+                            },
+                            // ── HOTFIX 1.57: Çizgi-üzeri Hover Tooltip + Minimal Görünüm ──
+                            // Önceki davranış: tooltip sadece veri noktası üzerindeyken
+                            // (marker hover) görünüyordu → fiyat sabit kaldığı bölgelerde
+                            // (basamağın yatay kısmı) hiçbir bilgi gösterilmiyordu.
+                            // Yeni davranış:
+                            //   • shared: true       → aynı X koordinatındaki TÜM seri değerleri
+                            //                          tek tooltip'te listelenir
+                            //   • intersect: false   → çizgi/marker üstünde DEĞİL, X eksenindeki
+                            //                          herhangi bir noktada tooltip çıkar
+                            //   • followCursor:false → tooltip imleci takip etmez (X-bazlı sabit)
+                            //   • items.display:flex → fiyat ve isim YAN YANA, kompakt
+                            tooltip: {
+                                enabled: true,
+                                shared: true,
+                                intersect: false,
+                                followCursor: false,
+                                theme: isDark ? 'dark' : 'light',
+                                style: { fontSize: '12px', fontFamily: 'Plus Jakarta Sans, sans-serif' },
+                                x: {
+                                    formatter: function(val) {
+                                        var d = new Date(val);
+                                        return d.getDate() + ' ' + trMonths[d.getMonth()] + ' ' + d.getFullYear() + ' — ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+                                    }
+                                },
+                                y: {
+                                    formatter: function(val) {
+                                        if (val == null || isNaN(val)) return '';
+                                        return val.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
+                                    }
+                                },
+                                marker: { show: true },
+                                fixed: { enabled: false },
+                                // X ekseninde imleci takip eden dikey çizgi (kılavuz)
+                                items: { display: 'flex' }
+                            }
+                        };
+
+                        // ── FAZ 1: Maliyet Çizgisi + Kâr/Zarar Bölgeleri ─────────────
+                        // ApexCharts annotations.yaxis ile: y..y2 aralığında dolgulu bir "bant" çizilebilir.
+                        // Maliyet ÜSTÜ (cost..chartMax) → yeşil (Kâr Bölgesi)
+                        // Maliyet ALTI (chartMin..cost) → kırmızı (Zarar Bölgesi)
+                        // Maliyet çizgisi: y=unitCost, strokeDashArray kesik, sağında "Maliyet: X ₺" etiketi
+                        if (unitCost !== null) {
+                            var costLabel = "Maliyet: " + unitCost.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
+                            options.annotations = {
+                                yaxis: [
+                                    // 1) Kâr Bölgesi (yeşil belirgin dolgu)
+                                    {
+                                        y: unitCost,
+                                        y2: strictMax,
+                                        borderColor: 'transparent',
+                                        fillColor: '#10b981',
+                                        opacity: 0.20,
+                                        label: {
+                                            borderColor: 'transparent',
+                                            style: {
+                                                color: '#059669',
+                                                background: 'transparent',
+                                                fontSize: '12px',
+                                                fontWeight: 800
+                                            },
+                                            text: '🟢 Kâr Bölgesi',
+                                            position: 'left',
+                                            offsetX: 70,
+                                            offsetY: 14
+                                        }
+                                    },
+                                    // 2) Zarar Bölgesi (kırmızı belirgin dolgu)
+                                    {
+                                        y: strictMin,
+                                        y2: unitCost,
+                                        borderColor: 'transparent',
+                                        fillColor: '#ef4444',
+                                        opacity: 0.18,
+                                        label: {
+                                            borderColor: 'transparent',
+                                            style: {
+                                                color: '#dc2626',
+                                                background: 'transparent',
+                                                fontSize: '12px',
+                                                fontWeight: 800
+                                            },
+                                            text: '🔴 Zarar Bölgesi',
+                                            position: 'left',
+                                            offsetX: 80,
+                                            offsetY: -4
+                                        }
+                                    },
+                                    // 3) Maliyet Çizgisi (kesik çizgili yatay çizgi + etiket)
+                                    {
+                                        y: unitCost,
+                                        borderColor: '#f59e0b',
+                                        strokeDashArray: 6,
+                                        borderWidth: 2,
+                                        label: {
+                                            borderColor: '#f59e0b',
+                                            borderWidth: 1,
+                                            borderRadius: 6,
+                                            style: {
+                                                color: '#fff',
+                                                background: '#f59e0b',
+                                                fontSize: '11px',
+                                                fontWeight: 800,
+                                                padding: { left: 8, right: 8, top: 3, bottom: 3 }
+                                            },
+                                            text: costLabel,
+                                            position: 'right',
+                                            offsetX: -8,
+                                            offsetY: -6
+                                        }
+                                    }
+                                ]
+                            };
+                        }
+
+                        var chart = new ApexCharts(document.querySelector("#chart-{{ gid }}"), options);
+                        chart.render();
+
+                        // ── HOTFIX 1.58: Kalıcı Native Tooltip Bastırma (MutationObserver) ──
+                        // Önceki sürüm (1.57) tek seferlik temizleme + 250ms gecikmeli
+                        // ikinci tarama kullanıyordu. ApexCharts SVG'sini ASENKRON olarak
+                        // yeniden render ediyor (theme değişimi, resize, zoom işlemleri vb.)
+                        // ve her render'da <title>/<desc> elementlerini geri yüklüyordu →
+                        // gri native tooltip yine çıkıyordu.
+                        //
+                        // Çözüm: MutationObserver ile chart container'ı sürekli izle.
+                        // <title> veya <desc> EKLENİR EKLENMEZ anında sil. Eklenme/silinme
+                        // 1 microtask sürer; kullanıcı GÖRMEDEN temizlenir.
+                        (function _setupNativeTooltipKiller() {
+                            var host = document.getElementById('chart-{{ gid }}');
+                            if (!host) return;
+
+                            // Bir kez baştan tara — render senkron tamamlanan kısım için
+                            function stripOnce() {
+                                try {
+                                    host.querySelectorAll('title, desc').forEach(function(el){
+                                        el.parentNode && el.parentNode.removeChild(el);
+                                    });
+                                    host.querySelectorAll('[aria-label]').forEach(function(el){
+                                        el.removeAttribute('aria-label');
+                                    });
+                                } catch (e) {}
+                            }
+                            stripOnce();
+
+                            // Kalıcı izleyici — ApexCharts re-render ettikçe anında temizle
+                            try {
+                                var obs = new MutationObserver(function(mutations) {
+                                    for (var i = 0; i < mutations.length; i++) {
+                                        var m = mutations[i];
+                                        if (m.type === 'childList' && m.addedNodes.length) {
+                                            // Yeni eklenen node SVG <title>/<desc> mu, içinde var mı?
+                                            for (var j = 0; j < m.addedNodes.length; j++) {
+                                                var node = m.addedNodes[j];
+                                                if (!node || node.nodeType !== 1) continue;
+                                                var tag = (node.tagName || '').toLowerCase();
+                                                if (tag === 'title' || tag === 'desc') {
+                                                    node.parentNode && node.parentNode.removeChild(node);
+                                                } else if (node.querySelectorAll) {
+                                                    node.querySelectorAll('title, desc').forEach(function(el){
+                                                        el.parentNode && el.parentNode.removeChild(el);
+                                                    });
+                                                }
+                                            }
+                                        } else if (m.type === 'attributes' && m.attributeName === 'aria-label') {
+                                            if (m.target && m.target.removeAttribute) {
+                                                m.target.removeAttribute('aria-label');
+                                            }
+                                        }
+                                    }
+                                });
+                                obs.observe(host, {
+                                    childList: true,
+                                    subtree: true,
+                                    attributes: true,
+                                    attributeFilter: ['aria-label']
+                                });
+                            } catch (e) {}
+                        })();
+                        // ────────────────────────────────────────────────────────────────
+
+                        // HOTFIX 1.43: Tek-nokta senaryosunda brush (zaman dilimi seçici) anlamsız —
+                        // ikinci bir nokta olmadığı için kaydırılacak alan yok. Brush kabını gizle ama
+                        // theme observer'ın bozulmaması için chartBrush değişkenini null tutuyoruz
+                        // (observer aşağıda guard ediyor).
+                        var chartBrush = null;
+                        if (isSinglePoint) {
+                            var brushEl = document.getElementById('chart-brush-{{ gid }}');
+                            if (brushEl) { brushEl.style.display = 'none'; }
+                        }
+
+                        // Alt (Fırça / Slider) Grafik — sadece çoklu nokta varsa
+                        if (!isSinglePoint) {
+                        var optionsBrush = {
+                            series: rawData,
+                            chart: {
+                                id: 'brush-chart-{{ gid }}',
+                                type: 'area', // Brush timeline için Alan grafiği şıktır
+                                height: 100,
+                                // HOTFIX 1.65: responsive
+                                width: '100%',
+                                redrawOnParentResize: true,
+                                redrawOnWindowResize: true,
+                                background: 'transparent',
+                                brush: {
+                                    target: 'main-chart-{{ gid }}',
+                                    enabled: true
+                                },
+                                selection: {
+                                    enabled: true,
+                                    fill: {
+                                        color: '#6366f1', // Kurumsal Mor / Indigo-500
+                                        opacity: 0.2
+                                    },
+                                    stroke: {
+                                        color: '#6366f1'
+                                    }
+                                },
+                                toolbar: { show: false }
+                            },
+                            theme: { mode: isDark ? 'dark' : 'light' },
+                            colors: ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#0ea5e9'],
+                            fill: {
+                                type: 'gradient',
+                                gradient: { opacityFrom: 0.4, opacityTo: 0.05 }
+                            },
+                            stroke: { curve: 'smooth', width: 1.5 },
+                            xaxis: { 
+                                type: 'datetime',
+                                tooltip: { enabled: false },
+                                labels: { style: { colors: isDark ? '#9ca3af' : '#64748b' }, format: 'dd/MM' }
+                            },
+                            yaxis: { show: false, min: strictMin, max: strictMax },
+                            grid: { show: false },
+                            legend: { show: false }
+                        };
+                        // HOTFIX 1.43: chartBrush yukarıda `null` olarak tanımlandı —
+                        // burada SADECE atama yapıyoruz (yeniden var demiyoruz).
+                        chartBrush = new ApexCharts(document.querySelector("#chart-brush-{{ gid }}"), optionsBrush);
+                        chartBrush.render();
+                        } // ← isSinglePoint guard kapatıldı (HOTFIX 1.43)
+
+                        // Tema değişikliklerinde iki grafiği birden güncelle
+                        const observer = new MutationObserver(mutations => {
+                            mutations.forEach(mutation => {
+                                if (mutation.attributeName === 'data-theme') {
+                                    const newIsDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                                    const themeOpt = { mode: newIsDark ? 'dark' : 'light' };
+                                    const axisLabels = { style: { colors: newIsDark ? '#9ca3af' : '#64748b' } };
+
+                                    chart.updateOptions({
+                                        theme: themeOpt,
+                                        xaxis: { labels: axisLabels },
+                                        yaxis: { labels: axisLabels },
+                                        grid: { borderColor: newIsDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(148, 163, 184, 0.5)' },
+                                        legend: { labels: { colors: newIsDark ? '#f8fafc' : '#0f172a' } }
+                                    });
+                                    // HOTFIX 1.43: chartBrush null olabilir (tek-nokta) — guard ekle
+                                    if (chartBrush) {
+                                        chartBrush.updateOptions({
+                                            theme: themeOpt,
+                                            xaxis: { labels: axisLabels }
+                                        });
+                                    }
+                                }
+                            });
+                        });
+                        observer.observe(document.documentElement, { attributes: true });
+                    });
+                </script>
+
+                <!-- Data Table -->
+                <div class="table-wrapper" style="border-radius:0; border:none; border-top:1px solid var(--border); box-shadow:none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="padding-left:24px;">Ürün Adı</th>
+                                <th>Platform</th>
+                                <th>Güncel Fiyat</th>
+                                <th>Net Kâr / Zarar</th>
+                                <th>Son Kontrol</th>
+                                <th style="padding-right:24px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {# FAZ 1: Grubun referans unit_cost'u (base ürünün değeri) — tüm satırlarda aynı kullanılır #}
+                            {% set ref_cost = products[0].unit_cost %}
+                            {% for p in products %}
+                            <tr>
+                                <td style="padding-left:24px; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    {% if p.product_name %}{{ p.product_name }}{% else %}<a href="{{ p.url }}" target="_blank" style="color:var(--accent);">Bağlantıya Git</a>{% endif %}
+                                    {% if p.is_base_product %}
+                                    <span class="badge" style="background:rgba(99, 102, 241, 0.15); color:var(--accent); margin-left:8px; font-weight:700;">Base Ürün</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {# FAZ 3: Platform-specific renkli rozet #}
+                                    {% set _pn = (p.platform_name or '')|lower %}
+                                    {% if 'trendyol' in _pn %}
+                                        <span class="platform-badge badge-trendyol">Trendyol</span>
+                                    {% elif 'hepsiburada' in _pn %}
+                                        <span class="platform-badge badge-hepsiburada">Hepsiburada</span>
+                                    {% elif 'n11' in _pn %}
+                                        <span class="platform-badge badge-n11">N11</span>
+                                    {% elif 'çiçek' in _pn or 'cicek' in _pn %}
+                                        <span class="platform-badge badge-ciceksepeti">Çiçeksepeti</span>
+                                    {% elif 'pttavm' in _pn or 'ptt' in _pn %}
+                                        <span class="platform-badge badge-pttavm">PttAVM</span>
+                                    {% elif 'amazon' in _pn %}
+                                        <span class="platform-badge badge-amazon">Amazon</span>
+                                    {% else %}
+                                        <span class="badge badge-info">{{ p.platform_name or 'Beklemede' }}</span>
+                                    {% endif %}
+                                    {# HOTFIX 1.35: Trendyol satıcı + mağaza puanı badge'i #}
+                                    {% if p.seller_name or p.seller_rating %}
+                                        {% set _sr = p.seller_rating or 0 %}
+                                        {% if _sr >= 9.0 %}
+                                            {% set _bg = 'rgba(16,185,129,0.12)' %}{% set _fg = '#10b981' %}
+                                        {% elif _sr >= 7.5 %}
+                                            {% set _bg = 'rgba(251,191,36,0.12)' %}{% set _fg = '#f59e0b' %}
+                                        {% elif _sr > 0 %}
+                                            {% set _bg = 'rgba(239,68,68,0.12)' %}{% set _fg = '#ef4444' %}
+                                        {% else %}
+                                            {% set _bg = 'transparent' %}{% set _fg = 'var(--text-muted)' %}
+                                        {% endif %}
+                                        <div style="margin-top:6px; font-size:11px; color:var(--text-muted);">
+                                            {{ p.seller_name or '—' }}
+                                            {% if _sr > 0 %}
+                                            <span style="display:inline-flex;align-items:center;gap:3px;background:{{ _bg }};color:{{ _fg }};padding:1px 7px;border-radius:8px;font-weight:700;margin-left:4px;">⭐ {{ '%.1f'|format(_sr) }}</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td style="font-weight:bold; font-size:15px; color:var(--text-primary);">
+                                    {% if p.current_price > 0 %}
+                                        {{ '{:,.2f}'.format(p.current_price).replace(',','X').replace('.',',').replace('X','.') }} ₺
+                                    {% else %}
+                                        <span style="color:var(--text-muted); font-weight:normal; font-size:13px;">Kontrol Ediliyor...</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if ref_cost and ref_cost > 0 and p.current_price and p.current_price > 0 %}
+                                        {% set row_profit = p.current_price - ref_cost %}
+                                        {% set row_margin = (row_profit / p.current_price * 100) if p.current_price > 0 else 0 %}
+                                        {% if row_profit < 0 %}
+                                            <span class="badge" style="background:rgba(239,68,68,0.12); color:#ef4444; border:1px solid rgba(239,68,68,0.25); font-weight:700; padding:4px 10px; border-radius:99px; font-size:12px;">
+                                                ▼ Zarar: {{ '{:,.2f}'.format(row_profit).replace(',','X').replace('.',',').replace('X','.') }} ₺
+                                                <span style="opacity:0.8; font-weight:600; margin-left:4px;">({{ '%.1f'|format(row_margin) }}%)</span>
+                                            </span>
+                                        {% else %}
+                                            <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.25); font-weight:700; padding:4px 10px; border-radius:99px; font-size:12px;">
+                                                ▲ Kâr: {{ '{:,.2f}'.format(row_profit).replace(',','X').replace('.',',').replace('X','.') }} ₺
+                                                <span style="opacity:0.8; font-weight:600; margin-left:4px;">({{ '%.1f'|format(row_margin) }}%)</span>
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span style="color:var(--text-muted); font-size:12px; opacity:0.7;">— maliyet yok —</span>
+                                    {% endif %}
+                                </td>
+                                <td style="font-size:13px;">{{ p.last_checked|timeago }}</td>
+                                <td style="text-align:right; padding-right:24px;">
+                                    <div style="display:flex; justify-content:flex-end; gap:8px; align-items:center;">
+                                        {# FAZ 2.1: Çift yönlü Alarm butonu — below/above eşiklerini tooltip'te gösterir #}
+                                        {% set alert_pair = product_alerts.get(p.id) if product_alerts else None %}
+                                        {% set a_below = alert_pair.below if alert_pair else None %}
+                                        {% set a_above = alert_pair.above if alert_pair else None %}
+                                        {% set safe_name = (p.product_name or p.platform_name or 'Ürün')|replace("'", "\\'")|replace('\n',' ') %}
+                                        {% if a_below or a_above %}
+                                            {% set tip_parts = [] %}
+                                            {% if a_below %}{% set _ = tip_parts.append('🚨 Alt: ' ~ '{:,.0f}'.format(a_below).replace(',','.') ~ ' ₺') %}{% endif %}
+                                            {% if a_above %}{% set _ = tip_parts.append('📈 Üst: ' ~ '{:,.0f}'.format(a_above).replace(',','.') ~ ' ₺') %}{% endif %}
+                                        <button type="button"
+                                                onclick="openAlertModal({{ p.id }}, '{{ safe_name }}', {{ a_below if a_below is not none else 'null' }}, {{ a_above if a_above is not none else 'null' }})"
+                                                class="btn btn-sm"
+                                                title="Aktif alarm → {{ tip_parts|join(' · ') }}"
+                                                style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.35); display:flex; align-items:center; gap:4px; font-weight:700;">
+                                            <i data-lucide="bell-ring" width="14" height="14"></i>
+                                            {% if a_below and a_above %}
+                                                ↕ Çift
+                                            {% elif a_below %}
+                                                ↓ {{ '{:,.0f}'.format(a_below).replace(',','.') }}
+                                            {% else %}
+                                                ↑ {{ '{:,.0f}'.format(a_above).replace(',','.') }}
+                                            {% endif %}
+                                        </button>
+                                        {% else %}
+                                        <button type="button"
+                                                onclick="openAlertModal({{ p.id }}, '{{ safe_name }}', null, null)"
+                                                class="btn btn-sm"
+                                                title="Bu ürün için fiyat alarmı kur (alt / üst limit)"
+                                                style="background:rgba(139, 92, 246, 0.1); color:#8b5cf6; border:none; display:flex; align-items:center; gap:4px;">
+                                            <i data-lucide="bell" width="14" height="14"></i> Alarm
+                                        </button>
+                                        {% endif %}
+                                        <a href="{{ p.url }}" target="_blank" class="btn btn-sm" style="background:rgba(59, 130, 246, 0.1); color:#3b82f6; border:none; text-decoration:none; display:flex; align-items:center; gap:4px;"><i data-lucide="external-link" width="14" height="14"></i> Git</a>
+                                        <form method="POST" action="{{ url_for('delete_tracked_product', id=p.id) }}" onsubmit="return confirm('Takibi silmek istediğinize emin misiniz?');" style="margin:0;">
+                                            <button class="btn btn-sm" style="background:rgba(239,68,68,0.1);color:#ef4444;border:none;">Kaldır</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            
+                            <!-- Add New Product to this Group Row -->
+                            <tr>
+                                <td colspan="6" style="padding: 12px 24px; background:rgba(255,255,255,0.02);">
+                                    <form method="POST" action="{{ url_for('add_to_tracked_group', group_id=gid) }}" style="display:flex; gap:10px; align-items:center;">
+                                        <input type="text" name="urls" placeholder="Bu gruba dahil etmek için bir veya daha fazla ürün linki yapıştırın (virgül veya boşlukla ayırın)..." required class="form-control" style="flex:1; border-radius:6px; background:var(--bg-primary); color:var(--text-primary); padding:8px 12px; font-size:13px; border:1px solid var(--border);">
+                                        <button type="submit" class="btn btn-sm" style="background:rgba(52, 211, 153, 0.1); color:#34d399; border:none; padding:8px 16px; font-weight:bold;">+ Ürünü Gruba Ekle</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="card" style="text-align:center;padding:60px 40px;color:var(--text-muted);">
+            <div style="font-size:48px;margin-bottom:16px;">🔭</div>
+            <div style="font-size:16px; font-weight:600;">Henüz takip edilen ürün yok</div>
+            <div style="font-size:14px;margin-top:8px;">Yukarıdaki formdan bir URL ekleyerek başlayın veya Yeni Analiz sayfasından rakip kurgusu oluşturun.</div>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<!-- FAZ 1 — HOTFIX 1.2: Birim Maliyet Modal (KATI opak — CSS değişkenlerinden bağımsız) -->
+<style>
+    #costModal { z-index: 99998 !important; }
+    #costModal .cost-modal-inner {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        background-image: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        opacity: 1 !important;
+        z-index: 10000;
+        isolation: isolate;
+        color: #0f172a;
+        border: 1px solid #e2e8f0 !important;
+    }
+    [data-theme="dark"] #costModal .cost-modal-inner {
+        background: #1e1e2d !important;
+        background-color: #1e1e2d !important;
+        background-image: none !important;
+        color: #f8fafc;
+        border: 1px solid #2d3142 !important;
+    }
+    @media (prefers-color-scheme: dark) {
+        html:not([data-theme="light"]) #costModal .cost-modal-inner {
+            background: #1e1e2d !important;
+            background-color: #1e1e2d !important;
+            color: #f8fafc;
+            border: 1px solid #2d3142 !important;
+        }
+    }
+    #costModal .cost-modal-inner input[type="number"] {
+        background: #f8fafc !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    [data-theme="dark"] #costModal .cost-modal-inner input[type="number"] {
+        background: #0f172a !important;
+        color: #f8fafc !important;
+        border: 1px solid #334155 !important;
+    }
+    #costModal .cost-modal-inner h3,
+    #costModal .cost-modal-inner p,
+    #costModal .cost-modal-inner label,
+    #costModal .cost-modal-inner span { opacity: 1 !important; }
+</style>
+
+<div id="costModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.70); z-index:99998; align-items:center; justify-content:center;">
+    <div class="cost-modal-inner" style="padding:28px; border-radius:18px; width:100%; max-width:440px; box-shadow:0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.05); position:relative; opacity:1;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+            <div style="width:40px; height:40px; border-radius:10px; background:#fef3c7; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="calculator" width="22" height="22" color="#f59e0b"></i>
+            </div>
+            <h3 style="margin:0;">Birim Maliyet (Base Ürün)</h3>
+        </div>
+        <p style="font-size:13px; margin-bottom:22px; line-height:1.5; opacity:0.75;">
+            Grafikte <b style="color:#f59e0b; opacity:1;">turuncu kesik çizgi</b> olarak gösterilecek tedarik maliyetiniz. Güncel fiyatla aradaki fark otomatik <b style="color:#10b981; opacity:1;">yeşil (Kâr)</b> veya <b style="color:#ef4444; opacity:1;">kırmızı (Zarar)</b> bölge olarak boyanır.
+        </p>
+        <form id="costForm" method="POST" action="">
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-size:12px; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; opacity:0.8;">Birim Maliyetiniz (₺)</label>
+                <div style="position:relative;">
+                    <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-weight:700; opacity:0.7;">₺</span>
+                    <input type="number" step="0.01" min="0" name="unit_cost" required placeholder="Örn: 299.90" style="width:100%; padding:12px 12px 12px 32px; border-radius:10px; font-size:15px; font-weight:600; outline:none;">
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-outline" style="border:1px solid #cbd5e1;" onclick="document.getElementById('costModal').style.display='none'">İptal</button>
+                <button type="submit" class="btn btn-primary">Kaydet ve Simüle Et</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCostModal(gid) {
+    var modal = document.getElementById('costModal');
+    var form = document.getElementById('costForm');
+    if (!modal || !form) return;
+    if (!gid) return;
+
+    form.action = '/tracked-products/group/' + gid + '/cost';
+    try { form.reset(); } catch (e) {}
+    modal.style.display = 'flex';
+    var costInput = form.querySelector('input[name="unit_cost"]');
+    if (costInput) { setTimeout(function(){ costInput.focus(); }, 50); }
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        var modal = document.getElementById('costModal');
+        if (modal && modal.style.display === 'flex') {
+            modal.style.display = 'none';
+        }
+        var amodal = document.getElementById('alertModal');
+        if (amodal && amodal.style.display === 'flex') {
+            amodal.style.display = 'none';
+        }
+    }
+});
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     FAZ 2: ALARM KUR MODALI — Smart Alerts
+     Kullanıcı ürün bazlı "Fiyat X ₺ altına düşerse uyar" alarmı kurar.
+     Aynı katı-opak (HEX + !important) yaklaşımıyla tema-bağımsız netlik.
+═══════════════════════════════════════════════════════════════════════════ -->
+<style>
+    #alertModal { z-index: 99998 !important; }
+    #alertModal .alert-modal-inner {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        background-image: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        opacity: 1 !important;
+        z-index: 10000;
+        isolation: isolate;
+        color: #0f172a !important;
+    }
+    [data-theme="dark"] #alertModal .alert-modal-inner {
+        background: #1e1e2d !important;
+        background-color: #1e1e2d !important;
+        color: #f8fafc !important;
+    }
+    @media (prefers-color-scheme: dark) {
+        html:not([data-theme="light"]) #alertModal .alert-modal-inner {
+            background: #1e1e2d !important;
+            background-color: #1e1e2d !important;
+            color: #f8fafc !important;
+        }
+    }
+    #alertModal .alert-modal-inner input[type="number"] {
+        background: #f8fafc !important;
+        color: #0f172a !important;
+        border: 1.5px solid #cbd5e1 !important;
+    }
+    [data-theme="dark"] #alertModal .alert-modal-inner input[type="number"] {
+        background: #0f172a !important;
+        color: #f8fafc !important;
+        border: 1.5px solid #334155 !important;
+    }
+    #alertModal .alert-modal-inner h3,
+    #alertModal .alert-modal-inner p,
+    #alertModal .alert-modal-inner label,
+    #alertModal .alert-modal-inner span { opacity: 1 !important; }
+</style>
+
+<div id="alertModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.70); z-index:99998; align-items:center; justify-content:center;">
+    <div class="alert-modal-inner" style="padding:28px; border-radius:18px; width:100%; max-width:480px; box-shadow:0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.05); position:relative; opacity:1;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+            <div style="width:44px; height:44px; border-radius:12px; background:#fef3c7; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="bell-ring" width="24" height="24" color="#f59e0b"></i>
+            </div>
+            <div>
+                <h3 style="margin:0; font-size:18px;">🔔 Çift Yönlü Fiyat Alarmı</h3>
+                <div id="alertProductName" style="font-size:12px; opacity:0.7; margin-top:2px; max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">—</div>
+            </div>
+        </div>
+        <p style="font-size:13px; margin-bottom:20px; line-height:1.55; opacity:0.8;">
+            İki eşik aynı anda aktif olabilir. Alt limit düşüş fırsatlarını, üst limit rakip zam fırsatlarını yakalar.
+            <b style="opacity:1;">En az birini doldurmanız yeterli.</b> Alarm tetiklenince otomatik susturulur (tek seferlik).
+        </p>
+        <form id="alertForm" method="POST" action="/tracked-products/alert/add">
+            <input type="hidden" name="tracked_product_id" id="alertProductId" value="">
+
+            <!-- Alt Limit (Fiyat Düşerse) -->
+            <div style="margin-bottom:16px;">
+                <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; opacity:0.85;">
+                    <span style="color:#ef4444;">🚨</span> Fiyat Düşerse Uyar (Alt Limit ₺)
+                </label>
+                <div style="position:relative;">
+                    <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-weight:700; opacity:0.7;">₺</span>
+                    <input type="number" step="0.01" min="0" name="price_below" id="alertBelowInput" placeholder="Örn: 249.90 (boş bırakılabilir)" style="width:100%; padding:12px 12px 12px 32px; border-radius:10px; font-size:15px; font-weight:600; outline:none;">
+                </div>
+            </div>
+
+            <!-- Üst Limit (Fiyat Çıkarsa) -->
+            <div style="margin-bottom:18px;">
+                <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; opacity:0.85;">
+                    <span style="color:#10b981;">📈</span> Fiyat Çıkarsa Uyar (Üst Limit ₺)
+                </label>
+                <div style="position:relative;">
+                    <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-weight:700; opacity:0.7;">₺</span>
+                    <input type="number" step="0.01" min="0" name="price_above" id="alertAboveInput" placeholder="Örn: 349.90 (boş bırakılabilir)" style="width:100%; padding:12px 12px 12px 32px; border-radius:10px; font-size:15px; font-weight:600; outline:none;">
+                </div>
+            </div>
+
+            <div id="alertValidationMsg" style="display:none; font-size:12px; color:#ef4444; font-weight:600; margin-bottom:12px; padding:8px 12px; background:rgba(239,68,68,0.08); border-radius:8px; border:1px solid rgba(239,68,68,0.25);"></div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-outline" style="border:1px solid #cbd5e1;" onclick="document.getElementById('alertModal').style.display='none'">İptal</button>
+                <button type="submit" class="btn btn-primary" style="background:#f59e0b; border-color:#f59e0b;">
+                    <i data-lucide="bell-ring" width="14" height="14" style="margin-right:6px;"></i>
+                    Alarmı Kur
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAlertModal(productId, productName, currentBelow, currentAbove) {
+    var modal = document.getElementById('alertModal');
+    var form = document.getElementById('alertForm');
+    var pidInput = document.getElementById('alertProductId');
+    var nameEl = document.getElementById('alertProductName');
+    var belowInput = document.getElementById('alertBelowInput');
+    var aboveInput = document.getElementById('alertAboveInput');
+    var msgEl = document.getElementById('alertValidationMsg');
+    if (!modal || !form || !pidInput || !belowInput || !aboveInput) return;
+    if (!productId) return;
+
+    pidInput.value = productId;
+    nameEl.textContent = productName || 'Ürün';
+    belowInput.value = (currentBelow && currentBelow > 0) ? currentBelow : '';
+    aboveInput.value = (currentAbove && currentAbove > 0) ? currentAbove : '';
+    if (msgEl) { msgEl.style.display = 'none'; msgEl.textContent = ''; }
+
+    modal.style.display = 'flex';
+    setTimeout(function(){
+        // İlk boş input'a odaklan
+        if (!belowInput.value) { belowInput.focus(); }
+        else if (!aboveInput.value) { aboveInput.focus(); }
+        else { belowInput.focus(); belowInput.select(); }
+    }, 50);
+}
+
+// Client-side doğrulama: en az biri dolu + below < above
+document.addEventListener('DOMContentLoaded', function() {
+    var alertForm = document.getElementById('alertForm');
+    if (!alertForm) return;
+    alertForm.addEventListener('submit', function(e) {
+        var below = parseFloat(document.getElementById('alertBelowInput').value);
+        var above = parseFloat(document.getElementById('alertAboveInput').value);
+        var msgEl = document.getElementById('alertValidationMsg');
+        var hasBelow = !isNaN(below) && below > 0;
+        var hasAbove = !isNaN(above) && above > 0;
+
+        if (!hasBelow && !hasAbove) {
+            e.preventDefault();
+            msgEl.textContent = '⚠️ En az bir eşik değeri (Alt veya Üst Limit) girmelisiniz.';
+            msgEl.style.display = 'block';
+            return false;
+        }
+        if (hasBelow && hasAbove && below >= above) {
+            e.preventDefault();
+            msgEl.textContent = '⚠️ Alt Limit, Üst Limit\'ten küçük olmalıdır.';
+            msgEl.style.display = 'block';
+            return false;
+        }
+        msgEl.style.display = 'none';
+    });
+});
+</script>
+
+{# ── HOTFIX 1.88: Grup Adı Düzenleme Modalı ──
+   "✏️" butonuna tıklayınca açılır. Boş gönderim → group_label NULL → fallback. #}
+<div id="renameModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99998; align-items:center; justify-content:center;">
+    <div style="background:var(--bg-card, #fff); border-radius:16px; max-width:480px; width:90%; padding:28px; box-shadow:0 25px 60px rgba(0,0,0,0.35); border:1px solid var(--border);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <div style="width:40px; height:40px; border-radius:10px; background:rgba(99,102,241,0.12); display:flex; align-items:center; justify-content:center; color:var(--accent);">
+                <i data-lucide="pencil" width="20" height="20"></i>
+            </div>
+            <div>
+                <h3 style="margin:0; font-size:18px; font-weight:800;">Grup Adını Düzenle</h3>
+                <p style="margin:2px 0 0 0; font-size:13px; color:var(--text-muted);">Bu gruba stratejik bir isim verin</p>
+            </div>
+        </div>
+        <form id="renameModalForm" method="POST" style="margin-top:18px;">
+            <input type="hidden" name="return_to" value="tracked_products">
+            <label class="form-label" style="font-size:13px; font-weight:600; margin-bottom:6px; display:block;">
+                Yeni Ad
+            </label>
+            <input type="text" name="group_name" id="renameInput" maxlength="100"
+                   placeholder="Örn: Yaz Kampanyası Rakipleri, Premium Mamalar…"
+                   style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid var(--border); font-size:14px; background:var(--bg-primary, transparent); color:var(--text-primary);">
+            <p style="font-size:12px; color:var(--text-muted); margin:8px 0 0 0;">
+                Boş bırakırsanız ilk ürünün adından otomatik üretilen başlık tekrar kullanılır.
+            </p>
+            {# HOTFIX 1.97: SEO senkronizasyon uyarısı #}
+            <div style="margin-top:12px; padding:10px 12px; background:rgba(14,165,233,0.08); border-left:3px solid #0ea5e9; border-radius:4px; font-size:12px; color:var(--text-secondary, var(--text-primary)); line-height:1.5;">
+                <strong style="color:#0ea5e9;">🔍 SEO Senkronizasyonu:</strong>
+                Bu gruba bağlı tüm SEO takiplerinin <strong>anahtar kelimesi</strong> yeni grup adıyla
+                otomatik güncellenir ve bir sonraki taramada yeni kelimeyle aranır.
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+                <button type="button" onclick="closeRenameModal()" class="btn btn-outline btn-sm" style="padding:9px 16px;">İptal</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="padding:9px 18px;">
+                    Kaydet
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function() {
+    var modal = document.getElementById('renameModal');
+    var form = document.getElementById('renameModalForm');
+    var inp = document.getElementById('renameInput');
+    document.querySelectorAll('.open-rename-modal').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var gid = btn.getAttribute('data-group-id');
+            var current = btn.getAttribute('data-current-name') || '';
+            form.setAttribute('action', '/tracked-products/group/' + gid + '/rename');
+            inp.value = current;
+            modal.style.display = 'flex';
+            setTimeout(function() { inp.focus(); inp.select(); }, 100);
+        });
+    });
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeRenameModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'flex') closeRenameModal();
+    });
+})();
+function closeRenameModal() {
+    document.getElementById('renameModal').style.display = 'none';
+}
+</script>
+
+{# ── HOTFIX 1.84: Grup SEO Başlatma Modalı ──
+   "Grubu SEO Araması Yap" butonuna tıklayınca açılır. Kullanıcı anahtar kelime girer,
+   POST /tracked-products/group/<gid>/start-seo endpoint'i tetiklenir. #}
+<div id="seoModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99998; align-items:center; justify-content:center;">
+    <div style="background:var(--bg-card, #fff); border-radius:16px; max-width:480px; width:90%; padding:28px; box-shadow:0 25px 60px rgba(0,0,0,0.35); border:1px solid var(--border);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <div style="width:40px; height:40px; border-radius:10px; background:rgba(14,165,233,0.12); display:flex; align-items:center; justify-content:center; color:#0ea5e9;">
+                <i data-lucide="search" width="20" height="20"></i>
+            </div>
+            <div>
+                <h3 style="margin:0; font-size:18px; font-weight:800;">SEO Araması Başlat</h3>
+                <p style="margin:2px 0 0 0; font-size:13px; color:var(--text-muted);">Bu gruptaki TÜM ürünler için sıralama izlemesi</p>
+            </div>
+        </div>
+        <form id="seoModalForm" method="POST" style="margin-top:18px;">
+            <label class="form-label" style="font-size:13px; font-weight:600; margin-bottom:6px; display:block;">
+                Anahtar Kelime
+            </label>
+            <input type="text" name="keyword" required
+                   placeholder="Örn: akıllı mama kabı"
+                   style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid var(--border); font-size:14px; background:var(--bg-primary, transparent); color:var(--text-primary);">
+            <p style="font-size:12px; color:var(--text-muted); margin:8px 0 0 0;">
+                Trendyol/Hepsiburada aramasında bu kelime için gruptaki ürünlerin sırasını tarihsel olarak izleriz.
+            </p>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+                <button type="button" onclick="closeSeoModal()" class="btn btn-outline btn-sm" style="padding:9px 16px;">İptal</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="padding:9px 18px; background:#0ea5e9; border-color:#0ea5e9;">
+                    Aramayı Başlat
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function() {
+    var modal = document.getElementById('seoModal');
+    var form = document.getElementById('seoModalForm');
+    document.querySelectorAll('.open-seo-modal').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var gid = btn.getAttribute('data-group-id');
+            form.setAttribute('action', '/tracked-products/group/' + gid + '/start-seo');
+            modal.style.display = 'flex';
+            setTimeout(function() {
+                var inp = form.querySelector('input[name="keyword"]');
+                if (inp) inp.focus();
+            }, 100);
+        });
+    });
+    // ESC + dış tıkla kapat
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeSeoModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'flex') closeSeoModal();
+    });
+})();
+function closeSeoModal() {
+    document.getElementById('seoModal').style.display = 'none';
+}
+</script>
+{% endblock %}

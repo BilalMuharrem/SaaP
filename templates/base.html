@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BMK{% endblock %} — BMK Rekabet İstihbaratı</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <script>
+        const svgs = {
+            sun: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`,
+            moon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`
+        };
+        const savedTheme = localStorage.getItem('bmk-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('bmk-theme', next);
+            document.getElementById('theme-icon').innerHTML = next === 'dark' ? svgs.sun : svgs.moon;
+        }
+
+        // ── HOTFIX 1.66: Birleşik Sidebar Toggle (Hamburger Pattern) ──
+        // Tek `toggleSidebar()` fonksiyonu hem masaüstü hem mobilde aynı işi yapar:
+        //   • `.collapsed` toggle eder → sidebar translateX(-100%) ile gizlenir
+        //   • Sol üstteki hamburger butonu sidebar kapalıyken görünür
+        //   • Mobil'de (≤992px) overlay backdrop + body scroll kilidi devreye girer
+        //   • ApexCharts'a resize sinyali gönderir (geçiş bitince)
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const layout = document.querySelector('.app-layout');
+            const overlay = document.getElementById('sidebarOverlay');
+            const hambBtn = document.querySelector('.mobile-menu-toggle');
+            if (!sidebar) return;
+
+            const isCollapsed = sidebar.classList.toggle('collapsed');
+            if (layout) layout.classList.toggle('sidebar-collapsed', isCollapsed);
+
+            // Hamburger butonu: sidebar kapalıyken görünür, açıkken gizli
+            if (hambBtn) hambBtn.style.display = isCollapsed ? 'flex' : 'none';
+
+            // Mobil'de overlay + scroll lock
+            const isMobile = window.matchMedia('(max-width: 992px)').matches;
+            if (overlay) overlay.classList.toggle('show', !isCollapsed && isMobile);
+            document.body.style.overflow = (!isCollapsed && isMobile) ? 'hidden' : '';
+
+            // Sidebar içindeki "<" / ">" ikonu (sadece açıkken anlamlı)
+            const toggleBtnBtn = sidebar.querySelector('.sidebar-toggle');
+            if (toggleBtnBtn) {
+                toggleBtnBtn.innerHTML = `<i data-lucide="menu" width="20" height="20"></i>`;
+                if (window.lucide) lucide.createIcons();
+            }
+
+            localStorage.setItem('bmk-sidebar', isCollapsed ? 'collapsed' : 'expanded');
+
+            // HOTFIX 1.65: ApexCharts resize tetikleyici
+            setTimeout(function() {
+                try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+            }, 320);
+        }
+
+        // HOTFIX 1.66: toggleMobileSidebar artık toggleSidebar'a yönlenir
+        // (geriye dönük uyumluluk — eski tetikleyiciler çalışmaya devam eder)
+        function toggleMobileSidebar() { toggleSidebar(); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // HOTFIX 1.66: Başlangıç state'i
+            //   • localStorage 'collapsed' ise → kapalı başla
+            //   • localStorage yok + mobil ekran (≤992px) ise → kapalı başla (mobil default)
+            //   • Aksi halde → açık başla (masaüstü default)
+            const saved = localStorage.getItem('bmk-sidebar');
+            const isMobile = window.matchMedia('(max-width: 992px)').matches;
+            const shouldCollapse = (saved === 'collapsed') || (saved === null && isMobile);
+
+            const sidebar = document.querySelector('.sidebar');
+            const layout = document.querySelector('.app-layout');
+            const hambBtn = document.querySelector('.mobile-menu-toggle');
+
+            if (shouldCollapse) {
+                if (sidebar) sidebar.classList.add('collapsed');
+                if (layout) layout.classList.add('sidebar-collapsed');
+                if (hambBtn) hambBtn.style.display = 'flex';
+            } else {
+                if (hambBtn) hambBtn.style.display = 'none';
+            }
+        });
+    </script>
+    <button onclick="toggleTheme()" style="position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--text-primary);border:none;border-radius:50%;width:48px;height:48px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);transition:transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);color:var(--bg-primary);">
+        <span id="theme-icon" style="display:flex;"></span>
+    </button>
+
+    {# ── HOTFIX 1.66: Universal Hamburger Menü (Masaüstü + Mobil) ──
+       Sidebar kapalıyken sol üstte görünür, açıkken JS ile gizlenir.
+       Hem masaüstü hem mobilde aynı görevi yapar: sidebar'ı açıp kapatır.
+       Display state'i JS (DOMContentLoaded + toggleSidebar) tarafından
+       yönetilir — sayfa yüklenirken state'e göre `display: flex/none`. #}
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()"
+            aria-label="Menüyü Aç/Kapat"
+            style="position:fixed;top:16px;left:16px;z-index:201;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;width:42px;height:42px;cursor:pointer;display:none;align-items:center;justify-content:center;color:var(--text-primary);box-shadow:var(--shadow);transition:background 0.2s;">
+        <i data-lucide="menu" width="22" height="22"></i>
+    </button>
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <script>
+        document.getElementById('theme-icon').innerHTML = document.documentElement.getAttribute('data-theme') === 'dark' ? svgs.sun : svgs.moon;
+    </script>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container" id="flash-container">
+        {% for category, message in messages %}
+        <div class="flash-msg {{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    <script>setTimeout(()=>{document.getElementById('flash-container').style.display='none';}, 5000);</script>
+    {% endif %}
+    {% endwith %}
+
+    {% block body %}{% endblock %}
+<script src="https://unpkg.com/lucide@latest"></script>\n<script>lucide.createIcons();</script>\n</body>
+</html>

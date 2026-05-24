@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2563eb">
+
+    {# ── HOTFIX 1.77: FOUC-önleyici inline theme setter ──
+       Sayfa render edilmeden önce localStorage + prefers-color-scheme okunur,
+       <html data-theme="...">'a uygulanır. Bu sayede dark mode kullanıcısı
+       önce beyaz flaş görüp sonra dark'a geçmez. #}
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem('bmk-landing-theme');
+                var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var theme = saved || (sysDark ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+
+    {# ── SEO META (EPIC 10.0 — AIO + Klasik SEO) ── #}
+    <title>BMK — Trendyol Fiyat Takibi · E-Ticaret SEO Analizi · Yapay Zeka Rekabet İstihbaratı</title>
+    <meta name="description" content="Trendyol & Hepsiburada fiyat takibi, organik sıra (SEO) izleme ve yapay zeka destekli e-ticaret strateji danışmanlığı. Rakip fiyatlarını, müşteri yorumlarını ve arama sıralamasını harmanlayan bütünsel pazaryeri rekabet yazılımı.">
+    <meta name="keywords" content="trendyol fiyat takibi, hepsiburada fiyat takibi, e-ticaret seo analizi, pazaryeri rekabet yazılımı, yapay zeka e-ticaret danışmanı, trendyol arama sırası, organik sıra takibi, rakip fiyat izleme, kâr marjı analizi, e-ticaret istihbarat, long-tail keyword öneri">
+    <meta name="author" content="BMK Rekabet İstihbaratı">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <meta name="language" content="Turkish">
+    <meta name="geo.region" content="TR">
+    <meta name="geo.placename" content="Türkiye">
+    <link rel="canonical" href="https://bmk.app/">
+
+    {# ── Open Graph ── #}
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="tr_TR">
+    <meta property="og:title" content="BMK — Yapay Zeka Destekli Trendyol Fiyat Takibi & E-Ticaret SEO Platformu">
+    <meta property="og:description" content="Rakip fiyatlarını anlık izleyin, organik arama sıranızı takip edin, YZ Strateji Danışmanı'ndan kişiselleştirilmiş aksiyon önerileri alın. Bütünsel pazaryeri istihbaratı.">
+    <meta property="og:url" content="https://bmk.app/">
+    <meta property="og:site_name" content="BMK Rekabet İstihbaratı">
+    <meta property="og:image" content="https://bmk.app/static/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    {# ── Twitter Card ── #}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="BMK — Trendyol Fiyat Takibi & Yapay Zeka E-Ticaret Danışmanı">
+    <meta name="twitter:description" content="Fiyat + SEO + Yorum analizini tek panelde harmanlayan, yapay zeka destekli pazaryeri rekabet yazılımı.">
+    <meta name="twitter:image" content="https://bmk.app/static/og-image.png">
+
+    {# ── Fonts ── #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    {# ── EPIC 10.0: JSON-LD Yapılandırılmış Veri (3 katman) ──
+       1) SoftwareApplication — uygulama temel kimliği (Google + AI bots)
+       2) Organization — marka kimliği (E-A-T / YMYL sinyali)
+       3) FAQPage — AI Overview / Perplexity / ChatGPT için soru-cevap formatı
+       NOT: AIO botları FAQPage schema'sını "doğrudan cevap" olarak kullanır. #}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "BMK Rekabet İstihbaratı",
+        "alternateName": "BMK — Trendyol Fiyat Takibi & E-Ticaret SEO Platformu",
+        "applicationCategory": "BusinessApplication",
+        "applicationSubCategory": "E-commerce Intelligence Software",
+        "operatingSystem": "Web (Browser-based)",
+        "url": "https://bmk.app/",
+        "description": "Trendyol ve Hepsiburada'da rakiplerinizin fiyatlarını, organik arama sıralarını ve müşteri yorumlarını yapay zeka ile harmanlayan, kişiselleştirilmiş aksiyon önerileri sunan e-ticaret rekabet istihbaratı platformu.",
+        "featureList": [
+            "Akıllı Fiyat Takibi (Trendyol & Hepsiburada)",
+            "SEO ve Organik Sıralama İstihbaratı",
+            "Yapay Zeka Strateji Danışmanı (CMO)",
+            "Aksiyon Odaklı Bildirim Kokpiti",
+            "Long-tail Anahtar Kelime Önerileri",
+            "Tarihsel Fiyat ve SEO Grafikleri",
+            "Kâr Marjı ve Buybox Analizi",
+            "PDF Strateji Raporu Dışa Aktarma"
+        ],
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "TRY",
+            "availability": "https://schema.org/InStock",
+            "description": "14 gün ücretsiz deneme — kredi kartı gerekmez"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "127",
+            "bestRating": "5",
+            "worstRating": "1"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "BMK",
+            "url": "https://bmk.app/"
+        },
+        "inLanguage": "tr-TR"
+    }
+    </script>
+
+    {# ── Organization Schema (E-A-T sinyali) ── #}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "BMK Rekabet İstihbaratı",
+        "url": "https://bmk.app/",
+        "logo": "https://bmk.app/static/logo.png",
+        "description": "Türkiye e-ticaret pazarına özel yapay zeka destekli rekabet istihbaratı, fiyat takibi ve SEO analizi platformu.",
+        "areaServed": {
+            "@type": "Country",
+            "name": "Türkiye"
+        },
+        "knowsAbout": [
+            "Trendyol Fiyat Takibi",
+            "Hepsiburada Pazaryeri Analizi",
+            "E-Ticaret SEO Optimizasyonu",
+            "Yapay Zeka E-Ticaret Stratejisi",
+            "Rakip Fiyat İzleme",
+            "Long-tail Keyword Research"
+        ]
+    }
+    </script>
+
+    {# ── FAQPage Schema (AIO için kritik) — sayfa altındaki FAQ ile senkron ── #}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "BMK Rekabet İstihbaratı nedir?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "BMK Rekabet İstihbaratı, Trendyol ve Hepsiburada satıcılarının rakip fiyatlarını, organik arama sıralarını ve müşteri yorumlarını yapay zeka ile harmanlayarak izleyen bütünsel bir e-ticaret rekabet yazılımıdır. Veriyi sadece toplamakla kalmaz, GPT seviyesinde bir Yapay Zeka Strateji Danışmanı ile kişiselleştirilmiş aksiyon önerileri sunar."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Trendyol fiyat takibi nasıl yapılır?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "BMK üzerinden Trendyol fiyat takibi 3 adımda yapılır: (1) Rakip ürün URL'lerini virgülle ayırarak yapıştırın, (2) sistem otomatik olarak ürünü gruplar ve birim maliyetinizi girmenize izin verir, (3) günde 4 stratejik tarama (saat 03:15, 09:15, 15:15, 21:15) ile fiyatlar otomatik güncellenir. Fiyat düşüş veya yükselişlerinde anlık bildirim alırsınız. Bot kalkanlarına (DataDome, Cloudflare) yakalanmayan akıllı tarama motoruyla 7/24 sürdürülebilir takip."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "E-ticaret SEO sıralamamı nasıl bulurum?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "BMK SEO Takibi modülü Trendyol arama motorunda ürününüzün hangi sayfada ve kaçıncı sırada göründüğünü saniyeler içinde tespit eder. Bir anahtar kelime ve ürün linkinizi girin — sistem ilk 5 sayfayı (200 ürün) tarayarak konumunuzu raporlar. Sıralama değiştikçe tarihsel grafiği otomatik birikir. Ürününüz bulunamazsa, YZ destekli dinamik öneri motoru size ürüne özel 3 adet long-tail (uzun kuyruklu) anahtar kelime önerir."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Yapay Zeka Strateji Danışmanı ne yapar?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "YZ Strateji Danışmanı (CMO) ürün portföyünüzdeki maliyet, satış fiyatı, rakip fiyatları, müşteri yorumları ve organik SEO sıralarını harmanlayarak Llama-3.3-70B modeliyle kişiselleştirilmiş bir strateji raporu üretir. Rapor 5 bölümdür: Pazar Değerlendirmesi, Rekabet Analizi, Ürün Geliştirme, Fiyatlandırma Stratejisi ve Görünürlük (SEO) Stratejisi. 'Görünmezlik Tuzağı' ve 'Liderlik Fırsatı' kurallarıyla fiyat kırma yerine doğru aksiyonu önerir. Raporlar A4 PDF olarak dışa aktarılabilir."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "BMK hangi pazaryerlerini destekliyor?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Fiyat takibi için: Trendyol, Hepsiburada, N11, Çiçeksepeti, PttAVM ve Amazon Türkiye desteklenir. SEO sıralama takibi şu an Trendyol için aktiftir; Hepsiburada SEO entegrasyonu yakında eklenecektir. Yorum analizi (Kombine Analiz) Trendyol ve Hepsiburada için tam çalışır."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Pazaryeri rekabet yazılımı neden gereklidir?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Trendyol ve Hepsiburada gibi pazaryerlerinde rakipler fiyatlarını günde 2-3 kez değiştirir ve algoritmik sıralama dakikalar içinde dalgalanır. Manuel takip mümkün değildir. BMK gibi bir rekabet istihbaratı yazılımı, kâr marjınızı korumanızı, Buybox'ı kaybetmeden fiyatlandırma yapmanızı, SEO sıralarınızdaki düşüşleri anında fark etmenizi ve veri odaklı kararlar almanızı sağlar. Tek satıcı için bile aylık 20-30 saatlik manuel işi otomatize eder."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "BMK ücretsiz mi?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "BMK 14 gün ücretsiz tam erişimle başlar — kredi kartı gerekmez. Sonrasında Başlangıç (499₺/ay, 50 ürün), Profesyonel (1.499₺/ay, 200 ürün) ve Kurumsal (3.999₺/ay, sınırsız ürün + YZ Strateji Danışmanı) planları arasında seçim yapabilirsiniz. Tüm planlar istediğiniz zaman iptal edilebilir."
+                }
+            }
+        ]
+    }
+    </script>
+
+    <style>
+        /* ═══════════════════════════════════════════════════════
+           BMK LANDING — Fintech B2B Palette, Light/Dark Adaptive
+           ───────────────────────────────────────────────────────
+           Primary:  #2563eb (Royal Blue — güven)
+           Accent:   #10b981 (Zümrüt Yeşili — kâr/büyüme)
+           Light bg: #f8fafc (Slate-50)  / Cards: #ffffff
+           Dark bg:  #0f172a (Slate-900) / Cards: #1e293b (Slate-800)
+           ═══════════════════════════════════════════════════════ */
+
+        /* ── LIGHT MODE (default) ── */
+        :root,
+        :root[data-theme="light"] {
+            --bg-0: #f8fafc;                         /* Slate-50 — ana bg */
+            --bg-1: #ffffff;                         /* Kart bg */
+            --bg-2: #f1f5f9;                         /* Sekonder/Hover */
+            --bg-card: #ffffff;
+            --border: rgba(37, 99, 235, 0.12);
+            --border-strong: rgba(37, 99, 235, 0.28);
+            --text: #0f172a;                         /* Slate-900 */
+            --text-muted: #475569;                   /* Slate-600 */
+            --text-dim: #64748b;                     /* Slate-500 */
+            --accent: #2563eb;                       /* Royal Blue (primary) */
+            --accent-2: #10b981;                     /* Emerald (accent) */
+            --indigo: #1d4ed8;
+            --success: #10b981;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+            --grad-1: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #10b981 100%);
+            --grad-soft: linear-gradient(135deg, rgba(37,99,235,0.07) 0%, rgba(16,185,129,0.04) 100%);
+            --shadow-glow: 0 20px 60px -10px rgba(37, 99, 235, 0.25);
+            --shadow-card: 0 8px 28px -8px rgba(15, 23, 42, 0.10);
+            --glow-1: rgba(37, 99, 235, 0.08);       /* Hero radial — soft */
+            --glow-2: rgba(16, 185, 129, 0.06);
+            --nav-bg: rgba(248, 250, 252, 0.82);
+            /* HOTFIX 1.78: Mockup arka planları tema-aware */
+            --mockup-bg: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            --mockup-chart-bg: #f1f5f9;          /* Çok hafif gri-mavi — chart alanı */
+            --mockup-tile-bg: rgba(37, 99, 235, 0.06);
+            --mockup-tile-border: rgba(37, 99, 235, 0.18);
+            --mockup-row-border: rgba(37, 99, 235, 0.10);
+            /* HOTFIX 1.79: Bento iç-içe nested stat tile (light mode kontrastı) */
+            --bento-stat-bg: rgba(255, 255, 255, 0.75);
+            --bento-stat-border: rgba(37, 99, 235, 0.18);
+        }
+
+        /* ── DARK MODE ── */
+        :root[data-theme="dark"] {
+            --bg-0: #0f172a;                         /* Slate-900 — Bloomberg ciddiyeti */
+            --bg-1: #1e293b;                         /* Slate-800 — kart bg */
+            --bg-2: #334155;                         /* Slate-700 */
+            --bg-card: rgba(30, 41, 59, 0.72);
+            --border: rgba(37, 99, 235, 0.18);
+            --border-strong: rgba(37, 99, 235, 0.35);
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            --accent: #3b82f6;                       /* Blue-500 (dark'ta biraz daha açık) */
+            --accent-2: #10b981;
+            --indigo: #6366f1;
+            --success: #10b981;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+            --grad-1: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #10b981 100%);
+            --grad-soft: linear-gradient(135deg, rgba(37,99,235,0.12) 0%, rgba(16,185,129,0.05) 100%);
+            --shadow-glow: 0 20px 60px -10px rgba(37, 99, 235, 0.35);
+            --shadow-card: 0 10px 40px -8px rgba(0, 0, 0, 0.45);
+            --glow-1: rgba(37, 99, 235, 0.18);
+            --glow-2: rgba(16, 185, 129, 0.10);
+            --nav-bg: rgba(15, 23, 42, 0.75);
+            /* HOTFIX 1.78: Mockup arka planları — dark mode (eski hard-coded değerlerden alındı) */
+            --mockup-bg: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.92) 100%);
+            --mockup-chart-bg: rgba(15, 23, 42, 0.5);
+            --mockup-tile-bg: rgba(37, 99, 235, 0.10);
+            --mockup-tile-border: rgba(37, 99, 235, 0.22);
+            --mockup-row-border: rgba(37, 99, 235, 0.14);
+            /* HOTFIX 1.79: Bento nested stat tile — dark mode */
+            --bento-stat-bg: rgba(15, 23, 42, 0.45);
+            --bento-stat-border: rgba(37, 99, 235, 0.22);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-0);
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
+
+        /* Animated background glow — theme-aware (CSS vars) */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: -10%;
+            width: 70%;
+            height: 70%;
+            background: radial-gradient(circle, var(--glow-1) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: float 18s ease-in-out infinite;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -20%;
+            right: -10%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, var(--glow-2) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: float 22s ease-in-out infinite reverse;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(40px, -30px); }
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; cursor: pointer; }
+
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── NAV ───────────────────────────────────────────── */
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: var(--nav-bg);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 0;
+        }
+        .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 18px;
+        }
+        .brand-mark {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            background: var(--grad-1);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; color: #fff;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+        }
+        .nav-links { display: flex; align-items: center; gap: 32px; }
+        .nav-links a {
+            color: var(--text-muted);
+            font-weight: 500; font-size: 14px;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text); }
+        .nav-cta { display: flex; align-items: center; gap: 12px; }
+
+        /* HOTFIX 1.77: Theme toggle button — sun ⇄ moon */
+        .theme-toggle {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-1);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .theme-toggle:hover {
+            background: var(--bg-2);
+            color: var(--accent);
+            border-color: var(--border-strong);
+        }
+        .theme-toggle svg { display: none; }
+        :root[data-theme="light"] .theme-toggle #iconMoon { display: block; }
+        :root[data-theme="dark"]  .theme-toggle #iconSun  { display: block; }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600; font-size: 14px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-ghost { color: var(--text-muted); background: transparent; border-color: var(--border); }
+        .btn-ghost:hover { color: var(--text); border-color: var(--border-strong); }
+        .btn-primary {
+            background: var(--grad-1);
+            color: #fff;
+            box-shadow: 0 4px 20px -4px rgba(37, 99, 235, 0.5);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px -4px rgba(37, 99, 235, 0.6);
+        }
+        .btn-outline {
+            color: var(--text);
+            background: rgba(37, 99, 235, 0.08);
+            border-color: var(--border-strong);
+        }
+        .btn-outline:hover {
+            background: rgba(37, 99, 235, 0.15);
+            border-color: var(--accent);
+        }
+        .btn-lg { padding: 14px 28px; font-size: 15px; border-radius: 12px; }
+
+        /* ── HERO ──────────────────────────────────────────── */
+        .hero { padding: 80px 0 100px; position: relative; }
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.05fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+        .hero-pill {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 14px;
+            border-radius: 99px;
+            background: rgba(37, 99, 235, 0.10);
+            border: 1px solid rgba(37, 99, 235, 0.25);
+            font-size: 12px; font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 24px;
+        }
+        .hero-pill .pulse-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        h1.hero-title {
+            font-size: clamp(38px, 5.5vw, 64px);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -1.5px;
+            margin-bottom: 20px;
+        }
+        .hero-title .grad,
+        .grad-text {
+            background: var(--grad-1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        h2.hero-sub {
+            font-size: clamp(15px, 1.6vw, 18px);
+            font-weight: 500;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 32px;
+            max-width: 540px;
+        }
+        .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 32px; }
+        .hero-meta { display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); }
+        .hero-meta-item { display: flex; align-items: center; gap: 6px; }
+        .hero-meta-item svg { color: var(--success); }
+
+        /* ── HERO MOCKUP (CSS Dashboard Simulation) — HOTFIX 1.78 tema-aware ── */
+        .mockup {
+            position: relative;
+            border-radius: 16px;
+            background: var(--mockup-bg);           /* ← hard-coded değil, tema-aware */
+            border: 1px solid var(--border-strong);
+            box-shadow: var(--shadow-glow), var(--shadow-card);
+            overflow: hidden;
+            padding: 20px;
+        }
+        .mockup::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 50%);
+            pointer-events: none;
+        }
+        .mockup-bar {
+            display: flex; align-items: center; gap: 6px;
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid var(--mockup-row-border);
+        }
+        .mockup-bar i {
+            width: 10px; height: 10px; border-radius: 50%;
+            display: inline-block;
+        }
+        .mockup-bar i:nth-child(1) { background: #ef4444; }
+        .mockup-bar i:nth-child(2) { background: #f59e0b; }
+        .mockup-bar i:nth-child(3) { background: #10b981; }
+        .mockup-bar span {
+            margin-left: 10px; font-size: 11px;
+            color: var(--text-muted);               /* dim → muted, daha okunabilir */
+            font-family: 'Inter', monospace;
+            font-weight: 600;
+        }
+        .mockup-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .mock-stat {
+            background: var(--mockup-tile-bg);      /* tema-aware */
+            border: 1px solid var(--mockup-tile-border);
+            border-radius: 10px;
+            padding: 12px;
+        }
+        .mock-stat .label {
+            font-size: 10px; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .mock-stat .val {
+            font-size: 22px; font-weight: 800; color: var(--text);
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+        }
+        /* HOTFIX 1.78: Renk vurguları — light/dark uyumlu tonlar */
+        .mock-stat.good .val { color: var(--success); }
+        .mock-stat.warn .val { color: var(--warn); }
+        .mockup-chart {
+            position: relative;
+            height: 160px;
+            background: var(--mockup-chart-bg);     /* tema-aware (light: slate-50, dark: slate-900/50) */
+            border: 1px solid var(--mockup-row-border);
+            border-radius: 10px;
+            padding: 16px;
+            overflow: hidden;
+        }
+        .mockup-chart svg { width: 100%; height: 100%; }
+        .mockup-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 0; font-size: 12px;
+            border-top: 1px solid var(--mockup-row-border);
+        }
+        .mockup-row:first-of-type { border-top: none; padding-top: 12px; }
+        .mockup-row .name { color: var(--text); font-weight: 700; }
+        .mockup-row .price { color: var(--success); font-weight: 800; }
+        .mockup-row .price.down { color: var(--danger); }
+
+        /* ── TRUST BAR ─────────────────────────────────────── */
+        .trust {
+            padding: 50px 0;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+        .trust-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+        .trust-logos {
+            display: flex; gap: 48px; flex-wrap: wrap;
+            justify-content: center; align-items: center;
+            opacity: 0.65;
+        }
+        .trust-logo {
+            font-weight: 800; font-size: 18px;
+            letter-spacing: -0.5px;
+            color: var(--text-muted);
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+
+        /* ── SECTION COMMON ────────────────────────────────── */
+        section { padding: 100px 0; position: relative; z-index: 1; }
+        .section-head { text-align: center; margin-bottom: 56px; max-width: 720px; margin-inline: auto; }
+        .eyebrow {
+            display: inline-block;
+            font-size: 12px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 2px;
+            color: var(--accent); margin-bottom: 14px;
+            padding: 5px 14px;
+            background: rgba(37, 99, 235, 0.08);
+            border-radius: 99px;
+            border: 1px solid rgba(37, 99, 235, 0.18);
+        }
+        h2.section-title {
+            font-size: clamp(28px, 4vw, 44px);
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+        .section-lead { font-size: 17px; color: var(--text-muted); line-height: 1.6; }
+
+        /* ── BENTO GRID ────────────────────────────────────── */
+        .bento {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-auto-rows: minmax(180px, auto);
+            gap: 20px;
+        }
+        .bento-card {
+            position: relative;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px;
+            overflow: hidden;
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .bento-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-strong);
+            box-shadow: 0 20px 50px -10px rgba(37, 99, 235, 0.25);
+        }
+        .bento-card .icon-box {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(37, 99, 235, 0.15);
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+        .bento-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+        .bento-card p { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+        .b-1 { grid-column: span 4; grid-row: span 2; background: linear-gradient(135deg, rgba(37,99,235,0.18) 0%, rgba(37,99,235,0.08) 100%); border-color: rgba(37,99,235,0.25); }
+        .b-2 { grid-column: span 2; }
+        .b-3 { grid-column: span 2; }
+        .b-4 { grid-column: span 3; }
+        .b-5 { grid-column: span 3; }
+        .b-1 h3 { font-size: 28px; }
+
+        .bento-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 18px;
+        }
+        /* HOTFIX 1.79: Bento büyük kart içindeki nested stat tile — tema-aware */
+        .bento-stat {
+            background: var(--bento-stat-bg);     /* light: beyaz/şeffaf, dark: koyu/şeffaf */
+            border: 1px solid var(--bento-stat-border);
+            border-radius: 10px;
+            padding: 12px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .bento-stat .num {
+            font-size: 22px; font-weight: 800;
+            background: var(--grad-1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+            letter-spacing: -0.4px;
+        }
+        /* HOTFIX 1.79: desc rengi her temada okunabilir kontrast — bold + text rengi */
+        .bento-stat .desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 700;                     /* 600 → 700, ekstra okunabilirlik */
+            line-height: 1.4;
+            margin-top: 3px;
+        }
+
+        /* ── FEATURES DETAIL ───────────────────────────────── */
+        .features-detail { display: flex; flex-direction: column; gap: 80px; }
+        .feature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+        .feature-row.reverse .feature-visual { order: -1; }
+        .feature-tag {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 99px;
+            font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+        .tag-ai { background: rgba(37, 99, 235, 0.15); color: var(--accent); border: 1px solid rgba(37, 99, 235, 0.30); }
+        .tag-price { background: rgba(16, 185, 129, 0.12); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.30); }
+        .tag-seo { background: rgba(14, 165, 233, 0.12); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.30); }
+        .feature-row h3 {
+            font-size: clamp(26px, 3vw, 36px);
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+            margin-bottom: 16px;
+        }
+        .feature-row p { font-size: 16px; color: var(--text-muted); line-height: 1.7; margin-bottom: 20px; }
+        .feature-points { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+        .feature-points li {
+            display: flex; align-items: flex-start; gap: 10px;
+            font-size: 14px; color: var(--text-muted);
+        }
+        .feature-points li::before { content: '✓'; color: var(--success); font-weight: 800; flex-shrink: 0; }
+        .feature-visual {
+            position: relative;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: var(--shadow-card);
+            min-height: 280px;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+
+        /* ── HOW IT WORKS ──────────────────────────────────── */
+        .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .step-card {
+            text-align: center;
+            padding: 32px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+        }
+        .step-num {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: var(--grad-1);
+            color: #fff;
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            font-weight: 800; font-size: 18px;
+            margin-bottom: 18px;
+            box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.5);
+        }
+        .step-card h4 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .step-card p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+        /* ── HOTFIX 1.82: PRICING ─────────────────────────── */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            align-items: stretch;
+        }
+        .price-card {
+            position: relative;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px 22px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .price-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-strong);
+            box-shadow: 0 20px 50px -10px rgba(37, 99, 235, 0.20);
+        }
+        .price-card.featured {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(16,185,129,0.04) 100%);
+            box-shadow: 0 10px 40px -10px rgba(37, 99, 235, 0.30);
+        }
+        .price-badge {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background: var(--grad-1);
+            color: #fff;
+            padding: 5px 16px;
+            border-radius: 99px;
+            font-size: 11px; font-weight: 800; letter-spacing: 1px;
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+            white-space: nowrap;
+        }
+        .price-emoji { font-size: 36px; margin-bottom: 12px; text-align: center; }
+        .price-name {
+            font-size: 18px; font-weight: 800;
+            margin-bottom: 6px;
+            text-align: center;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+        .price-amount {
+            display: flex; align-items: baseline; justify-content: center;
+            gap: 4px;
+            margin: 14px 0 22px;
+        }
+        .price-amount .num {
+            font-size: 36px; font-weight: 900;
+            background: var(--grad-1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+        .price-amount .period {
+            font-size: 13px; color: var(--text-muted); font-weight: 600;
+        }
+        .price-features {
+            list-style: none;
+            display: flex; flex-direction: column;
+            gap: 10px;
+            margin-bottom: 22px;
+            flex: 1;
+        }
+        .price-features li {
+            display: flex; align-items: flex-start; gap: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .price-features li.check::before {
+            content: '✓';
+            color: var(--success); font-weight: 800;
+            flex-shrink: 0;
+        }
+        .price-features li.x {
+            opacity: 0.45;
+            text-decoration: line-through;
+        }
+        .price-features li.x::before {
+            content: '✕';
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .price-features li.gem::before {
+            content: '💎';
+            flex-shrink: 0;
+        }
+        .price-features li.gem { font-weight: 700; color: var(--text); }
+        .price-cta {
+            margin-top: auto;
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            text-align: center;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            display: inline-block;
+        }
+        .price-cta.primary {
+            background: var(--grad-1);
+            color: #fff;
+            box-shadow: 0 4px 18px -4px rgba(37, 99, 235, 0.5);
+        }
+        .price-cta.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px -4px rgba(37, 99, 235, 0.6);
+        }
+        .price-cta.outline {
+            background: transparent;
+            color: var(--text);
+            border-color: var(--border-strong);
+        }
+        .price-cta.outline:hover {
+            background: rgba(37, 99, 235, 0.08);
+            border-color: var(--accent);
+        }
+        @media (max-width: 1100px) {
+            .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 580px) {
+            .pricing-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── EPIC 10.0: FAQ (AIO Optimization) ───────────── */
+        .faq-grid {
+            max-width: 880px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: border-color 0.2s ease;
+        }
+        .faq-item:hover { border-color: var(--border-strong); }
+        .faq-item[open] { border-color: var(--accent); }
+        .faq-item summary {
+            cursor: pointer;
+            padding: 18px 22px;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            list-style: none;
+            position: relative;
+        }
+        .faq-item summary::-webkit-details-marker { display: none; }
+        .faq-item summary::after {
+            content: '+';
+            margin-left: auto;
+            color: var(--accent);
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1;
+            transition: transform 0.2s ease;
+        }
+        .faq-item[open] summary::after {
+            content: '−';
+        }
+        .faq-item .faq-q-icon {
+            background: rgba(37, 99, 235, 0.10);
+            color: var(--accent);
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        .faq-item .faq-answer {
+            padding: 0 22px 18px 62px;
+            color: var(--text-muted);
+            font-size: 14.5px;
+            line-height: 1.7;
+        }
+        .faq-item .faq-answer strong { color: var(--text); }
+
+        /* ── TESTIMONIALS ──────────────────────────────────── */
+        .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .testimonial {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 28px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .testimonial:hover { transform: translateY(-3px); border-color: var(--border-strong); }
+        .stars { color: var(--warn); font-size: 16px; margin-bottom: 14px; letter-spacing: 1px; }
+        .testimonial-text { font-size: 15px; line-height: 1.65; color: var(--text); margin-bottom: 20px; }
+        .testimonial-user { display: flex; align-items: center; gap: 12px; }
+        .avatar {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: var(--grad-1);
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        .testimonial-user .name { font-weight: 700; font-size: 14px; }
+        .testimonial-user .role { font-size: 12px; color: var(--text-muted); }
+
+        /* ── FINAL CTA ─────────────────────────────────────── */
+        .final-cta {
+            position: relative;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.10), rgba(16, 185, 129, 0.05));
+            border: 1px solid var(--border-strong);
+            border-radius: 28px;
+            padding: 72px 40px;
+            overflow: hidden;
+        }
+        .final-cta::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(37, 99, 235, 0.20), transparent 60%);
+            pointer-events: none;
+        }
+        .final-cta h2 {
+            font-size: clamp(28px, 4vw, 44px);
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+        .final-cta p {
+            font-size: 17px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            max-width: 560px;
+            margin-inline: auto;
+        }
+        .final-cta .btn-row {
+            display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+            position: relative; z-index: 1;
+        }
+
+        /* ── FOOTER ────────────────────────────────────────── */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 60px 0 32px;
+            margin-top: 80px;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        .footer-col h5 {
+            font-size: 13px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text); margin-bottom: 16px;
+        }
+        .footer-col a, .footer-col span {
+            display: block;
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            transition: color 0.2s;
+        }
+        .footer-col a:hover { color: var(--accent); }
+        .footer-brand p {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-top: 14px;
+        }
+        .footer-bottom {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 16px;
+            padding-top: 28px;
+            border-top: 1px solid var(--border);
+            font-size: 13px; color: var(--text-dim);
+        }
+
+        /* ── RESPONSIVE ────────────────────────────────────── */
+        @media (max-width: 992px) {
+            .hero-grid, .feature-row { grid-template-columns: 1fr; gap: 40px; }
+            .feature-row.reverse .feature-visual { order: 0; }
+            .bento { grid-template-columns: repeat(2, 1fr); }
+            .b-1, .b-2, .b-3, .b-4, .b-5 { grid-column: span 2; grid-row: auto; }
+            .how-grid, .testimonials-grid { grid-template-columns: 1fr; }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+            section { padding: 70px 0; }
+            .hero { padding: 50px 0 60px; }
+            .nav-links { display: none; }
+        }
+        @media (max-width: 580px) {
+            .container { padding: 0 18px; }
+            .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+            .nav-cta .btn-ghost { display: none; }
+            .hero-meta { gap: 14px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    {# ── NAV ────────────────────────────────────────────────── #}
+    <header class="nav">
+        <div class="container nav-inner">
+            <a href="/" class="brand-link">
+                <span class="brand-mark">B</span>
+                <span>BMK <span style="color:var(--text-muted); font-weight:500; font-size:13px;">Rekabet İstihbaratı</span></span>
+            </a>
+            <nav class="nav-links" aria-label="Ana navigasyon">
+                <a href="#features">Özellikler</a>
+                <a href="#how">Nasıl Çalışır</a>
+                <a href="#pricing">Planlar</a>
+                <a href="#faq">SSS</a>
+                <a href="#testimonials">Müşteriler</a>
+            </nav>
+            <div class="nav-cta">
+                {# HOTFIX 1.77: Tema toggle — sun/moon ikonu, click ile değişir #}
+                <button type="button" id="themeToggle" class="theme-toggle" aria-label="Tema değiştir" title="Aydınlık / Karanlık mod">
+                    <svg id="iconSun"  xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                    <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                </button>
+                {# HOTFIX 2.00: Authenticated user → "Panele Git", aksi → Giriş/Kayıt #}
+                {% if current_user.is_authenticated %}
+                    <span style="font-size:13px; color:var(--text-muted); font-weight:600;">
+                        👋 {{ current_user.full_name.split(' ')[0] if current_user.full_name else current_user.email.split('@')[0] }}
+                    </span>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                        🚀 Panele Git
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="btn btn-ghost">Giriş Yap</a>
+                    {# HOTFIX 1.82: "Hemen Başla" ikonu kaldırıldı — sade metin (marka güvenliği) #}
+                    <a href="{{ url_for('register') }}" class="btn btn-primary">Hemen Başla</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main>
+
+    {# ── HERO ─────────────────────────────────────────────── #}
+    <section class="hero">
+        <div class="container hero-grid">
+            <div>
+                <div class="hero-pill">
+                    <span class="pulse-dot"></span>
+                    YZ destekli rekabet motoru — 7/24 aktif
+                </div>
+                <h1 class="hero-title">
+                    E-Ticarette Rekabeti<br>
+                    <span class="grad">Yapay Zeka</span> ile<br>
+                    Yeniden Tanımlayın.
+                </h1>
+                <h2 class="hero-sub">
+                    Trendyol ve Hepsiburada'daki rakiplerinizi 7/24 izleyen,
+                    kâr marjınızı koruyan ve aksiyon önerileri üreten kurumsal
+                    rekabet istihbaratı platformu.
+                </h2>
+                <div class="hero-cta">
+                    {# HOTFIX 1.82 / 2.00: Authenticated ise "Panele Git", aksi → "Hemen Başla" #}
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">🚀 Panele Git</a>
+                    {% else %}
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Hemen Başla</a>
+                    {% endif %}
+                    <a href="#features" class="btn btn-outline btn-lg">
+                        Demoyu İncele
+                        <i data-lucide="play-circle" width="18" height="18"></i>
+                    </a>
+                </div>
+                <div class="hero-meta">
+                    <div class="hero-meta-item">
+                        <i data-lucide="check-circle-2" width="16" height="16"></i>
+                        14 gün ücretsiz deneme
+                    </div>
+                    <div class="hero-meta-item">
+                        <i data-lucide="check-circle-2" width="16" height="16"></i>
+                        Kredi kartı gerekmez
+                    </div>
+                    <div class="hero-meta-item">
+                        <i data-lucide="check-circle-2" width="16" height="16"></i>
+                        1 dakikada kurulum
+                    </div>
+                </div>
+            </div>
+
+            {# Hero Mockup — CSS ile Dashboard simülasyonu #}
+            <div class="mockup" aria-hidden="true">
+                <div class="mockup-bar">
+                    <i></i><i></i><i></i>
+                    <span>bmk.app/dashboard</span>
+                </div>
+                <div class="mockup-stats">
+                    <div class="mock-stat good">
+                        <div class="label">🟢 Kârlı</div>
+                        <div class="val">23</div>
+                    </div>
+                    <div class="mock-stat warn">
+                        <div class="label">⚠️ Risk</div>
+                        <div class="val">4</div>
+                    </div>
+                    <div class="mock-stat">
+                        <div class="label">🔔 Alarm</div>
+                        <div class="val">12</div>
+                    </div>
+                </div>
+                <div class="mockup-chart">
+                    <svg viewBox="0 0 400 130" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#2563eb" stop-opacity="0.4"/>
+                                <stop offset="100%" stop-color="#2563eb" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M 0 80 L 60 80 L 60 55 L 130 55 L 130 70 L 200 70 L 200 40 L 280 40 L 280 30 L 360 30 L 400 30"
+                              fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M 0 80 L 60 80 L 60 55 L 130 55 L 130 70 L 200 70 L 200 40 L 280 40 L 280 30 L 360 30 L 400 30 L 400 130 L 0 130 Z"
+                              fill="url(#lg1)"/>
+                        <circle cx="60" cy="55" r="3" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+                        <circle cx="130" cy="70" r="3" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+                        <circle cx="200" cy="40" r="3" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+                        <circle cx="280" cy="30" r="3" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="mockup-row">
+                    <span class="name">👑 SMARTER Mama Kabı</span>
+                    <span class="price">499,00 ₺</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="name">📉 Rakip A</span>
+                    <span class="price down">−25 ₺</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="name">📈 Rakip B</span>
+                    <span class="price">+12 ₺</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# ── TRUST BAR ────────────────────────────────────────── #}
+    <section class="trust" style="padding: 50px 0;">
+        <div class="container">
+            <div class="trust-label">Veri Odaklı Karar Veren Markaların Tercihi</div>
+            <div class="trust-logos">
+                <span class="trust-logo">⚡ PetPivot</span>
+                <span class="trust-logo">🛒 Genel Markalar</span>
+                <span class="trust-logo">🐾 Patiguard</span>
+                <span class="trust-logo">✨ Smarter</span>
+                <span class="trust-logo">💧 Electron</span>
+                <span class="trust-logo">🎯 Bezt Pet</span>
+            </div>
+        </div>
+    </section>
+
+    {# ── BENTO GRID — ÖZELLİKLER ──────────────────────────── #}
+    <section id="features">
+        <div class="container">
+            <div class="section-head">
+                <span class="eyebrow">4 Ana Yetenek</span>
+                <h2 class="section-title">Bütünsel <span class="grad-text">E-Ticaret İstihbaratı.</span></h2>
+                <p class="section-lead">
+                    Fiyat — SEO — Yapay Zeka — Bildirim. Dört modülün harmanlandığı, satıcının
+                    kâr marjını koruyan ve organik görünürlüğü maksimize eden komuta merkezi.
+                </p>
+            </div>
+
+            <div class="bento">
+                {# EPIC 10.0: Ana yetenek — YZ Strateji Danışmanı (CMO) #}
+                <article class="bento-card b-1">
+                    <div class="icon-box" style="background: rgba(37, 99, 235, 0.20); color: #93c5fd; width: 52px; height: 52px;">
+                        <i data-lucide="brain-circuit" width="26" height="26"></i>
+                    </div>
+                    <h3>Yapay Zeka Strateji Danışmanı (CMO)</h3>
+                    <p style="font-size: 15px; max-width: 480px;">
+                        Sadece veri değil, <strong style="color: var(--text);">aksiyon alın.</strong>
+                        Fiyat, müşteri yorumları ve organik SEO sıralarını harmanlayarak
+                        <strong style="color:var(--text);">"Ne Yapmalıyım?"</strong> reçeteleri sunar.
+                        "Görünmezlik Tuzağı" ve "Liderlik Fırsatı" kurallarıyla doğru aksiyonu önerir.
+                        Raporlar <strong style="color:var(--text);">A4 PDF</strong> olarak indirilebilir.
+                    </p>
+                    <div class="bento-stats">
+                        <div class="bento-stat">
+                            <div class="num">5 Bölüm</div>
+                            <div class="desc">Pazar / Rekabet / Ürün / Fiyat / SEO</div>
+                        </div>
+                        <div class="bento-stat">
+                            <div class="num">PDF Export</div>
+                            <div class="desc">Kurumsal A4 raporu — tek tıkla indir</div>
+                        </div>
+                    </div>
+                </article>
+
+                {# Ana yetenek 2 — Akıllı Fiyat Takibi #}
+                <article class="bento-card b-2">
+                    <div class="icon-box" style="background: rgba(16, 185, 129, 0.15); color: var(--success);">
+                        <i data-lucide="trending-up" width="22" height="22"></i>
+                    </div>
+                    <h3>Akıllı Fiyat Takibi</h3>
+                    <p>Trendyol & Hepsiburada rakip fiyatlarını <strong style="color:var(--text);">günde 4 kez</strong> izler. Bot kalkanlarına takılmaz, stepline grafiklerle her değişimi yakalar.</p>
+                </article>
+
+                {# Ana yetenek 3 — SEO + Long-tail Öneri #}
+                <article class="bento-card b-3">
+                    <div class="icon-box" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                        <i data-lucide="search" width="22" height="22"></i>
+                    </div>
+                    <h3>SEO & Sıralama İstihbaratı</h3>
+                    <p>Organik arama sıranızı takip edin. Bulunamadığınızda <strong style="color:var(--text);">YZ destekli long-tail (uzun-kuyruklu) anahtar kelime önerileri</strong> alın.</p>
+                </article>
+
+                {# Ana yetenek 4 — Bildirim Kokpiti #}
+                <article class="bento-card b-4">
+                    <div class="icon-box" style="background: rgba(245, 158, 11, 0.15); color: var(--warn);">
+                        <i data-lucide="bell-ring" width="22" height="22"></i>
+                    </div>
+                    <h3>Aksiyon Odaklı Bildirim Kokpiti</h3>
+                    <p>Fiyatı düşenler, organik sıra kaybedenler, fırsatlar ve tehditler — <strong style="color:var(--text);">7 kategori filtresiyle</strong> akıllı yönlendirme. Doğrudan ürün grafiğine veya pazaryeri linkine git.</p>
+                </article>
+
+                {# Destekleyici — Toplu SEO Otomasyon #}
+                <article class="bento-card b-5">
+                    <div class="icon-box" style="background: rgba(14, 165, 233, 0.18); color: #0ea5e9;">
+                        <i data-lucide="layers" width="22" height="22"></i>
+                    </div>
+                    <h3>Grup Bazlı Toplu SEO Otomasyonu</h3>
+                    <p>
+                        Bir ürün grubunu tek kelimeyle topluca SEO takibine alın.
+                        <strong style="color:var(--text);">Tarihsel sıralama grafikleri</strong> Bloomberg seviyesinde —
+                        ters Y-axis (1. sıra en üstte) ile finansal görünüm.
+                    </p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    {# ── FEATURES DETAIL ──────────────────────────────────── #}
+    <section style="background: linear-gradient(180deg, transparent, rgba(37, 99, 235, 0.03));">
+        <div class="container features-detail">
+
+            {# 1) YZ Danışmanı #}
+            <article class="feature-row">
+                <div>
+                    <span class="feature-tag tag-ai">YZ Strateji Danışmanı</span>
+                    <h3>Veri Analisti Değil, <span class="grad-text">Strateji Direktörü.</span></h3>
+                    <p>
+                        Birim maliyetinizi, rakip fiyatlarını ve Trendyol yorumlarını
+                        analiz ederek size özel bir strateji raporu üretir. Pazardaki niş'i
+                        tespit eder, rakiplerin <strong style="color: var(--text);">şikayetlerini fırsata</strong> çevirir.
+                    </p>
+                    <ul class="feature-points">
+                        <li>5 bölümlü rapor: Pazar, Rakip, Ürün Geliştirme, Aksiyon, Öncelik</li>
+                        <li>Grup bazlı analiz — ürün ailesi seçin, hedefli rapor alın</li>
+                        <li>Özel soru ekleyin → cevap rapora organik olarak yedirilir</li>
+                        <li>Geçmiş raporlar arşivi — strateji evrimini izleyin</li>
+                    </ul>
+                </div>
+                <div class="feature-visual">
+                    <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+                        ✨ Yapay Zeka Çıktısı (Örnek)
+                    </div>
+                    <div style="font-size: 14px; color: var(--text); padding: 14px; background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent); border-left: 3px solid var(--accent); border-radius: 8px; line-height: 1.6;">
+                        <strong style="color: var(--accent);">💰 Aksiyon ve Fiyatlandırma</strong><br>
+                        <span style="color: var(--text-muted);">— Rakipler maliyetinizin altına indi (<strong style="color: var(--text);">399 ₺</strong>), premium konumlandırmada kalın.</span><br>
+                        <span style="color: var(--text-muted);">— "Kalite Garantisi" etiketiyle <strong style="color: var(--text);">449 ₺</strong>'de tutun.</span>
+                    </div>
+                    <div style="font-size: 14px; color: var(--text); padding: 14px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), transparent); border-left: 3px solid var(--accent-2); border-radius: 8px; line-height: 1.6;">
+                        <strong style="color: var(--accent-2);">📋 Öncelikli Aksiyon</strong><br>
+                        <span style="color: var(--text-muted);">— <strong style="color: var(--text);">Listing başlıklarını</strong> SEO odaklı optimize edin.</span>
+                    </div>
+                </div>
+            </article>
+
+            {# 2) Fiyat Takibi #}
+            <article class="feature-row reverse">
+                <div>
+                    <span class="feature-tag tag-price">Akıllı Fiyat Takibi</span>
+                    <h3>Pazarın Nabzı, <span class="grad-text">Avucunuzda.</span></h3>
+                    <p>
+                        Bot kalkanlarına (DataDome / Cloudflare) takılmayan akıllı motorumuzla
+                        rakiplerinizi <strong style="color: var(--text);">4 saatte bir</strong> otomatik tarar.
+                        Kâr marjınızı koruyun, fırsatları kaçırmayın.
+                    </p>
+                    <ul class="feature-points">
+                        <li>Trendyol & Hepsiburada native API + Playwright stealth</li>
+                        <li>Birim maliyet ekle → otomatik kâr/zarar hesabı</li>
+                        <li>Stepline grafiklerde fiyat geçmişi (Bloomberg paterni)</li>
+                        <li>Maliyet çizgisi + Kâr/Zarar bölgeleri görsel olarak</li>
+                    </ul>
+                </div>
+                <div class="feature-visual">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700;">Akıllı Mama Kabı</span>
+                        <span style="font-size: 11px; padding: 3px 8px; background: rgba(16, 185, 129, 0.15); color: var(--success); border-radius: 99px; font-weight: 700;">KÂR %18</span>
+                    </div>
+                    <svg viewBox="0 0 400 160" style="width: 100%; height: 160px;">
+                        <defs>
+                            <linearGradient id="lg2" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#10b981" stop-opacity="0.30"/>
+                                <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <line x1="0" y1="90" x2="400" y2="90" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6,4"/>
+                        <text x="395" y="86" text-anchor="end" fill="#f59e0b" font-size="9" font-weight="700">Maliyet</text>
+                        <rect x="0" y="0" width="400" height="90" fill="rgba(16,185,129,0.07)"/>
+                        <rect x="0" y="90" width="400" height="70" fill="rgba(239,68,68,0.07)"/>
+                        <path d="M 0 70 L 80 70 L 80 60 L 160 60 L 160 50 L 240 50 L 240 65 L 320 65 L 320 45 L 400 45"
+                              fill="none" stroke="#10b981" stroke-width="2.5"/>
+                        <path d="M 0 70 L 80 70 L 80 60 L 160 60 L 160 50 L 240 50 L 240 65 L 320 65 L 320 45 L 400 45 L 400 90 L 0 90 Z"
+                              fill="url(#lg2)"/>
+                    </svg>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);">
+                        <span>12 May</span><span>13 May</span><span>14 May</span><span>15 May</span>
+                    </div>
+                </div>
+            </article>
+
+            {# 3) SEO Sıra Bulucu #}
+            <article class="feature-row">
+                <div>
+                    <span class="feature-tag tag-seo">SEO Sıra Bulucu</span>
+                    <h3>Trendyol Aramalarında <span class="grad-text">Kaçıncı Sayfadasınız?</span></h3>
+                    <p>
+                        Hedef anahtar kelimeleriniz için ürünlerinizin organik sıralamasını
+                        izleyin. Rakiplerinizden önde misiniz?
+                        <strong style="color: var(--text);">Saniye saniye görün.</strong>
+                    </p>
+                    <ul class="feature-points">
+                        <li><strong>Grup bazlı toplu otomasyon</strong> — bir kelimeyle tüm ürünlerinizi izleyin</li>
+                        <li><strong>Tarihsel sıralama grafikleri</strong> — fiyat geçmişi gibi sıralama geçmişi de</li>
+                        <li>Trendyol & Hepsiburada — çift platform desteği</li>
+                        <li>Ters Y-eksen (1 en üstte) — Bloomberg seviye finansal görünüm</li>
+                        <li>Sıra düşüş alarmları — kaybolmadan müdahale edin</li>
+                    </ul>
+                </div>
+                <div class="feature-visual">
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding: 10px 14px; background: rgba(14, 165, 233, 0.08); border-radius: 10px; border: 1px solid rgba(14, 165, 233, 0.20);">
+                            <span style="font-size: 13px; font-weight: 600;">akıllı mama kabı</span>
+                            <span style="font-size: 18px; font-weight: 800; color: #0ea5e9;">#2</span>
+                            <span style="font-size: 11px; color: var(--success); font-weight: 700;">▲ +3</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding: 10px 14px; background: rgba(14, 165, 233, 0.05); border-radius: 10px; border: 1px solid rgba(14, 165, 233, 0.12);">
+                            <span style="font-size: 13px; font-weight: 600;">otomatik mama kabı kedi</span>
+                            <span style="font-size: 18px; font-weight: 800; color: #0ea5e9;">#7</span>
+                            <span style="font-size: 11px; color: var(--success); font-weight: 700;">▲ +1</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding: 10px 14px; background: rgba(14, 165, 233, 0.05); border-radius: 10px; border: 1px solid rgba(14, 165, 233, 0.12);">
+                            <span style="font-size: 13px; font-weight: 600;">akıllı kedi maması kabı</span>
+                            <span style="font-size: 18px; font-weight: 800; color: #0ea5e9;">#14</span>
+                            <span style="font-size: 11px; color: var(--danger); font-weight: 700;">▼ −2</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding: 10px 14px; background: rgba(14, 165, 233, 0.05); border-radius: 10px; border: 1px solid rgba(14, 165, 233, 0.12);">
+                            <span style="font-size: 13px; font-weight: 600;">smart kedi mama kabı</span>
+                            <span style="font-size: 18px; font-weight: 800; color: #0ea5e9;">#5</span>
+                            <span style="font-size: 11px; color: var(--success); font-weight: 700;">▲ +2</span>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    {# ── HOW IT WORKS ─────────────────────────────────────── #}
+    <section id="how">
+        <div class="container">
+            <div class="section-head">
+                <span class="eyebrow">3 Adımda Başlayın</span>
+                <h2 class="section-title">1 Dakikada <span class="grad-text">Komuta Merkezi.</span></h2>
+                <p class="section-lead">
+                    Karmaşık entegrasyona gerek yok. URL yapıştırın, motoru başlatın, aksiyon alın.
+                </p>
+            </div>
+            <div class="how-grid">
+                <div class="step-card">
+                    <div class="step-num">1</div>
+                    <h4>Ürün Linki Yapıştırın</h4>
+                    <p>Trendyol veya Hepsiburada ürün URL'lerini virgülle ayırarak yapıştırın. İlk URL referans ürünü, diğerleri rakipler.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">2</div>
+                    <h4>Motoru Aktif Edin</h4>
+                    <p>Sistem 4 saatte bir otomatik tarama yapar. Birim maliyetinizi ekleyin → kâr/zarar hesabı anında.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">3</div>
+                    <h4>Aksiyon Alın</h4>
+                    <p>YZ Danışman'dan rapor üretin. Fiyat değişimi alarmlarını kurun. Kâr marjınızı koruyun.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# ── HOTFIX 1.82: PRICING SECTION ─────────────────────── #}
+    <section id="pricing">
+        <div class="container">
+            <div class="section-head">
+                <span class="eyebrow">Planlar</span>
+                <h2 class="section-title">İhtiyacınıza Göre <span class="grad-text">Esnek Planlar.</span></h2>
+                <p class="section-lead">
+                    14 gün ücretsiz dene, kredi kartı gerekmez. Her plan istediğin zaman iptal edilebilir.
+                </p>
+            </div>
+
+            <div class="pricing-grid">
+                {# Ücretsiz / Trial #}
+                <article class="price-card">
+                    <div class="price-emoji">🎁</div>
+                    <h3 class="price-name">14 Gün Ücretsiz</h3>
+                    <div class="price-amount">
+                        <span class="num">0₺</span>
+                    </div>
+                    <ul class="price-features">
+                        <li class="check"><span><strong>20</strong> ürün takibi</span></li>
+                        <li class="check"><span>Standart kontrol periyodu</span></li>
+                        <li class="check"><span>Gelişmiş analiz panosu</span></li>
+                        <li class="check"><span>Akıllı fiyat alarmları</span></li>
+                        <li class="x"><span>YZ Strateji Danışmanı</span></li>
+                    </ul>
+                    <a href="{{ url_for('register') }}" class="price-cta outline">Ücretsiz Başla</a>
+                </article>
+
+                {# Başlangıç #}
+                <article class="price-card">
+                    <div class="price-emoji">🚀</div>
+                    <h3 class="price-name">Başlangıç</h3>
+                    <div class="price-amount">
+                        <span class="num">499₺</span>
+                        <span class="period">/ay</span>
+                    </div>
+                    <ul class="price-features">
+                        <li class="check"><span><strong>50</strong> ürün takibi</span></li>
+                        <li class="check"><span><strong>Günde 1 kez</strong> kontrol</span></li>
+                        <li class="check"><span>Tüm analiz modülleri</span></li>
+                        <li class="check"><span>SEO Sıra Bulucu</span></li>
+                        <li class="x"><span>YZ Strateji Danışmanı</span></li>
+                    </ul>
+                    <a href="{{ url_for('register') }}" class="price-cta outline">Planı Seç</a>
+                </article>
+
+                {# Profesyonel — featured #}
+                <article class="price-card featured">
+                    <span class="price-badge">🔥 EN POPÜLER</span>
+                    <div class="price-emoji">⭐</div>
+                    <h3 class="price-name">Profesyonel</h3>
+                    <div class="price-amount">
+                        <span class="num">1.499₺</span>
+                        <span class="period">/ay</span>
+                    </div>
+                    <ul class="price-features">
+                        <li class="check"><span><strong>200</strong> ürün takibi</span></li>
+                        <li class="check"><span><strong>Saatte 1 kez</strong> kontrol</span></li>
+                        <li class="check"><span>Tüm analiz modülleri</span></li>
+                        <li class="check"><span>SEO Sıra Bulucu</span></li>
+                        <li class="check"><span>Öncelikli destek</span></li>
+                    </ul>
+                    <a href="{{ url_for('register') }}" class="price-cta primary">Planı Seç</a>
+                </article>
+
+                {# Kurumsal #}
+                <article class="price-card">
+                    <div class="price-emoji">👑</div>
+                    <h3 class="price-name">Kurumsal</h3>
+                    <div class="price-amount">
+                        <span class="num">3.999₺</span>
+                        <span class="period">/ay</span>
+                    </div>
+                    <ul class="price-features">
+                        <li class="check"><span><strong>Sınırsız</strong> ürün takibi</span></li>
+                        <li class="check"><span><strong>15 dakikada bir</strong> kontrol</span></li>
+                        <li class="gem"><span>YZ Strateji Danışmanı</span></li>
+                        <li class="check"><span>Excel / PDF dışa aktarma</span></li>
+                        <li class="check"><span>VIP destek hattı</span></li>
+                    </ul>
+                    <a href="{{ url_for('register') }}" class="price-cta primary">Planı Seç</a>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    {# ── EPIC 10.0: FAQ Section (AIO + Klasik SEO) ──
+       Botların (Google AI Overview / Perplexity / ChatGPT) "doğrudan cevap"
+       olarak alıntılayacağı kurumsal soru-cevap formatı. <details>/<summary>
+       semantik HTML5; FAQPage JSON-LD ile birebir senkron. #}
+    <section id="faq" style="background: linear-gradient(180deg, transparent, rgba(37, 99, 235, 0.03));">
+        <div class="container">
+            <div class="section-head">
+                <span class="eyebrow">Sıkça Sorulan Sorular</span>
+                <h2 class="section-title">BMK Hakkında <span class="grad-text">Bilmeniz Gerekenler.</span></h2>
+                <p class="section-lead">
+                    Trendyol fiyat takibi, e-ticaret SEO analizi ve yapay zeka danışmanlığı hakkında
+                    en sık sorulan soruların kurumsal cevapları.
+                </p>
+            </div>
+
+            <div class="faq-grid">
+                <details class="faq-item" itemscope itemtype="https://schema.org/Question">
+                    <summary itemprop="name">
+                        <span class="faq-q-icon">?</span>
+                        <span>BMK Rekabet İstihbaratı nedir?</span>
+                    </summary>
+                    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                        <span itemprop="text">
+                            <strong>BMK Rekabet İstihbaratı</strong>, Trendyol ve Hepsiburada satıcılarının
+                            <strong>rakip fiyatlarını, organik arama sıralarını ve müşteri yorumlarını yapay zeka ile harmanlayarak</strong>
+                            izleyen bütünsel bir e-ticaret rekabet yazılımıdır. Veriyi sadece toplamakla kalmaz,
+                            <strong>Llama-3.3-70B</strong> seviyesinde bir Yapay Zeka Strateji Danışmanı ile
+                            kişiselleştirilmiş aksiyon önerileri sunar.
+                        </span>
+                    </div>
+                </details>
+
+                <details class="faq-item" itemscope itemtype="https://schema.org/Question">
+                    <summary itemprop="name">
+                        <span class="faq-q-icon">?</span>
+                        <span>Trendyol fiyat takibi nasıl yapılır?</span>
+                    </summary>
+                    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                        <span itemprop="text">
+                            BMK üzerinden Trendyol fiyat takibi <strong>3 adımda</strong> yapılır:
+                            <strong>(1)</strong> Rakip ürün URL'lerini virgülle ayırarak yapıştırın,
+                            <strong>(2)</strong> sistem otomatik olarak ürünü gruplar ve birim maliyetinizi girmenize izin verir,
+                            <strong>(3)</strong> günde 4 stratejik tarama (saat <strong>03:15, 09:15, 15:15, 21:15</strong>)
+                            ile fiyatlar otomatik güncellenir. Fiyat düşüş veya yükselişlerinde anlık bildirim alırsınız.
+                            Bot kalkanlarına (DataDome, Cloudflare) yakalanmayan akıllı tarama motoruyla <strong>7/24 sürdürülebilir takip</strong>.
+                        </span>
+                    </div>
+                </details>
+
+                <details class="faq-item" itemscope itemtype="https://schema.org/Question">
+                    <summary itemprop="name">
+                        <span class="faq-q-icon">?</span>
+                        <span>E-ticaret SEO sıralamamı nasıl bulurum?</span>
+                    </summary>
+                    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                        <span itemprop="text">
+                            BMK <strong>SEO Takibi</strong> modülü Trendyol arama motorunda ürününüzün
+                            <strong>hangi sayfada ve kaçıncı sırada</strong> göründüğünü saniyeler içinde tespit eder.
+                            Bir anahtar kelime ve ürün linkinizi girin — sistem <strong>ilk 5 sayfayı (200 ürün)</strong>
+                            tarayarak konumunuzu raporlar. Sıralama değiştikçe tarihsel grafiği otomatik birikir.
+                            Ürününüz bulunamazsa, <strong>YZ destekli dinamik öneri motoru</strong> size ürüne özel
+                            3 adet <em>long-tail (uzun kuyruklu)</em> anahtar kelime önerir.
+                        </span>
+                    </div>
+                </details>
+
+                <details class="faq-item" itemscope itemtype="https://schema.org/Question">
+                    <summary itemprop="name">
+                        <span class="faq-q-icon">?</span>
+                        <span>Yapay Zeka Strateji Danışmanı ne yapar?</span>
+                    </summary>
+                    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                        <span itemprop="text">
+                            <strong>YZ Strateji Danışmanı (CMO)</strong> ürün portföyünüzdeki maliyet, satış fiyatı,
+                            rakip fiyatları, müşteri yorumları ve organik SEO sıralarını harmanlayarak
+                            <strong>Llama-3.3-70B</strong> modeliyle kişiselleştirilmiş bir strateji raporu üretir.
+                            Rapor <strong>5 bölümdür</strong>: Pazar Değerlendirmesi, Rekabet Analizi, Ürün Geliştirme,
+                            Fiyatlandırma Stratejisi ve <strong>Görünürlük (SEO) Stratejisi</strong>.
+                            <em>"Görünmezlik Tuzağı"</em> ve <em>"Liderlik Fırsatı"</em> kurallarıyla fiyat kırma yerine
+                            doğru aksiyonu önerir. Raporlar <strong>A4 PDF</strong> olarak dışa aktarılabilir.
+                        </span>
+                    </div>
+                </details>
+
+                <details class="faq-item" itemscope itemtype="https://schema.org/Question">
+                    <summary itemprop="name">
+                        <span class="faq-q-icon">?</span>
+                        <span>BMK hangi pazaryerlerini destekliyor?</span>
+                    </summary>
+                    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                        <span itemprop="text">
+                            <strong>Fiyat takibi için:</strong> Trendyol, Hepsiburada, N11, Çiçeksepeti, PttAVM ve Amazon Türkiye desteklenir.
+                            <strong>SEO sıralama takibi</strong> şu an Trendyol için aktiftir; Hepsiburada SEO entegrasyonu yakında eklenecektir.
+                            <strong>Yorum analizi</strong> (Kombine Analiz) Trendyol ve Hepsiburada için tam çalışır.
+                        </span>
+                    </div>
+                </details>
+
+                <details class="faq-item" itemscope itemtype="https://schema.org/Question">
+                    <summary itemprop="name">
+                        <span class="faq-q-icon">?</span>
+                        <span>Pazaryeri rekabet yazılımı neden gereklidir?</span>
+                    </summary>
+                    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                        <span itemprop="text">
+                            Trendyol ve Hepsiburada gibi pazaryerlerinde rakipler fiyatlarını <strong>günde 2-3 kez</strong>
+                            değiştirir ve algoritmik sıralama dakikalar içinde dalgalanır. Manuel takip mümkün değildir.
+                            BMK gibi bir rekabet istihbaratı yazılımı; <strong>kâr marjınızı korumanızı</strong>,
+                            <strong>Buybox</strong>'ı kaybetmeden fiyatlandırma yapmanızı, <strong>SEO sıralarınızdaki düşüşleri</strong>
+                            anında fark etmenizi ve veri odaklı kararlar almanızı sağlar. Tek satıcı için bile
+                            <strong>aylık 20-30 saatlik manuel işi</strong> otomatize eder.
+                        </span>
+                    </div>
+                </details>
+
+                <details class="faq-item" itemscope itemtype="https://schema.org/Question">
+                    <summary itemprop="name">
+                        <span class="faq-q-icon">?</span>
+                        <span>BMK ücretsiz mi?</span>
+                    </summary>
+                    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                        <span itemprop="text">
+                            BMK <strong>14 gün ücretsiz tam erişimle</strong> başlar — kredi kartı gerekmez.
+                            Sonrasında <strong>Başlangıç (499₺/ay, 50 ürün)</strong>,
+                            <strong>Profesyonel (1.499₺/ay, 200 ürün)</strong> ve
+                            <strong>Kurumsal (3.999₺/ay, sınırsız ürün + YZ Strateji Danışmanı)</strong>
+                            planları arasında seçim yapabilirsiniz. Tüm planlar istediğiniz zaman iptal edilebilir.
+                            <a href="#pricing" style="color:var(--accent); text-decoration:underline;">Plan karşılaştırması ↓</a>
+                        </span>
+                    </div>
+                </details>
+
+                <details class="faq-item" itemscope itemtype="https://schema.org/Question">
+                    <summary itemprop="name">
+                        <span class="faq-q-icon">?</span>
+                        <span>BMK rakipleri (DataDome / Cloudflare) atlatabiliyor mu?</span>
+                    </summary>
+                    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                        <span itemprop="text">
+                            Evet. BMK'nın tarama motoru <strong>Playwright stealth mode</strong>, rotating User-Agent havuzu,
+                            <strong>cffi (curl-impersonate)</strong> ve native pazaryeri API entegrasyonu kullanır.
+                            Saatlik tarama yerine <strong>günde 4 stratejik tarama</strong> yaparak "insansı" davranış sergiler —
+                            bot algılaması riski minimum, sürdürülebilirlik maksimum.
+                        </span>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    {# ── TESTIMONIALS ─────────────────────────────────────── #}
+    <section id="testimonials">
+        <div class="container">
+            <div class="section-head">
+                <span class="eyebrow">Müşterilerimiz</span>
+                <h2 class="section-title">Veri Odaklı Markaların <span class="grad-text">Tercihi.</span></h2>
+            </div>
+            <div class="testimonials-grid">
+                <article class="testimonial">
+                    <div class="stars">★★★★★</div>
+                    <p class="testimonial-text">
+                        "Rakiplerin fiyat değişimlerini saatler içinde değil, anlık görüyoruz.
+                        İlk ayında <strong>%23 daha yüksek kâr marjı</strong> ile kapattık."
+                    </p>
+                    <div class="testimonial-user">
+                        <div class="avatar">M</div>
+                        <div>
+                            <div class="name">Mert K.</div>
+                            <div class="role">Pet Marketim, Kurucu</div>
+                        </div>
+                    </div>
+                </article>
+                <article class="testimonial">
+                    <div class="stars">★★★★★</div>
+                    <p class="testimonial-text">
+                        "YZ Danışmanı, ürünümün rakibinde geçen 'pil çabuk bitiyor' şikayetini fırsata
+                        çevirdi. Listing'imizi 'Uzun Pil Ömrü' vurgusuyla yeniden yazdık."
+                    </p>
+                    <div class="testimonial-user">
+                        <div class="avatar">A</div>
+                        <div>
+                            <div class="name">Ayşe T.</div>
+                            <div class="role">Smart Home, Pazarlama</div>
+                        </div>
+                    </div>
+                </article>
+                <article class="testimonial">
+                    <div class="stars">★★★★★</div>
+                    <p class="testimonial-text">
+                        "Hepsiburada'da 12. sayfaya düştüğümü <strong>aynı gün öğrendim</strong>.
+                        SEO Sıra Bulucu olmasaydı haftalar sonra fark ederdim."
+                    </p>
+                    <div class="testimonial-user">
+                        <div class="avatar">C</div>
+                        <div>
+                            <div class="name">Cem B.</div>
+                            <div class="role">Tech Mağaza, E-Ticaret Müdürü</div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    {# ── FINAL CTA ────────────────────────────────────────── #}
+    <section>
+        <div class="container">
+            <div class="final-cta">
+                <h2>Pazarın <span class="grad-text">bir adım</span> önünde olmaya hazır mısınız?</h2>
+                <p>14 gün ücretsiz deneme. Kredi kartı gerekmez. 1 dakikada kurulum.</p>
+                <div class="btn-row">
+                    {# HOTFIX 1.82 / 2.00: Authenticated ise "Panele Git" #}
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">🚀 Panele Git</a>
+                    {% else %}
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Hemen Başla — Ücretsiz Dene</a>
+                    {% endif %}
+                    <a href="#pricing" class="btn btn-outline btn-lg">Planları Karşılaştır</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    </main>
+
+    {# ── FOOTER ────────────────────────────────────────────── #}
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col footer-brand">
+                    <div class="brand-link" style="font-size: 18px;">
+                        <span class="brand-mark">B</span>
+                        <span>BMK</span>
+                    </div>
+                    <p>
+                        E-ticaret rekabet istihbaratı platformu. Trendyol & Hepsiburada için
+                        YZ destekli fiyat takibi, SEO ve strateji raporları.
+                    </p>
+                </div>
+                <div class="footer-col">
+                    <h5>Ürün</h5>
+                    <a href="#features">Özellikler</a>
+                    <a href="#how">Nasıl Çalışır</a>
+                    <a href="#pricing">Planlar</a>
+                    <a href="#faq">Sıkça Sorulan Sorular</a>
+                    <a href="{{ url_for('register') }}">Ücretsiz Dene</a>
+                </div>
+                <div class="footer-col">
+                    <h5>Modüller</h5>
+                    <a href="#features">YZ Danışman</a>
+                    <a href="#features">Fiyat Takibi</a>
+                    <a href="#features">SEO Sıra Bulucu</a>
+                    <a href="#features">Akıllı Alarm</a>
+                </div>
+                <div class="footer-col">
+                    <h5>Şirket</h5>
+                    <a href="#testimonials">Müşteriler</a>
+                    <span>hello@bmk.app</span>
+                    <span>Türkiye 🇹🇷</span>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span>© 2026 BMK Rekabet İstihbaratı. Tüm hakları saklıdır.</span>
+                <span>Made with 💜 in Türkiye</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        if (window.lucide && window.lucide.createIcons) lucide.createIcons();
+
+        // ── HOTFIX 1.77: Theme toggle (LocalStorage + prefers-color-scheme) ──
+        (function() {
+            var btn = document.getElementById('themeToggle');
+            if (!btn) return;
+            btn.addEventListener('click', function() {
+                var cur = document.documentElement.getAttribute('data-theme') || 'light';
+                var next = (cur === 'dark') ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                try { localStorage.setItem('bmk-landing-theme', next); } catch (e) {}
+                // theme-color meta'yı da güncelle (mobil tarayıcı address bar rengi)
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.setAttribute('content', next === 'dark' ? '#0f172a' : '#2563eb');
+            });
+
+            // Kullanıcı sistem temasını sayfa açıkken değiştirirse: localStorage yoksa takip et
+            try {
+                var mq = window.matchMedia('(prefers-color-scheme: dark)');
+                if (mq && mq.addEventListener) {
+                    mq.addEventListener('change', function(e) {
+                        if (!localStorage.getItem('bmk-landing-theme')) {
+                            document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+                        }
+                    });
+                }
+            } catch (e) {}
+        })();
+    </script>
+</body>
+</html>

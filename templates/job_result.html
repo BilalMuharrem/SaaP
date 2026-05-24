@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block title %}Analiz #{{ job.id }}{% endblock %}
+{% block head %}
+{% if job.status in ('pending', 'running') %}
+<script>
+    // HOTFIX 1.42: 20s sabitlendi — sunucu log spam'i bitti
+    setInterval(function() {
+        fetch('/api/job/{{ job.id }}/status')
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'completed' || data.status === 'failed') {
+                    window.location.reload();
+                }
+                document.getElementById('status-badge').innerHTML = data.status_label;
+            });
+    }, 20000);
+</script>
+{% endif %}
+{% endblock %}
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon">B</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+        
+        <nav>
+            <div class="nav-section">
+                <div class="nav-label">Ana Menü</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                    <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
+                </a>
+                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">Hesabım</div>
+                <a href="{{ url_for('notifications') }}" class="nav-link">
+                    <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
+                    {% if unread_notifications > 0 %}
+                    <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info"><div class="user-avatar">{{ current_user.full_name[0] }}</div><div><div class="user-name">{{ current_user.full_name }}</div><div class="user-email">{{ current_user.email }}</div></div></div>
+                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        {# HOTFIX 1.63: Seamless In-App Navigation — sayfanın en üstüne "Geri Dön"
+           butonu eklenir. Kullanıcı job_result'a dashboard/history/notifications'tan
+           gelebilir; back butonu önce browser history'i kullanır (referrer-aware),
+           hiçbiri yoksa /history fallback'ine düşer. #}
+        <div style="margin-bottom: 16px;">
+            <a href="{{ url_for('history') }}" id="backToList"
+               class="btn btn-secondary btn-sm"
+               style="display:inline-flex; align-items:center; gap:6px; border-radius:10px; padding:8px 14px; font-weight:600;">
+                <i data-lucide="arrow-left" width="16" height="16"></i>
+                Geri Dön (Geçmiş Analizler)
+            </a>
+        </div>
+        <script>
+            // Referrer aynı origin'de ise tarayıcı geçmişine geri dön; değilse /history'e git
+            (function() {
+                var btn = document.getElementById('backToList');
+                if (!btn) return;
+                btn.addEventListener('click', function(e) {
+                    try {
+                        var ref = document.referrer || '';
+                        if (ref && ref.indexOf(window.location.origin) === 0 && window.history.length > 1) {
+                            e.preventDefault();
+                            window.history.back();
+                        }
+                    } catch (err) { /* fallback: href çalışır */ }
+                });
+            })();
+        </script>
+
+        <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <h1 class="page-title">Analiz #{{ job.id }}</h1>
+                <p class="page-subtitle">{{ job.type_label }} — {{ job.created_at|turkdate }}</p>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <span id="status-badge" style="display: flex;">
+                    {% if job.status == 'completed' %}<span class="badge badge-success" style="font-size:14px;padding:8px 16px;">{{ job.status_label }}</span>
+                    {% elif job.status == 'running' %}<span class="badge badge-info" style="font-size:14px;padding:8px 16px;">{{ job.status_label }}</span>
+                    {% elif job.status == 'failed' %}<span class="badge badge-danger" style="font-size:14px;padding:8px 16px;">{{ job.status_label }}</span>
+                    {% else %}<span class="badge badge-muted" style="font-size:14px;padding:8px 16px;">{{ job.status_label }}</span>{% endif %}
+                </span>
+
+                <!-- Global Status Indicator -->
+                <div id="header-status" class="header-status">
+                    <div id="header-pulse-dot" class="pulse-dot idle"></div>
+                    <span id="header-status-text">Sistem Bağlanıyor...</span>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        // HOTFIX 1.42: system-status polling 20s sabitlendi
+        setInterval(() => {
+            fetch('/api/system-status?_t=' + new Date().getTime())
+            .then(r => r.json())
+            .then(data => {
+                const dot = document.getElementById('header-pulse-dot');
+                const txt = document.getElementById('header-status-text');
+                if (data.is_active) {
+                    dot.className = 'pulse-dot running';
+                    txt.textContent = data.text;
+                } else {
+                    dot.className = 'pulse-dot idle';
+                    txt.textContent = data.text;
+                }
+            }).catch(e=>{});
+        }, 20000);
+        </script>
+
+        <!-- JOB INFO -->
+        <div class="card" style="margin-bottom:20px;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+                <div><div class="form-label">Analiz Türü</div><div style="font-weight:600;">{{ job.type_label }}</div></div>
+                <div><div class="form-label">URL Sayısı</div><div style="font-weight:600;">{{ job.get_urls()|length }} URL</div></div>
+                <div><div class="form-label">Süre</div><div style="font-weight:600;">{{ job.duration_str }}</div></div>
+            </div>
+        </div>
+
+        {% if job.status == 'pending' or job.status == 'running' %}
+        <!-- WAITING STATE -->
+        <div class="card">
+            <div class="job-status-card">
+                <div class="spinner"></div>
+                <div class="job-status-text">
+                    {% if job.status == 'pending' %}Sırada Bekliyor{% else %}Analiz Çalışıyor{% endif %}
+                </div>
+                <div class="job-status-sub">Bu sayfa otomatik yenilenir. Sitede özgürce gezinebilirsiniz — tamamlandığında bildirim alacaksınız.</div>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" style="margin-top:16px;">← Dashboard'a Dön</a>
+            </div>
+        </div>
+
+        {% elif job.status == 'completed' %}
+        <!-- RESULT -->
+        <div class="card">
+            <div class="card-header" style="justify-content: space-between; align-items: center; display: flex; flex-wrap: wrap; gap: 15px;">
+                <h3 class="card-title" style="margin: 0; display:flex; align-items:center;">📄 Analiz Raporu</h3>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <div style="font-size: 12px; font-weight: 500; color: var(--text-muted); opacity: 0.8; margin-right:15px; margin-top:2px;">
+                        Son Güncelleme: {{ job.completed_at.strftime('%d.%m.%Y, %H:%M') if job.completed_at else 'Şimdi' }}
+                    </div>
+                    <button class="btn btn-outline btn-sm" style="border-radius: 8px; border-color: var(--border-dark); font-size:13px;" onclick="window.print()">
+                        <i data-lucide="file-text" width="16" height="16" color="#ef4444" style="margin-right:6px;"></i> PDF İndir
+                    </button>
+                    <button class="btn btn-outline btn-sm" style="border-radius: 8px; border-color: var(--border-dark); font-size:13px;" onclick="alert('Excel modülü yakında aktif edilecek.')">
+                        <i data-lucide="sheet" width="16" height="16" color="#10b981" style="margin-right:6px;"></i> Excel'e Aktar
+                    </button>
+                    {# HOTFIX 1.64: Hibrit görüntüleme — primary "Raporu Görüntüle" (tam ekran
+                       modal, sayfada kalır) + secondary "Yeni Sekmede Aç" (target=_blank,
+                       kullanıcı paralel inceleme yapmak isterse). Modal vurgulu (primary),
+                       new-tab outline (sade) → ana eylem görsel olarak öne çıkar. #}
+                    <button id="openReportFullscreen" class="btn btn-secondary btn-sm" style="border-radius: 8px;">
+                        <i data-lucide="maximize-2" width="14" height="14" style="margin-right:6px;"></i>
+                        Raporu Görüntüle
+                    </button>
+                    <a href="{{ url_for('job_report', job_id=job.id) }}" target="_blank" rel="noopener"
+                       class="btn btn-outline btn-sm"
+                       style="border-radius: 8px; border-color: var(--border-dark); font-size:13px; text-decoration:none;">
+                        <i data-lucide="external-link" width="14" height="14" style="margin-right:6px;"></i>
+                        Yeni Sekmede Aç
+                    </a>
+                </div>
+            </div>
+            {# HOTFIX 1.35: iframe'e tema query param'ı eklenir + postMessage ile canlı senkronizasyon #}
+            <iframe id="reportFrame" src="{{ url_for('job_report', job_id=job.id) }}" class="report-frame" style="border:none;"></iframe>
+        </div>
+
+        {# ── HOTFIX 1.63: Tam Ekran Rapor Modal (Seamless In-App) ─────────────
+           Ham raporu yeni sekmede açmak yerine modal içinde render eder. Sidebar
+           ve üst bar arkada görünür kalır; kullanıcı uygulamadan kopmaz.
+           Modal kapanınca alttaki inline iframe değişmez (state korunur). #}
+        <div id="reportModal" style="display:none; position:fixed; inset:0; z-index:99999;
+             background:rgba(15,23,42,0.85); backdrop-filter:blur(4px);">
+            <div style="position:absolute; top:24px; left:24px; right:24px; bottom:24px;
+                 background:var(--bg-primary, #fff); border-radius:14px; overflow:hidden;
+                 box-shadow:0 25px 50px -12px rgba(0,0,0,0.40); display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                     padding:14px 20px; border-bottom:1px solid var(--border, #e5e7eb); flex-shrink:0;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <i data-lucide="file-text" width="20" height="20" style="color:var(--primary);"></i>
+                        <h3 style="margin:0; font-size:16px; font-weight:700;">Analiz #{{ job.id }} — {{ job.type_label }}</h3>
+                    </div>
+                    <button id="closeReportModal" class="btn btn-secondary btn-sm"
+                            style="border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                        <i data-lucide="x" width="16" height="16"></i> Kapat (ESC)
+                    </button>
+                </div>
+                {# ── HOTFIX 1.64: Beyaz Iframe Onarımı ──
+                   Önceki sürüm src="" boş bırakıp JS'le lazy set ediyordu — eğer
+                   event yakalanmazsa iframe hep boş kalıyordu. Şimdi src
+                   doğrudan template-time verilir; tarayıcı sayfa açıldığında
+                   raporu arka planda yüklemeye başlar, modal açıldığında hazır.
+                   Yükseklik: flex:1 yetersiz kalabiliyordu (parent height
+                   hesaplama gecikmesi); explicit min-height: 75vh güvence.
+                   ?theme=… ile mevcut tema sunucuya iletilir (rapor doğru
+                   stilde gelir). #}
+                <iframe id="reportModalFrame"
+                        src="{{ url_for('job_report', job_id=job.id) }}"
+                        style="border:none; flex:1; width:100%; min-height:75vh; background:#fff; display:block;"></iframe>
+            </div>
+        </div>
+        <script>
+            (function() {
+                var btn = document.getElementById('openReportFullscreen');
+                var modal = document.getElementById('reportModal');
+                var closeBtn = document.getElementById('closeReportModal');
+                var modalFrame = document.getElementById('reportModalFrame');
+                if (!btn || !modal || !closeBtn || !modalFrame) return;
+
+                function currentThemeForFrame() {
+                    var dt = document.documentElement.getAttribute('data-theme');
+                    if (dt === 'light' || dt === 'dark') return dt;
+                    try { var ls = localStorage.getItem('theme'); if (ls) return ls; } catch(e){}
+                    return 'dark';
+                }
+                function openModal() {
+                    // HOTFIX 1.64: src artık template-time set ediliyor (iframe hep dolu)
+                    // → modal açıldığında içerik anında görünür. Sadece tema güncellemesini
+                    // postMessage ile bildir (theme switch sonrası modal açılması durumu).
+                    try {
+                        modalFrame.contentWindow && modalFrame.contentWindow.postMessage(
+                            { type: 'theme', theme: currentThemeForFrame() }, '*'
+                        );
+                    } catch (e) {}
+                    modal.style.display = 'block';
+                    document.body.style.overflow = 'hidden';   // arka plan scroll'unu kilitle
+                    if (window.lucide && window.lucide.createIcons) lucide.createIcons();
+                }
+                function closeModal() {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+                btn.addEventListener('click', openModal);
+                closeBtn.addEventListener('click', closeModal);
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && modal.style.display === 'block') closeModal();
+                });
+                // Modal'ın boş kısmına tıklanırsa kapat (ana iç panel haricinde)
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) closeModal();
+                });
+            })();
+        </script>
+
+        <script>
+        (function(){
+            // Mevcut tema'yı tespit et: data-theme attribute → localStorage → prefers
+            function currentTheme() {
+                var dt = document.documentElement.getAttribute('data-theme');
+                if (dt === 'light' || dt === 'dark') return dt;
+                try {
+                    var ls = localStorage.getItem('theme');
+                    if (ls === 'light' || ls === 'dark') return ls;
+                } catch(e){}
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+                return 'dark';
+            }
+            // iframe src'sine ?theme=... ekle
+            var ifr = document.getElementById('reportFrame');
+            if (ifr) {
+                var sep = ifr.src.indexOf('?') >= 0 ? '&' : '?';
+                ifr.src = ifr.src + sep + 'theme=' + currentTheme();
+                // Yüklendikten sonra postMessage ile teyit
+                ifr.addEventListener('load', function(){
+                    try { ifr.contentWindow.postMessage({type:'theme', theme: currentTheme()}, '*'); } catch(e){}
+                });
+            }
+            // HOTFIX 1.63: "Yeni Sekmede Aç" butonu kaldırıldı (artık modal kullanılıyor).
+            // İlgili selector loop'u görevsiz kaldı, temizliği koruyoruz — modal kendi
+            // tema parametresini openModal() içinde inject ediyor.
+            // Ana app teması değişirse iframe'e haber ver
+            var observer = new MutationObserver(function(){
+                if (ifr) {
+                    try { ifr.contentWindow.postMessage({type:'theme', theme: currentTheme()}, '*'); } catch(e){}
+                }
+            });
+            observer.observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+        })();
+        </script>
+
+        {% elif job.status == 'failed' %}
+        <!-- ERROR STATE -->
+        <div class="card">
+            <div class="job-status-card">
+                <div class="job-status-icon">❌</div>
+                <div class="job-status-text">Analiz Başarısız</div>
+                <div class="job-status-sub" style="color:var(--danger);">{{ job.error_message or 'Bilinmeyen hata oluştu.' }}</div>
+                <a href="{{ url_for('new_request') }}" class="btn btn-primary" style="margin-top:20px;">Tekrar Dene</a>
+            </div>
+        </div>
+        {% endif %}
+
+        <div style="margin-top:20px;">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Dashboard'a Dön</a>
+        </div>
+    </main>
+</div>
+{% endblock %}

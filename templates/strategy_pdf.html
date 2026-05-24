@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YZ Strateji Raporu — {{ report.created_at.strftime('%d %B %Y') }}</title>
+
+{# ── HOTFIX 1.94: Client-side PDF üretimi (html2pdf.js CDN) ── #}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+    /* ═══════════════════════════════════════════════════════════════════════
+       HOTFIX 1.94: Client-Side A4 Strateji Raporu
+       — Tarayıcıda görüntüleme + html2pdf.js ile PDF export
+       — Web UI'den izole, beyaz arka plan, kurumsal tipografi
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+        background: #e2e8f0;  /* A4 sayfasını çevreleyen "masa" gri */
+        font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+        color: #0f172a;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Üst Toolbar (Yazdırılmayan Alan) ── */
+    .no-print {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(15, 23, 42, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 14px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        border-bottom: 1px solid rgba(148,163,184,0.25);
+    }
+    .no-print .left {
+        display: flex; align-items: center; gap: 10px;
+        color: #f1f5f9;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .no-print .left .pill {
+        background: rgba(37,99,235,0.20);
+        color: #93c5fd;
+        padding: 4px 10px;
+        border-radius: 99px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+    .no-print .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .toolbar-btn {
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 9px 16px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+    .btn-pdf {
+        background: linear-gradient(135deg, #2563eb 0%, #10b981 100%);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    }
+    .btn-pdf:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 22px rgba(37, 99, 235, 0.45);
+    }
+    .btn-pdf.loading {
+        opacity: 0.6;
+        cursor: wait;
+        pointer-events: none;
+    }
+    .btn-back {
+        background: rgba(148,163,184,0.15);
+        color: #f1f5f9;
+        border-color: rgba(148,163,184,0.30);
+    }
+    .btn-back:hover { background: rgba(148,163,184,0.25); }
+
+    /* ── A4 Kağıt Simülasyonu ── */
+    .page-wrap {
+        padding: 30px 20px;
+        min-height: calc(100vh - 60px);
+    }
+    .a4-page {
+        max-width: 210mm;
+        min-height: 297mm;
+        background: #ffffff;
+        margin: 0 auto;
+        padding: 20mm 18mm;
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+        border-radius: 2px;
+        color: #0f172a;
+        font-size: 11pt;
+        line-height: 1.55;
+    }
+
+    /* ── Kapak / Üst Banner ── */
+    .cover {
+        border-bottom: 3px solid #2563eb;
+        padding-bottom: 14pt;
+        margin-bottom: 18pt;
+    }
+    .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12pt;
+    }
+    .brand-mark {
+        width: 44px; height: 44px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #2563eb 0%, #10b981 100%);
+        color: #fff;
+        font-size: 24px;
+        font-weight: 900;
+        line-height: 44px;
+        text-align: center;
+        letter-spacing: -1px;
+        flex-shrink: 0;
+    }
+    .brand-text { font-size: 16pt; font-weight: 800; color: #0f172a; line-height: 1.1; letter-spacing: -0.3pt; }
+    .brand-sub  { font-size: 9pt;  color: #64748b; font-weight: 600; letter-spacing: 0.5pt; text-transform: uppercase; margin-top: 2pt; }
+
+    h1.report-title {
+        font-size: 24pt;
+        font-weight: 800;
+        margin: 6pt 0 4pt 0;
+        color: #0f172a;
+        line-height: 1.2;
+        letter-spacing: -0.5pt;
+        page-break-after: avoid;
+    }
+    .report-meta {
+        display: table;
+        width: 100%;
+        margin-top: 10pt;
+        font-size: 9.5pt;
+        color: #475569;
+        border-spacing: 0;
+    }
+    .report-meta .row { display: table-row; }
+    .report-meta .lbl, .report-meta .val { display: table-cell; padding: 4pt 0; vertical-align: top; }
+    .report-meta .lbl { width: 130pt; color: #94a3b8; font-weight: 700; text-transform: uppercase; font-size: 8.5pt; letter-spacing: 0.5pt; }
+    .report-meta .val { color: #0f172a; font-weight: 600; }
+    .report-meta .val.accent { color: #2563eb; font-weight: 700; }
+
+    /* ── Executive Summary Banner ── */
+    .exec-banner {
+        background: linear-gradient(135deg, #f1f5f9 0%, #ffffff 100%);
+        border-left: 4px solid #2563eb;
+        padding: 12pt 16pt;
+        border-radius: 6px;
+        margin: 18pt 0;
+        font-size: 10pt;
+        color: #334155;
+    }
+    .exec-banner .label {
+        font-size: 8.5pt;
+        font-weight: 800;
+        letter-spacing: 1pt;
+        color: #2563eb;
+        text-transform: uppercase;
+        margin-bottom: 4pt;
+    }
+
+    /* ── Özel İstek Kutusu (varsa) ── */
+    .custom-prompt-box {
+        background: #fef3c7;
+        border-left: 3px solid #f59e0b;
+        padding: 10pt 14pt;
+        border-radius: 4px;
+        margin: 14pt 0;
+        font-size: 10pt;
+        color: #78350f;
+        page-break-inside: avoid;
+    }
+    .custom-prompt-box strong { color: #b45309; }
+
+    /* ── Markdown Çıktısı ── */
+    .markdown-body { margin-top: 18pt; }
+
+    .markdown-body h1 {
+        font-size: 17pt;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 20pt 0 10pt 0;
+        page-break-after: avoid;
+    }
+    .markdown-body h2 {
+        font-size: 14pt;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 18pt 0 8pt 0;
+        padding: 10pt 14pt;
+        background: #eff6ff;
+        border-left: 4px solid #2563eb;
+        border-radius: 4px;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+    }
+    .markdown-body h3 {
+        font-size: 12pt;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 14pt 0 6pt 0;
+        page-break-after: avoid;
+    }
+    .markdown-body p {
+        margin: 0 0 9pt 0;
+        color: #1e293b;
+        line-height: 1.6;
+        orphans: 3;
+        widows: 3;
+    }
+    .markdown-body strong { color: #0f172a; font-weight: 800; }
+    .markdown-body em { color: #475569; font-style: italic; }
+
+    .markdown-body ul, .markdown-body ol {
+        margin: 4pt 0 12pt 22pt;
+        padding: 0;
+    }
+    .markdown-body li {
+        margin-bottom: 5pt;
+        color: #1e293b;
+        line-height: 1.55;
+        page-break-inside: avoid;
+    }
+    .markdown-body li strong { color: #2563eb; }
+
+    .markdown-body hr {
+        border: none;
+        height: 1pt;
+        background: #e2e8f0;
+        margin: 14pt 0;
+    }
+
+    .markdown-body table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10pt 0;
+        font-size: 9.5pt;
+        page-break-inside: auto;
+    }
+    .markdown-body th {
+        background: #f1f5f9;
+        color: #0f172a;
+        font-weight: 700;
+        text-align: left;
+        padding: 7pt 9pt;
+        border-bottom: 2px solid #cbd5e1;
+        text-transform: uppercase;
+        font-size: 8.5pt;
+        letter-spacing: 0.3pt;
+    }
+    .markdown-body td {
+        padding: 7pt 9pt;
+        border-bottom: 1px solid #e2e8f0;
+        color: #334155;
+    }
+    .markdown-body tr { page-break-inside: avoid; }
+
+    .markdown-body blockquote {
+        margin: 10pt 0;
+        padding: 9pt 14pt;
+        background: #f8fafc;
+        border-left: 3px solid #94a3b8;
+        color: #475569;
+        font-style: italic;
+    }
+
+    .markdown-body code {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 1pt 5pt;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        font-size: 9.5pt;
+    }
+
+    /* ── Footer / Confidential ── */
+    .footer-confidential {
+        margin-top: 26pt;
+        padding-top: 12pt;
+        border-top: 1pt solid #cbd5e1;
+        font-size: 8pt;
+        color: #94a3b8;
+        text-align: center;
+        line-height: 1.5;
+    }
+
+    /* ── Responsive: küçük ekranlarda A4 simülasyon padding'i azalt ── */
+    @media (max-width: 850px) {
+        .a4-page { padding: 18mm 12mm; }
+        .page-wrap { padding: 20px 8px; }
+    }
+
+    /* ── Print stilleri (kullanıcı isterse tarayıcı print de kullanabilir) ── */
+    @media print {
+        body { background: #ffffff !important; }
+        .no-print { display: none !important; }
+        .page-wrap { padding: 0 !important; }
+        .a4-page { box-shadow: none !important; padding: 12mm !important; max-width: 100% !important; }
+    }
+</style>
+</head>
+<body>
+
+{# ── Üst Toolbar — sadece ekranda, html2pdf çıktısına girmez ── #}
+<div class="no-print">
+    <div class="left">
+        <span class="pill">📋 STRATEJİ RAPORU</span>
+        <span>{{ report.created_at.strftime('%d %B %Y — %H:%M') }}</span>
+    </div>
+    <div class="actions">
+        <a href="{{ url_for('ai_consultant') }}" class="toolbar-btn btn-back">← Danışmana Dön</a>
+        <button id="downloadPdfBtn" class="toolbar-btn btn-pdf">
+            <span class="icon">📄</span>
+            <span class="label">Raporu İndir (PDF)</span>
+        </button>
+    </div>
+</div>
+
+<div class="page-wrap">
+    {# Bu div'in içeriği PDF'e çevrilir — toolbar dışarıda kalır #}
+    <div class="a4-page" id="reportContent">
+
+        <div class="cover">
+            <div class="brand-row">
+                <div class="brand-mark">B</div>
+                <div>
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı &middot; Strateji Raporu</div>
+                </div>
+            </div>
+
+            <h1 class="report-title">YZ Strateji Raporu</h1>
+
+            <div class="report-meta">
+                <div class="row">
+                    <div class="lbl">Rapor Tarihi</div>
+                    <div class="val">{{ report.created_at.strftime('%d %B %Y — %H:%M') }}</div>
+                </div>
+                {% if report.sector %}
+                <div class="row">
+                    <div class="lbl">Sektör / Niş</div>
+                    <div class="val accent">{{ report.sector }}</div>
+                </div>
+                {% endif %}
+                {% if report.group_name %}
+                <div class="row">
+                    <div class="lbl">Takip Grubu</div>
+                    <div class="val">{{ report.group_name }}</div>
+                </div>
+                {% endif %}
+                <div class="row">
+                    <div class="lbl">Hazırlayan</div>
+                    <div class="val">YZ Strateji Danışmanı (BMK)</div>
+                </div>
+                <div class="row">
+                    <div class="lbl">Müşteri</div>
+                    <div class="val">{{ current_user.full_name or current_user.email }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="exec-banner">
+            <div class="label">📊 Executive Summary</div>
+            <div>
+                Bu rapor, ürün portföyünüzün <strong>fiyat — müşteri algısı — görünürlük (SEO)</strong>
+                ekseninde yapay zeka destekli derin analizini ve uygulanabilir aksiyon planını içerir.
+                Kâr marjınızı koruyacak ve rekabet üstünlüğünüzü artıracak şekilde hazırlanmıştır.
+            </div>
+        </div>
+
+        {% if report.custom_prompt %}
+        <div class="custom-prompt-box">
+            <strong>💬 Özel Odak Konusu:</strong> {{ report.custom_prompt }}
+        </div>
+        {% endif %}
+
+        <div class="markdown-body">
+            {{ report_html | safe }}
+        </div>
+
+        <div class="footer-confidential">
+            Bu belge BMK Rekabet İstihbaratı tarafından üretilmiştir ve yalnızca alıcısına özeldir.<br>
+            İçerik yapay zeka analizi sonucu oluşturulmuştur; nihai stratejik kararlar için doğrulama önerilir.
+        </div>
+
+    </div>
+</div>
+
+{# ── HOTFIX 1.94: html2pdf.js — tıklama tetikleyici ──
+   • Buton tıklanınca #reportContent yakalanır, A4 PDF'e çevrilir
+   • Yüksek kalite ayarları: scale: 2 (retina), letter-rendering: true
+   • İndirme dosya adı server tarafından üretilen pdf_filename ile #}
+<script>
+(function() {
+    var btn = document.getElementById('downloadPdfBtn');
+    var target = document.getElementById('reportContent');
+    if (!btn || !target) return;
+
+    var pdfFilename = {{ pdf_filename|tojson }};
+
+    btn.addEventListener('click', function() {
+        if (btn.classList.contains('loading')) return;
+        btn.classList.add('loading');
+        var labelEl = btn.querySelector('.label');
+        var iconEl = btn.querySelector('.icon');
+        var originalLabel = labelEl ? labelEl.textContent : '';
+        var originalIcon = iconEl ? iconEl.textContent : '';
+        if (labelEl) labelEl.textContent = 'PDF Oluşturuluyor…';
+        if (iconEl) iconEl.textContent = '⏳';
+
+        var opt = {
+            // Sayfa kenar boşlukları (mm) — A4: 210x297
+            margin:       [10, 10, 12, 10],
+            filename:     pdfFilename || 'Strateji_Raporu.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            // Yüksek kalite: scale 2 retina + letter-rendering accurate
+            html2canvas:  {
+                scale: 2,
+                useCORS: true,
+                letterRendering: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+            },
+            jsPDF:        {
+                unit: 'mm',
+                format: 'a4',
+                orientation: 'portrait',
+                compress: true,
+            },
+            // Sayfa kesim modu: CSS sayfa-kırılma kurallarını dikkate al
+            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+
+        // html2pdf().from().set().save() chain — promise döner
+        html2pdf().from(target).set(opt).save()
+            .then(function() {
+                btn.classList.remove('loading');
+                if (labelEl) labelEl.textContent = originalLabel;
+                if (iconEl) iconEl.textContent = originalIcon;
+            })
+            .catch(function(err) {
+                console.error('[PDF] Üretim hatası:', err);
+                btn.classList.remove('loading');
+                if (labelEl) labelEl.textContent = '❌ Hata — Tekrar Dene';
+                if (iconEl) iconEl.textContent = '⚠️';
+                setTimeout(function() {
+                    if (labelEl) labelEl.textContent = originalLabel;
+                    if (iconEl) iconEl.textContent = originalIcon;
+                }, 3000);
+            });
+    });
+})();
+</script>
+
+</body>
+</html>

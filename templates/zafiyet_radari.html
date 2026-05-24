@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+{% block title %}Premium Zafiyet Radarı{% endblock %}
+{% block head %}
+<style>
+    .radar-card {
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+    }
+    .radar-card.is-base {
+        border-color: var(--accent);
+    }
+    .radar-tag {
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+    }
+    .radar-tag.is-base {
+        color: var(--accent);
+    }
+    .alert-banner {
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.4;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .alert-banner-opportunity {
+        background: linear-gradient(to right, rgba(16,185,129,0.1), transparent);
+        color: var(--success);
+        border-left: 4px solid var(--success);
+    }
+    .alert-banner-threat {
+        background: linear-gradient(to right, rgba(239,68,68,0.1), transparent);
+        color: var(--danger);
+        border-left: 4px solid var(--danger);
+    }
+    .alert-banner-warning {
+        background: linear-gradient(to right, rgba(245,158,11,0.1), transparent);
+        color: var(--warning);
+        border-left: 4px solid var(--warning);
+    }
+    .alert-banner-safe {
+        background: linear-gradient(to right, rgba(59,130,246,0.08), transparent);
+        color: #3b82f6;
+        border-left: 4px solid #3b82f6;
+    }
+    /* Stok ve Platform Badge'leri */
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        white-space: nowrap;
+    }
+    .pill-stock-safe {
+        background: rgba(16,185,129,0.12);
+        color: var(--success);
+        border: 1px solid rgba(16,185,129,0.3);
+    }
+    .pill-stock-warn {
+        background: rgba(245,158,11,0.12);
+        color: var(--warning);
+        border: 1px solid rgba(245,158,11,0.3);
+    }
+    .pill-stock-crit {
+        background: rgba(239,68,68,0.12);
+        color: var(--danger);
+        border: 1px solid rgba(239,68,68,0.4);
+        animation: pulse 2s infinite;
+    }
+    .pill-platform-trendyol {
+        background: rgba(249,115,22,0.12);
+        color: #f97316;
+        border: 1px solid rgba(249,115,22,0.3);
+    }
+    .pill-platform-hb {
+        background: rgba(255,96,0,0.12);
+        color: #ff6000;
+        border: 1px solid rgba(255,96,0,0.3);
+    }
+    .pill-platform-other {
+        background: var(--bg-card-hover);
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.65; }
+    }
+    /* Detay butonu */
+    .detail-link {
+        background: none;
+        border: none;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 6px 0 0 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        text-decoration: none;
+    }
+    .detail-link:hover { text-decoration: underline; }
+    /* Modal */
+    .bmk-modal-backdrop {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.55);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 20px;
+    }
+    .bmk-modal-backdrop.is-open { display: flex; }
+    .bmk-modal {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        max-width: 540px;
+        width: 100%;
+        padding: 28px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .bmk-modal h3 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+        color: var(--text-primary);
+        display: flex; align-items: center; gap: 8px;
+    }
+    .bmk-modal .modal-stat {
+        background: var(--bg-card-hover);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-top: 12px;
+    }
+    .bmk-modal .modal-stat .label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 0.4px;
+        margin-bottom: 4px;
+    }
+    .bmk-modal .modal-stat .value {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .bmk-modal .modal-close-btn {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 20px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon">B</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+        
+        <nav>
+            <div class="nav-section">
+                <div class="nav-label">Ana Menü</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('zafiyet_radari_list') }}" class="nav-link{% if request.endpoint == 'zafiyet_radari_list' or request.endpoint == 'zafiyet_radari' %} active{% endif %}">
+                    <i data-lucide="radar" class="icon" width="20" height="20" style="color:#f59e0b;"></i> Zafiyet Radarı
+                </a>
+                <a href="{{ url_for('ai_consultant') }}" class="nav-link">
+                    <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
+                </a>
+                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">Hesabım</div>
+                <a href="{{ url_for('notifications') }}" class="nav-link">
+                    <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
+                    {% if unread_notifications > 0 %}
+                    <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info"><div class="user-avatar">{{ current_user.full_name[0] }}</div><div><div class="user-name">{{ current_user.full_name }}</div><div class="user-email">{{ current_user.email }}</div></div></div>
+                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px;">
+             <div>
+                <h1 class="page-title" style="display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="radar" width="28" height="28" color="#f59e0b"></i> Premium Zafiyet Radarı
+                </h1>
+                <p class="page-subtitle" style="margin-top:8px;">Rakip stok erime hızları, tehdit uyarıları ve "Buy Box" fırsatları</p>
+             </div>
+             <div style="display:flex; gap:12px; align-items:center;">
+                 <a href="{{ url_for('new_request') }}" class="btn btn-secondary btn-sm"><i data-lucide="plus-circle" width="16" height="16"></i> Yeni Radar</a>
+                 <a href="{{ url_for('zafiyet_radari_list') }}" class="btn btn-secondary btn-sm"><i data-lucide="radar" width="16" height="16"></i> Tüm Radarlarım</a>
+                 <form method="POST" action="{{ url_for('delete_tracked_group', group_id=group_id) }}" style="margin:0;" onsubmit="return confirm('Bu radar analizini tamamen silmek istediğinize emin misiniz?');">
+                     <button type="submit" class="btn btn-sm" style="background:var(--danger); color:white; border:none; height:32px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                         <i data-lucide="trash-2" width="14" height="14"></i> Radarı İptal Et
+                     </button>
+                 </form>
+             </div>
+        </div>
+        
+        <div class="radar-results" style="display: flex; flex-direction: column; gap: 24px;">
+            {% for p in products %}
+                <div class="card radar-card {% if p.is_base_product %}is-base{% endif %}">
+                    {% if p.is_base_product %}
+                        <div style="position:absolute; top:0; left:0; right:0; height:4px; background:var(--accent);"></div>
+                    {% endif %}
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 24px;">
+                        <div>
+                            <div class="radar-tag {% if p.is_base_product %}is-base{% endif %}">
+                                {% if p.is_base_product %}👑 TEMEL ÜRÜN{% else %}🗡️ RAKİP SATICI{% endif %}
+                            </div>
+                            <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); line-height:1.4;">
+                                <a href="{{ p.url }}" target="_blank" style="color: inherit; text-decoration: none;" class="hover:underline">
+                                    {% if p.product_name %}{{ p.product_name[:80] }}{% if p.product_name|length > 80 %}...{% endif %}{% else %}{{ p.platform_name | default('Ürün') }} — Veri Bekleniyor{% endif %}
+                                    <i data-lucide="external-link" width="14" height="14" style="margin-left:4px;"></i>
+                                </a>
+                            </div>
+                            <!-- Platform + Stok Badge'leri -->
+                            <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+                                {% set _url_lower = p.url | lower %}
+                                {% if 'trendyol.com' in _url_lower %}
+                                    <span class="pill pill-platform-trendyol"><i data-lucide="shopping-bag" width="11" height="11"></i> Trendyol</span>
+                                {% elif 'hepsiburada.com' in _url_lower %}
+                                    <span class="pill pill-platform-hb"><i data-lucide="shopping-bag" width="11" height="11"></i> Hepsiburada</span>
+                                {% elif p.platform_name %}
+                                    <span class="pill pill-platform-other"><i data-lucide="shopping-bag" width="11" height="11"></i> {{ p.platform_name }}</span>
+                                {% endif %}
+                                {% if p.current_stock is not none %}
+                                    {% if p.current_stock >= 10 %}
+                                        <span class="pill pill-stock-safe"><i data-lucide="package-check" width="11" height="11"></i> 10+ Adet — Güvenli</span>
+                                    {% elif p.current_stock > 5 %}
+                                        <span class="pill pill-stock-warn"><i data-lucide="package" width="11" height="11"></i> {{ p.current_stock }} Adet</span>
+                                    {% elif p.current_stock > 0 %}
+                                        <span class="pill pill-stock-crit"><i data-lucide="package-x" width="11" height="11"></i> {{ p.current_stock }} Adet — Kritik</span>
+                                    {% elif p.current_stock == 0 %}
+                                        <span class="pill pill-stock-crit"><i data-lucide="x-circle" width="11" height="11"></i> Tükendi</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                            <div style="display:flex; gap:16px; align-items:center; margin-top: 10px;">
+                                <div style="font-size: 13px; color: var(--text-secondary); background:var(--bg-card-hover); padding:6px 12px; border-radius:8px; border:1px solid var(--border);">Güncel Fiyat: <strong style="color:var(--text-primary); font-size:15px;">{{ p.current_price }} ₺</strong></div>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Son Güncelleme</div>
+                            <div style="font-size: 13px; color: var(--text-secondary); display:flex; align-items:center; gap:6px;">
+                                <i data-lucide="clock" width="14" height="14"></i> {% if p.last_checked %}{{ p.last_checked.strftime('%d.%m.%Y %H:%M') }}{% else %}Veri Bekleniyor{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                        
+                        <!-- ANLIK STOK DURUMU -->
+                        <div style="background: var(--bg-card-hover); border-radius: 12px; padding: 18px; display: flex; align-items: center; gap: 16px; border: 1px solid var(--border);">
+                            <div style="background: {% if p.current_stock is not none and p.current_stock >= 10 %}rgba(16, 185, 129, 0.1){% elif p.current_stock is not none and p.current_stock > 0 %}rgba(245, 158, 11, 0.1){% else %}rgba(239, 68, 68, 0.1){% endif %}; color: {% if p.current_stock is not none and p.current_stock >= 10 %}var(--success){% elif p.current_stock is not none and p.current_stock > 0 %}var(--warning){% else %}var(--danger){% endif %}; padding: 14px; border-radius: 14px;">
+                                <i data-lucide="package" width="28" height="28"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom:2px;">Anlık Stok Durumu</div>
+                                {% if p.current_stock is not none and p.current_stock >= 10 %}
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <span style="font-size: 20px; font-weight: 800; color: var(--success);">10+ Adet</span>
+                                        <span style="font-size: 11px; font-weight: 800; background:rgba(16,185,129,0.15); color:var(--success); padding:4px 10px; border-radius:6px; border:1px solid rgba(16,185,129,0.3); letter-spacing:0.5px;">GÜVENLİ</span>
+                                    </div>
+                                {% elif p.current_stock is not none and p.current_stock > 5 %}
+                                    <div style="font-size: 24px; font-weight: 800; color: var(--warning); display:flex; align-items:center; gap:6px;">
+                                        {{ p.current_stock }} <span style="font-size: 14px; font-weight: normal; color: var(--text-muted);">Adet</span>
+                                    </div>
+                                {% elif p.current_stock is not none and p.current_stock > 0 %}
+                                    <div style="font-size: 24px; font-weight: 800; color: var(--danger); display:flex; align-items:center; gap:6px;">
+                                        {{ p.current_stock }} <span style="font-size: 14px; font-weight: normal; color: var(--text-muted);">Adet</span>
+                                        <span style="font-size: 11px; background:rgba(239,68,68,0.1); color:var(--danger); padding:3px 10px; border-radius:6px; font-weight:800; border:1px solid rgba(239,68,68,0.3); animation:pulse 2s infinite;">KRİTİK</span>
+                                    </div>
+                                {% elif p.current_stock is not none and p.current_stock == 0 %}
+                                    <div style="font-size: 20px; font-weight: 800; color: var(--danger); display:flex; align-items:center; gap:6px;">
+                                        🔴 Tükendi!
+                                    </div>
+                                {% else %}
+                                    <div style="font-size: 13px; color: var(--text-muted); line-height:1.5;">Veri çekilemiyor. Ürün stok bilgisi gizlenmiş veya tükenmiş olabilir.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- ERİME TRENDİ — Hibrit Analitik (Mikro / Makro) + Sparkline -->
+                        {% set _ana = analytics[p.id] %}
+                        <div style="background: var(--bg-card-hover); border-radius: 12px; padding: 18px; display: flex; align-items: flex-start; gap: 16px; border: 1px solid var(--border);">
+                            <div style="background: rgba(245, 158, 11, 0.1); color: var(--warning); padding: 14px; border-radius: 14px; flex-shrink:0;">
+                                <i data-lucide="activity" width="28" height="28"></i>
+                            </div>
+                            <div style="flex-grow:1; min-width:0;">
+                                <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom:4px;">Stok Erime Hızı</div>
+
+                                {# ── Net Erime Özeti ── #}
+                                {% if _ana.net_drain_amount is not none and _ana.net_drain_days %}
+                                    <div style="font-size: 16px; font-weight: 800; color: {% if _ana.net_drain_amount > 0 %}var(--danger){% else %}var(--success){% endif %}; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                        <i data-lucide="{% if _ana.net_drain_amount > 0 %}trending-down{% else %}shield-check{% endif %}" width="18" height="18"></i>
+                                        {% if _ana.net_drain_amount > 0 %}
+                                            Son {{ _ana.net_drain_days }} günde <span style="text-decoration:underline; text-underline-offset:3px;">{{ _ana.net_drain_amount }} adet</span> eridi
+                                        {% else %}
+                                            Son {{ _ana.net_drain_days }} günde erime yok — stabil
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+
+                                {# ── Mikro Trend Detayı ── #}
+                                {% if _ana.has_data and _ana.micro_text %}
+                                    {% set _mp = _ana.micro_per_day or 0 %}
+                                    <div style="font-size: 13px; font-weight: 600; color: {% if _mp > 1 %}var(--danger){% elif _mp > 0 %}var(--warning){% elif _mp < 0 %}var(--success){% else %}var(--text-secondary){% endif %}; display:flex; align-items:center; gap:5px; line-height:1.4;">
+                                        <span>{{ _ana.micro_text }}</span>
+                                    </div>
+                                    {% if _ana.spike %}
+                                        <div style="margin-top:6px; font-size:11px; font-weight:700; color:var(--danger); display:inline-flex; align-items:center; gap:4px; background:rgba(239,68,68,0.1); padding:3px 8px; border-radius:6px;">
+                                            <i data-lucide="flame" width="11" height="11"></i> SIÇRAMA TESPİT EDİLDİ
+                                        </div>
+                                    {% endif %}
+
+                                    <button type="button" class="detail-link" onclick="bmkOpenModal('modal-{{ p.id }}')">
+                                        <i data-lucide="info" width="12" height="12"></i> Daha Fazla / Detay
+                                    </button>
+                                {% else %}
+                                    <div style="font-size: 13px; color: var(--text-muted); padding-top:2px; line-height: 1.5;">Yeterli geçmiş veri yok.<br/>24 saat içinde trend hesaplanacak.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- STOK TRENDİ — Ayrı Kart (Son 5 Kayıt Sparkline) -->
+                        <div style="background: var(--bg-card-hover); border-radius: 12px; padding: 18px; display: flex; align-items: flex-start; gap: 16px; border: 1px solid var(--border);">
+                            <div style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; padding: 14px; border-radius: 14px; flex-shrink:0;">
+                                <i data-lucide="bar-chart-3" width="28" height="28"></i>
+                            </div>
+                            <div style="flex-grow:1; min-width:0;">
+                                <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom:8px;">Stok Trendi (Son 5 Kayıt)</div>
+                                {% if _ana.recent_stocks and _ana.recent_stocks|length >= 2 %}
+                                    {% set _bars = _ana.recent_stocks %}
+                                    {% set _max_s = _bars|max if _bars|max > 0 else 1 %}
+                                    <div style="display:flex; align-items:flex-end; gap:4px; height:44px; padding:4px 0;">
+                                        {% for sv in _bars %}
+                                            {% set _pct = ((sv / _max_s) * 100)|int if _max_s > 0 else 0 %}
+                                            {% set _pct = [_pct, 10]|max %}
+                                            <div style="flex:1; min-width:16px; max-width:32px; min-height:4px; height:{{ _pct }}%; border-radius:4px 4px 2px 2px; background:{% if sv <= 3 %}var(--danger){% elif sv <= 7 %}var(--warning){% else %}var(--success){% endif %}; opacity:0.9; transition:height 0.3s;" title="{{ sv }} adet"></div>
+                                        {% endfor %}
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                                        <span style="font-size:10px; color:var(--text-muted);">{{ _bars[0] }} adet</span>
+                                        <span style="font-size:10px; font-weight:700; color:{% if _bars[-1] <= 3 %}var(--danger){% elif _bars[-1] <= 7 %}var(--warning){% else %}var(--success){% endif %};">{{ _bars[-1] }} adet</span>
+                                    </div>
+                                {% else %}
+                                    <div style="font-size: 13px; color: var(--text-muted); line-height:1.5;">Henüz yeterli kayıt yok.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- RAKİP SİNYALLERİ — Stratejik Akıllı Sinyaller -->
+                        <div style="border-radius: 12px; padding: 18px; border: 1px dashed var(--border); display: flex; align-items: flex-start; gap: 16px; grid-column: 1 / -1; background: var(--bg-main);">
+                            <div style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; padding: 14px; border-radius: 14px; flex-shrink:0;">
+                                <i data-lucide="siren" width="28" height="28"></i>
+                            </div>
+                            <div style="flex-grow: 1;">
+                                <div style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 10px;">Stratejik Rakip Sinyalleri</div>
+                                {% set p_signals = signals[p.id] %}
+                                {% set p_alerts = alerts[p.id] %}
+                                <div style="display:flex; flex-direction:column; gap:10px;">
+                                    {% for s in p_signals %}
+                                        <div class="alert-banner alert-banner-{% if s.level == 'opportunity' %}opportunity{% elif s.level == 'threat' %}threat{% elif s.level == 'warning' %}warning{% else %}safe{% endif %}">
+                                            <i data-lucide="{{ s.icon }}" width="18" height="18" style="flex-shrink:0; margin-top:1px;"></i>
+                                            <div>
+                                                <div style="font-weight:800; margin-bottom:2px;">{{ s.title }}</div>
+                                                <div style="font-weight:500; opacity:0.92;">{{ s.body }}</div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                    {% for a in p_alerts %}
+                                        <div class="alert-banner {% if a.alert_type == 'opportunity' %}alert-banner-opportunity{% else %}alert-banner-threat{% endif %}">
+                                            <i data-lucide="{% if a.alert_type == 'opportunity' %}check-circle-2{% else %}alert-triangle{% endif %}" width="18" height="18" style="flex-shrink:0; margin-top:1px;"></i>
+                                            {{ a.message }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- MAKRO DETAY MODAL -->
+                <div class="bmk-modal-backdrop" id="modal-{{ p.id }}" onclick="if(event.target===this) bmkCloseModal('modal-{{ p.id }}')">
+                    <div class="bmk-modal" role="dialog" aria-modal="true">
+                        <h3><i data-lucide="bar-chart-3" width="20" height="20"></i> Makro Stok Erime Detayı</h3>
+                        <p style="font-size:13px; color:var(--text-muted); margin:0 0 8px 0;">{{ p.product_name[:70] if p.product_name else 'Ürün' }}</p>
+                        {% set _ana = analytics[p.id] %}
+                        {% if _ana.has_data %}
+                            {% if _ana.net_drain_amount is not none and _ana.net_drain_days %}
+                            <div class="modal-stat" style="border-color:{% if _ana.net_drain_amount > 0 %}rgba(239,68,68,0.3){% else %}rgba(16,185,129,0.3){% endif %}; background:{% if _ana.net_drain_amount > 0 %}rgba(239,68,68,0.05){% else %}rgba(16,185,129,0.05){% endif %};">
+                                <div class="label" style="color:{% if _ana.net_drain_amount > 0 %}var(--danger){% else %}var(--success){% endif %};">Net Stok Değişimi</div>
+                                <div class="value" style="color:{% if _ana.net_drain_amount > 0 %}var(--danger){% else %}var(--success){% endif %};">
+                                    {% if _ana.net_drain_amount > 0 %}Son {{ _ana.net_drain_days }} günde {{ _ana.net_drain_amount }} adet eridi{% else %}Son {{ _ana.net_drain_days }} günde erime yok{% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            <div class="modal-stat">
+                                <div class="label">Mikro Trend (Son 3 Gün)</div>
+                                <div class="value">{{ _ana.micro_text or 'Veri yetersiz' }}</div>
+                            </div>
+                            <div class="modal-stat">
+                                <div class="label">Makro Trend (Tüm Geçmiş)</div>
+                                <div class="value">{{ _ana.macro_text or 'Veri yetersiz' }}</div>
+                            </div>
+                            {% if _ana.macro_total_days %}
+                            <div class="modal-stat">
+                                <div class="label">Toplam Takip Süresi</div>
+                                <div class="value">{{ _ana.macro_total_days }} gün</div>
+                            </div>
+                            {% endif %}
+                            {% if _ana.macro_total_drained is not none %}
+                            <div class="modal-stat">
+                                <div class="label">Bu Süre Boyunca Toplam Erime</div>
+                                <div class="value">{{ _ana.macro_total_drained }} adet</div>
+                            </div>
+                            {% endif %}
+                            {% if _ana.spike %}
+                            <div class="modal-stat" style="border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.06);">
+                                <div class="label" style="color:var(--danger);">🔥 Sıçrama Uyarısı</div>
+                                <div class="value" style="font-size:14px; font-weight:600;">
+                                    Mikro hız ({{ _ana.micro_per_day }} adet/gün), makro ortalamadan ({{ _ana.macro_per_day }} adet/gün) %30+ daha yüksek. Rakip son 3 günde olağan dışı hızla stok eritiyor — kampanya, viralleşme veya toplu satın alma sinyali.
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="modal-stat">
+                                <div class="value" style="font-size:14px; font-weight:500; color:var(--text-muted);">Henüz yeterli geçmiş veri yok. En az 2 stok kaydı (≈2 saat) gerekli.</div>
+                            </div>
+                        {% endif %}
+                        <button class="modal-close-btn" onclick="bmkCloseModal('modal-{{ p.id }}')">Kapat</button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+<script>
+function bmkOpenModal(id) {
+    var el = document.getElementById(id);
+    if (el) { el.classList.add('is-open'); document.body.style.overflow = 'hidden'; }
+}
+function bmkCloseModal(id) {
+    var el = document.getElementById(id);
+    if (el) { el.classList.remove('is-open'); document.body.style.overflow = ''; }
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.bmk-modal-backdrop.is-open').forEach(function(m) {
+            m.classList.remove('is-open');
+        });
+        document.body.style.overflow = '';
+    }
+});
+</script>
+{% endblock %}

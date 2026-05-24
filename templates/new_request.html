@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}Yeni Analiz{% endblock %}
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon">B</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+        
+        
+        <nav>
+            <div class="nav-section">
+                <div class="nav-label">Ana Menü</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('new_request') }}" class="nav-link active"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                    <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
+                </a>
+                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">Hesabım</div>
+                <a href="{{ url_for('notifications') }}" class="nav-link">
+                    <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
+                    {% if unread_notifications > 0 %}
+                    <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info"><div class="user-avatar">{{ current_user.full_name[0] }}</div><div><div class="user-name">{{ current_user.full_name }}</div><div class="user-email">{{ current_user.email }}</div></div></div>
+                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Yeni Analiz Talebi ➕</h1>
+            <p class="page-subtitle">Analiz türünü seçin ve ürün URL'lerini girin</p>
+        </div>
+
+        {# ── HOTFIX 1.86: 5-kart responsive grid ──
+           4 kutu → 5 kutu geçişi. Auto-fit ile breakpoint'lere göre kademeli:
+             • ≥1200px → 5 kolon
+             • 900-1200px → 3 kolon
+             • 600-900px → 2 kolon
+             • <600px → 1 kolon
+           Mevcut .type-selector grid'ini inline style ile override eder. #}
+        <style>
+            .type-selector {
+                grid-template-columns: repeat(5, 1fr) !important;
+            }
+            @media (max-width: 1199px) {
+                .type-selector { grid-template-columns: repeat(3, 1fr) !important; }
+            }
+            @media (max-width: 899px) {
+                .type-selector { grid-template-columns: repeat(2, 1fr) !important; }
+            }
+            @media (max-width: 599px) {
+                .type-selector { grid-template-columns: 1fr !important; }
+            }
+            /* SEO modunda görünür/gizli alanlar — JS hook */
+            .seo-only { display: none; }
+            body[data-job-type="seo"] .seo-only { display: block; }
+            body[data-job-type="seo"] .hide-on-seo { display: none !important; }
+            /* HOTFIX 1.87: Takip Grubu Adı sadece track/seo modlarında görünür */
+            .group-name-only { display: none; }
+            body[data-job-type="track"] .group-name-only,
+            body[data-job-type="seo"]   .group-name-only { display: block; }
+        </style>
+
+        <form method="POST" class="card">
+            <!-- TYPE SELECTOR -->
+            <div class="form-group">
+                <label class="form-label">Analiz Türü</label>
+                <div class="type-selector">
+                    <label class="type-option">
+                        <input type="radio" name="job_type" value="price">
+                        <div class="type-card">
+                            <div class="icon" style="color:var(--accent); margin-bottom:12px;"><i data-lucide="coins" width="32" height="32" stroke-width="1.5"></i></div>
+                            <div class="label">Fiyat Analizi</div>
+                            <div class="desc">Rakip fiyat karşılaştırma</div>
+                        </div>
+                    </label>
+                    <label class="type-option">
+                        <input type="radio" name="job_type" value="review">
+                        <div class="type-card">
+                            <div class="icon">🗣️</div>
+                            <div class="label">Yorum Analizi</div>
+                            <div class="desc">Müşteri görüşleri analizi</div>
+                        </div>
+                    </label>
+                    <label class="type-option">
+                        <input type="radio" name="job_type" value="combined" checked>
+                        <div class="type-card">
+                            <div class="icon" style="color:var(--accent); margin-bottom:12px;"><i data-lucide="refresh-cw" width="32" height="32" stroke-width="1.5"></i></div>
+                            <div class="label">Kombine Analiz</div>
+                            <div class="desc">Fiyat + Yorum birlikte</div>
+                        </div>
+                    </label>
+                    <label class="type-option">
+                        <input type="radio" name="job_type" value="track">
+                        <div class="type-card">
+                            <div class="icon">🎯</div>
+                            <div class="label">Fiyat Takibi</div>
+                            <div class="desc">Sürekli fiyat izleme</div>
+                        </div>
+                    </label>
+                    {# HOTFIX 1.86: 5. kart — SEO Grup Takibi #}
+                    <label class="type-option">
+                        <input type="radio" name="job_type" value="seo">
+                        <div class="type-card">
+                            <div class="icon" style="color:#0ea5e9; margin-bottom:12px;"><i data-lucide="target" width="32" height="32" stroke-width="1.5"></i></div>
+                            <div class="label">SEO Grup Takibi</div>
+                            <div class="desc">Toplu organik sıra izleme</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- FAZ 3.5: Kombine Analiz → TY/HB-only uyarı banner'ı -->
+            <div style="margin-bottom:18px; padding:14px 18px; border-radius:12px;
+                        background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.04) 100%);
+                        border: 1px solid rgba(245,158,11,0.35);
+                        display:flex; gap:12px; align-items:flex-start;">
+                <div style="font-size:20px; line-height:1; flex-shrink:0;">⚠️</div>
+                <div style="font-size:13px; line-height:1.55; color:var(--text-primary);">
+                    <b style="color:#d97706;">Detaylı Yorum Analizi (Kombine Analiz)</b> modülü, veri doğruluğu için şu an
+                    <b>yalnızca Trendyol ve Hepsiburada</b> linklerini desteklemektedir.<br>
+                    <span style="opacity:0.8;">
+                        Diğer pazar yerlerini (N11, Çiçeksepeti, PttAVM, Amazon)
+                        <a href="{{ url_for('tracked_products') }}" style="color:#8b5cf6; font-weight:700; text-decoration:none;">Fiyat Takibi</a>
+                        modülüne ekleyerek <b>fiyat + yıldız puanı + YZ Danışman raporu</b> kapsamında
+                        izleyebilirsiniz.
+                    </span>
+                </div>
+            </div>
+
+            {# HOTFIX 1.87: Takip Grubu Adı — sadece track/seo modlarında görünür.
+               CSS hook: body[data-job-type] üzerinden visibility kontrolü. #}
+            <div class="form-group group-name-only" style="margin-bottom: 18px;">
+                <label class="form-label" style="display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="bookmark" width="15" height="15" style="color:#6366f1;"></i>
+                    Takip Grubu Adı
+                    <span style="font-weight:normal; color:var(--text-muted); margin-left:6px; font-size:13px;">(Opsiyonel)</span>
+                </label>
+                <input type="text" name="group_name" maxlength="100"
+                       placeholder="Örn: Yaz Kampanyası Rakipleri, Premium Mamalar, Bahar Koleksiyonu…"
+                       class="form-input"
+                       style="border-radius:10px;">
+                <div class="form-hint" style="margin-top:6px;">
+                    Bu grup için kendi stratejik adınız. Boş bırakırsanız ilk ürünün adından otomatik üretilir.
+                </div>
+            </div>
+
+            <!-- URL INPUT -->
+            <div class="form-group">
+                <label class="form-label">Ürün URL'leri</label>
+                <textarea id="urls-textarea" name="urls" class="form-textarea" placeholder="Her satıra bir URL yazın. İlk URL referans (baz alınan) ürünüdür.
+
+Örnek:
+https://www.trendyol.com/urun-adi-p-12345
+https://www.hepsiburada.com/urun-adi-pm-12345" rows="6" required></textarea>
+                <div class="form-hint">
+                    📌 İlk URL referans ürünüdür. <b>Kombine Analiz</b> için desteklenen: Trendyol, Hepsiburada.
+                    Fiyat Takibi için ek olarak: N11, Çiçeksepeti, PttAVM, Amazon TR. Maks. 10 URL.
+                </div>
+            </div>
+
+            {# HOTFIX 1.86: SEO modunda gizlenecek alan #}
+            <!-- COST INPUT (Optional) -->
+            <div class="form-group hide-on-seo" style="margin-top: 10px;">
+                <label class="form-label" style="display:flex;align-items:center;">Birim Maliyetiniz <span style="font-weight:normal;color:var(--text-muted);margin-left:6px;font-size:13px;">(Opsiyonel)</span></label>
+                <div style="position: relative; display: flex; align-items: center; max-width: 250px;">
+                    <span style="position: absolute; left: 16px; color: var(--text-muted); font-weight: 600;">₺</span>
+                    <input id="base-cost-input" type="number" step="0.01" name="base_cost" class="form-input" placeholder="0.00" style="padding-left: 36px; border-radius:10px; width:100%;">
+                </div>
+                <div class="form-hint" style="margin-top: 8px;">Kâr marjı analizi ve Buy Box tavsiyeleri için referans ürünün satış maliyetini girebilirsiniz.</div>
+            </div>
+
+            {# HOTFIX 1.86: SEO Grup Takibi'ne özel — Anahtar Kelimeler alanı #}
+            <div class="form-group seo-only" style="margin-top: 10px;">
+                <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+                    <i data-lucide="search" width="15" height="15" style="color:#0ea5e9;"></i>
+                    Aranacak Anahtar Kelimeler
+                    <span style="font-weight:normal;color:var(--text-muted);margin-left:6px;font-size:13px;">(Virgülle ayırarak yazın)</span>
+                </label>
+                <textarea name="seo_keywords" class="form-textarea"
+                          placeholder="Örn: akıllı mama kabı, otomatik mama kabı kedi, smart kedi mama kabı"
+                          rows="3"
+                          style="border-radius:10px;"></textarea>
+                <div class="form-hint" style="margin-top: 8px;">
+                    Trendyol & Hepsiburada aramalarında bu kelimeler için ürün sıralaması <b>tarihsel olarak</b> izlenir.
+                    Her kelime ayrı bir tarihsel grafik üretir.
+                </div>
+            </div>
+
+            <!-- API KEY (Optional) -->
+            <details class="advanced-settings-accordion">
+                <summary class="advanced-settings-summary">
+                    <span style="display:flex;align-items:center;"><i data-lucide="settings" width="16" height="16" style="margin-right:8px;"></i> Gelişmiş Ayarlar (Kendi API Anahtarını Kullan)</span>
+                    <i data-lucide="chevron-down" width="16" height="16" class="accordion-chevron"></i>
+                </summary>
+                <div class="advanced-settings-content">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" name="api_key" class="form-input" placeholder="sk-... (Llama-3 API Key)" style="background:var(--bg-card); border-color:var(--border);">
+                        <div class="form-hint" style="margin-top:10px;line-height:1.5;">Boş bırakırsanız sistemin ortak kaynakları kullanılır. Toplu talepler için Groq Cloud üzerinden kendi ücretsiz anahtarınızı temin etmeniz önerilir.</div>
+                    </div>
+                </div>
+            </details>
+
+            <button id="submit-btn" type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">
+                🚀 Analizi Başlat
+            </button>
+        </form>
+    </main>
+</div>
+
+{# ── HOTFIX 1.86: Form Dinamiği — analiz türüne göre alanları göster/gizle ──
+   • Mantık: radio değiştiğinde body[data-job-type] attribute güncellenir.
+   • CSS hook: `.seo-only` ve `.hide-on-seo` sınıfları, body data-job-type="seo"
+     olduğunda görünürlüğü tersine çevirir (block ↔ none).
+   • Buton metni de SEO'da "🔍 SEO Takibini Başlat" olarak değişir. #}
+<script>
+(function() {
+    function applyJobType(val) {
+        document.body.setAttribute('data-job-type', val || 'combined');
+        // Submit butonu metnini güncelle
+        var btn = document.getElementById('submit-btn');
+        if (btn) {
+            if (val === 'seo') {
+                btn.innerHTML = '🔍 SEO Takibini Başlat';
+            } else if (val === 'track') {
+                btn.innerHTML = '🎯 Fiyat Takibine Başla';
+            } else {
+                btn.innerHTML = '🚀 Analizi Başlat';
+            }
+        }
+        // SEO modunda anahtar kelimeler alanı zorunlu, diğerlerinde değil
+        var kwTextarea = document.querySelector('textarea[name="seo_keywords"]');
+        if (kwTextarea) {
+            if (val === 'seo') {
+                kwTextarea.setAttribute('required', 'required');
+            } else {
+                kwTextarea.removeAttribute('required');
+            }
+        }
+    }
+    // Sayfa açılışında varsayılan checked radio'yu uygula
+    var checked = document.querySelector('input[name="job_type"]:checked');
+    applyJobType(checked ? checked.value : 'combined');
+    // Radio değişimini dinle
+    document.querySelectorAll('input[name="job_type"]').forEach(function(r) {
+        r.addEventListener('change', function() {
+            if (this.checked) applyJobType(this.value);
+        });
+    });
+})();
+</script>
+{% endblock %}

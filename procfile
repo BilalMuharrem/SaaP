@@ -1,0 +1,5 @@
+# HOTFIX 1.36: web port 5005 (AirPlay 5000 ile çakışmasın), worker --pool=solo
+# (macOS prefork SIGTERM önleyici), .venv Python 3.11 kullanılıyor.
+web: PORT=5005 ./.venv/bin/python app.py
+worker: ./.venv/bin/python -m celery -A extensions.celery worker --pool=solo --loglevel=info
+beat: ./.venv/bin/python -m celery -A extensions.celery beat --loglevel=info --schedule=./celerybeat-schedule

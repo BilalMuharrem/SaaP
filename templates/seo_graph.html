@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+{% block title %}SEO Grafik Takibi{% endblock %}
+
+{% block head %}
+<style>
+    /* HOTFIX 1.84: SEO Grafik kartları */
+    .seo-graph-card {
+        margin-bottom: 32px;
+        padding: 0;
+        overflow: hidden;
+    }
+    .seo-graph-head {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: 12px;
+    }
+    .seo-graph-body {
+        padding: 16px 24px 24px;
+    }
+    .seo-keyword-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 12px; border-radius: 99px;
+        background: rgba(14, 165, 233, 0.10);
+        color: #0ea5e9;
+        border: 1px solid rgba(14, 165, 233, 0.28);
+        font-size: 12px; font-weight: 700;
+    }
+    .rank-summary {
+        display: flex; gap: 18px; flex-wrap: wrap;
+        padding: 12px 24px;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border);
+    }
+    .rank-tile {
+        display: flex; align-items: center; gap: 8px;
+    }
+    .rank-tile .num {
+        font-weight: 800; font-size: 16px;
+        color: var(--text-primary, var(--text));
+    }
+    .rank-tile .lbl {
+        color: var(--text-muted); font-weight: 600;
+    }
+    .seo-empty {
+        text-align: center; padding: 60px 20px;
+        color: var(--text-muted);
+    }
+    .seo-empty .emoji { font-size: 48px; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon">B</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+
+        <nav>
+            <div class="nav-section">
+                <div class="nav-label">Ana Menü</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo_graph') }}" class="nav-link active"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo_tracker') }}" class="nav-link"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                    <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
+                </a>
+                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">Hesabım</div>
+                <a href="{{ url_for('notifications') }}" class="nav-link">
+                    <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
+                    {% if unread_notifications > 0 %}
+                    <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ current_user.full_name[0] }}</div>
+                <div>
+                    <div class="user-name">{{ current_user.full_name }}</div>
+                    <div class="user-email">{{ current_user.email }}</div>
+                </div>
+            </div>
+                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header" style="margin-bottom:20px;">
+            <h1 class="page-title" style="display:flex; align-items:center; gap:10px;">
+                <i data-lucide="line-chart" width="28" height="28" style="color:#0ea5e9;"></i>
+                SEO Grafik Takibi
+            </h1>
+            <p class="page-subtitle">
+                Ürünlerinizin Trendyol & Hepsiburada arama sıralamasının tarihsel grafikleri.
+                <strong>Y ekseni ters</strong> — 1. sıra en üstte, 200. sıra en altta.
+            </p>
+        </div>
+
+        {# ── HOTFIX 1.90: Hızlı Ekle CTA Çubuğu — modalı açar ── #}
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:24px; padding:16px 22px; border-radius:14px; background:linear-gradient(135deg, rgba(14,165,233,0.08) 0%, rgba(37,99,235,0.04) 100%); border:1px solid rgba(14,165,233,0.25);">
+            <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
+                <div style="width:42px; height:42px; border-radius:12px; background:rgba(14,165,233,0.15); display:flex; align-items:center; justify-content:center; color:#0ea5e9; flex-shrink:0;">
+                    <i data-lucide="zap" width="20" height="20"></i>
+                </div>
+                <div style="min-width:0;">
+                    <div style="font-size:14px; font-weight:700; color:var(--text-primary);">Hızlı SEO Takibi Başlat</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Yeni bir kelime + ürün linki ekle — birkaç saniye içinde grafik oluşur.</div>
+                </div>
+            </div>
+            <button type="button" id="openQuickSeoModal" class="btn btn-primary btn-sm"
+                    style="background:#0ea5e9; border-color:#0ea5e9; padding:10px 18px; display:inline-flex; align-items:center; gap:8px; font-weight:700; white-space:nowrap;">
+                <i data-lucide="plus-circle" width="16" height="16"></i>
+                Yeni SEO Takibi Ekle
+            </button>
+        </div>
+
+        {% if grouped %}
+            {% for gkey, kt_list in grouped.items() %}
+            <div class="card seo-graph-card" id="group-{{ gkey }}">
+                <div class="seo-graph-head">
+                    <div>
+                        <h3 style="margin:0 0 6px 0; font-size:17px; font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+                            📦 <span>{{ group_labels.get(gkey, gkey) }}</span>
+                            {# HOTFIX 1.88: Grup adını düzenle butonu (sadece fiyat-takip gruplarına bağlı) #}
+                            {% if gkey != '__solo__' %}
+                            <button type="button" class="open-rename-modal-seo"
+                                    data-group-id="{{ gkey }}"
+                                    data-current-name="{{ group_labels.get(gkey, '') }}"
+                                    title="Grup adını düzenle"
+                                    style="background:transparent; border:none; cursor:pointer; padding:4px 6px; border-radius:6px; color:var(--text-muted); transition:all 0.15s; display:inline-flex; align-items:center;"
+                                    onmouseover="this.style.background='rgba(14,165,233,0.10)'; this.style.color='#0ea5e9';"
+                                    onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)';">
+                                <i data-lucide="pencil" width="14" height="14"></i>
+                            </button>
+                            {% endif %}
+                        </h3>
+                        <span class="seo-keyword-pill">
+                            🔍 {{ kt_list[0].keyword }}
+                        </span>
+                    </div>
+                    {# HOTFIX 1.85: Grup Sil butonu — fiyat takibi grupları için
+                       (gkey == '__solo__' ise tekil takipler birleşik şekildir; o blok için yok) #}
+                    {% if gkey != '__solo__' %}
+                    <form method="POST" action="{{ url_for('seo_graph_delete_group', group_id=gkey) }}"
+                          onsubmit="return confirm('Bu grubun SEO takibini ve tüm tarihsel sıralama verilerini kalıcı olarak silmek istediğinize emin misiniz?');"
+                          style="margin:0;">
+                        <button type="submit" class="btn btn-sm"
+                                style="background:rgba(239,68,68,0.10); color:#ef4444; border:1px solid rgba(239,68,68,0.30); padding:7px 14px; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
+                            <i data-lucide="trash-2" width="14" height="14"></i>
+                            Grup SEO'sunu Sil
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+
+                <div class="rank-summary">
+                    {% for kt in kt_list %}
+                    {% set ov = ((kt.current_page - 1) * 40 + kt.current_rank) if (kt.current_page > 0 and kt.current_rank > 0) else 0 %}
+                    <div class="rank-tile">
+                        <span class="lbl">URL #{{ loop.index }}:</span>
+                        {% if ov > 0 %}
+                        <span class="num" style="color:#0ea5e9;">#{{ ov }}</span>
+                        <span style="font-size:11px; color:var(--text-muted);">(s.{{ kt.current_page }})</span>
+                        {% else %}
+                        <span class="num" style="color:var(--text-muted);">—</span>
+                        <span style="font-size:11px; color:var(--text-muted);">bulunamadı</span>
+                        {% endif %}
+                        {# HOTFIX 1.85: Tekil tracker silme — ufak ✕ butonu #}
+                        <form method="POST" action="{{ url_for('seo_graph_delete_tracker', tracker_id=kt.id) }}"
+                              onsubmit="return confirm('Bu URL\'nin SEO takibini silmek istediğinize emin misiniz?');"
+                              style="margin:0 0 0 4px; display:inline-flex;">
+                            <button type="submit"
+                                    title="Bu ürünün SEO takibini sil"
+                                    style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); padding:2px 6px; border-radius:6px; transition:all 0.15s; display:inline-flex; align-items:center;"
+                                    onmouseover="this.style.background='rgba(239,68,68,0.12)'; this.style.color='#ef4444';"
+                                    onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)';">
+                                <i data-lucide="x" width="14" height="14"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="seo-graph-body">
+                    <div id="seo-chart-{{ gkey }}"
+                         data-raw-chart="{{ chart_data[gkey]|e }}"
+                         style="width:100%; min-height: 360px;"></div>
+                </div>
+            </div>
+            {% endfor %}
+
+        {% else %}
+        <div class="card seo-empty">
+            <div class="emoji">📊</div>
+            <h3 style="margin:0 0 8px 0; font-weight:700;">Henüz SEO Takibi Başlatılmamış</h3>
+            <p style="margin:0 0 18px 0;">
+                Fiyat Takibi sayfasından bir grubun "🔍 Grubu SEO Araması Yap" butonuna tıklayarak başlayın.
+            </p>
+            <a href="{{ url_for('tracked_products') }}" class="btn btn-primary">
+                <i data-lucide="crosshair" width="16" height="16" style="margin-right:6px;"></i>
+                Fiyat Takibi'ne Git
+            </a>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof ApexCharts === 'undefined') return;
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var trMonths = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+    document.querySelectorAll('[id^="seo-chart-"]').forEach(function(el) {
+        var raw;
+        try { raw = JSON.parse(el.getAttribute('data-raw-chart')); } catch (e) { return; }
+        if (!raw || raw.length === 0) {
+            el.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">Veri bekleniyor — ilk tarama tamamlandığında grafik burada görünecek.</div>';
+            return;
+        }
+
+        // Verideki tüm gerçek sıraları topla (null hariç) — min/max için
+        var allRanks = [];
+        raw.forEach(function(s) {
+            (s.data || []).forEach(function(d) {
+                if (d && typeof d[1] === 'number' && d[1] > 0) allRanks.push(d[1]);
+            });
+        });
+        if (allRanks.length === 0) {
+            el.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">Henüz tarama tamamlanmadı. Birkaç dakika içinde grafik oluşacak.</div>';
+            return;
+        }
+        var maxRank = Math.max.apply(null, allRanks);
+        // Y-axis: 1 (en iyi) → maxRank+5 (en kötü). reversed:true ile 1 en üstte
+        var yMax = Math.max(maxRank + 5, 10);
+
+        var options = {
+            series: raw,
+            chart: {
+                type: 'line',
+                height: 380,
+                width: '100%',
+                background: 'transparent',
+                fontFamily: 'Plus Jakarta Sans, Inter, sans-serif',
+                toolbar: { show: true, autoSelected: 'zoom' },
+                animations: { enabled: true, easing: 'easeoutcubic', speed: 450 },
+                redrawOnParentResize: true,
+                redrawOnWindowResize: true
+            },
+            theme: { mode: isDark ? 'dark' : 'light' },
+            colors: ['#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1'],
+            stroke: {
+                curve: 'stepline',
+                width: 3,
+                lineCap: 'round'
+            },
+            markers: {
+                size: 4,
+                strokeWidth: 2,
+                strokeColors: '#ffffff',
+                hover: { size: 7 }
+            },
+            xaxis: {
+                type: 'datetime',
+                labels: {
+                    style: { colors: isDark ? '#9ca3af' : '#64748b', fontSize: '12px', fontWeight: 500 },
+                    format: 'dd MMM',
+                    datetimeUTC: false,
+                    rotate: 0,
+                    hideOverlappingLabels: true
+                },
+                axisBorder: { show: false },
+                axisTicks: { show: false },
+                tooltip: { enabled: false },
+                crosshairs: {
+                    show: true,
+                    stroke: { color: isDark ? '#475569' : '#94a3b8', width: 1, dashArray: 4 }
+                }
+            },
+            yaxis: {
+                // ── KRİTİK: ters Y ekseni — 1. sıra EN ÜSTTE ──
+                reversed: true,
+                min: 1,
+                max: yMax,
+                tickAmount: Math.min(8, yMax),
+                labels: {
+                    formatter: function(val) { return '#' + Math.floor(val); },
+                    style: { colors: isDark ? '#9ca3af' : '#64748b', fontSize: '12px', fontWeight: 600 }
+                },
+                title: {
+                    text: 'Sıralama (1 = en iyi)',
+                    style: { color: isDark ? '#94a3b8' : '#475569', fontSize: '12px', fontWeight: 700 }
+                },
+                axisBorder: {
+                    show: true,
+                    color: isDark ? 'rgba(71,85,105,0.5)' : 'rgba(148,163,184,0.45)'
+                }
+            },
+            grid: {
+                borderColor: isDark ? 'rgba(51,65,85,0.4)' : 'rgba(148,163,184,0.3)',
+                strokeDashArray: 4,
+                padding: { left: 15, right: 30, top: 30, bottom: 0 }
+            },
+            legend: {
+                show: true,
+                position: 'top',
+                horizontalAlign: 'left',
+                floating: false,
+                offsetY: 0,
+                fontSize: '13px',
+                fontWeight: 600,
+                labels: { colors: isDark ? '#f8fafc' : '#0f172a' },
+                markers: { width: 10, height: 10, radius: 3 },
+                itemMargin: { horizontal: 10, vertical: 5 }
+            },
+            tooltip: {
+                enabled: true,
+                shared: true,
+                intersect: false,
+                theme: isDark ? 'dark' : 'light',
+                style: { fontSize: '12px' },
+                x: {
+                    formatter: function(val) {
+                        var d = new Date(val);
+                        return d.getDate() + ' ' + trMonths[d.getMonth()] + ' ' + d.getFullYear() + ' — ' +
+                               String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+                    }
+                },
+                y: {
+                    formatter: function(val) {
+                        if (val == null || isNaN(val)) return 'Bulunamadı';
+                        return '#' + Math.floor(val);
+                    }
+                }
+            }
+        };
+
+        var chart = new ApexCharts(el, options);
+        chart.render();
+
+        // SVG native tooltip kalıntılarını temizle (gri "line chart with X data series" kutusu)
+        setTimeout(function() {
+            try {
+                el.querySelectorAll('title, desc').forEach(function(t) { t.remove(); });
+            } catch (e) {}
+        }, 300);
+    });
+});
+</script>
+
+{# ── HOTFIX 1.90: Hızlı SEO Takibi Ekleme Modalı ──
+   Aynı tasarım diliyle (mavi tonlu) modal. Form action mevcut /seo-tracker
+   POST handler'ına gider (return_to=seo_graph ile sayfa içinde kalır).
+   Backend .delay() ile anında tarama tetikler → kullanıcı sayfayı yenilemeden
+   grafiğin oluşması için tıklayabilir. #}
+<div id="quickSeoModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99998; align-items:center; justify-content:center;">
+    <div style="background:var(--bg-card, #fff); border-radius:16px; max-width:520px; width:92%; padding:28px; box-shadow:0 25px 60px rgba(0,0,0,0.35); border:1px solid var(--border);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <div style="width:42px; height:42px; border-radius:12px; background:rgba(14,165,233,0.15); display:flex; align-items:center; justify-content:center; color:#0ea5e9;">
+                <i data-lucide="search" width="22" height="22"></i>
+            </div>
+            <div>
+                <h3 style="margin:0; font-size:18px; font-weight:800;">Yeni SEO Takibi Ekle</h3>
+                <p style="margin:2px 0 0 0; font-size:13px; color:var(--text-muted);">Anahtar kelime için ürün sıralamasını izlemeye al</p>
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('seo_tracker') }}" style="margin-top:18px; display:flex; flex-direction:column; gap:14px;">
+            <input type="hidden" name="return_to" value="seo_graph">
+
+            {# Platform #}
+            <div>
+                <label class="form-label" style="font-size:13px; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="globe" width="14" height="14"></i>
+                    Platform
+                </label>
+                <select name="platform" required
+                        style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid var(--border); font-size:14px; background:var(--bg-primary, transparent); color:var(--text-primary);">
+                    <option value="Trendyol" selected>🟠 Trendyol</option>
+                    <option value="Hepsiburada" disabled>🟣 Hepsiburada (yakında)</option>
+                </select>
+            </div>
+
+            {# Anahtar kelime #}
+            <div>
+                <label class="form-label" style="font-size:13px; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="search" width="14" height="14"></i>
+                    Aranacak Kelime
+                </label>
+                <input type="text" name="keyword" required minlength="2" maxlength="200"
+                       placeholder="Örn: akıllı mama kabı"
+                       style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid var(--border); font-size:14px; background:var(--bg-primary, transparent); color:var(--text-primary);">
+            </div>
+
+            {# Hedef ürün URL #}
+            <div>
+                <label class="form-label" style="font-size:13px; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="link" width="14" height="14"></i>
+                    Hedef Ürün Linki
+                </label>
+                <input type="url" name="target_url" required
+                       placeholder="https://www.trendyol.com/urun-adi-p-12345"
+                       style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid var(--border); font-size:13px; background:var(--bg-primary, transparent); color:var(--text-primary);">
+            </div>
+
+            {# Grup adı opsiyonel #}
+            <div>
+                <label class="form-label" style="font-size:13px; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="bookmark" width="14" height="14"></i>
+                    Takip Grubu Adı <span style="font-weight:normal; color:var(--text-muted); font-size:12px;">(Opsiyonel)</span>
+                </label>
+                <input type="text" name="group_label" maxlength="100"
+                       placeholder="Örn: Yaz Kampanyası, Premium Mamalar…"
+                       style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid var(--border); font-size:14px; background:var(--bg-primary, transparent); color:var(--text-primary);">
+                <p style="font-size:11px; color:var(--text-muted); margin:6px 0 0 0;">
+                    Boş bırakırsanız <b>Bireysel Aramalar</b> grubuna eklenir.
+                </p>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:6px;">
+                <button type="button" onclick="closeQuickSeoModal()" class="btn btn-outline btn-sm" style="padding:9px 16px;">İptal</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="padding:9px 18px; background:#0ea5e9; border-color:#0ea5e9; font-weight:700;">
+                    🚀 Takibi Başlat
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function() {
+    var btn = document.getElementById('openQuickSeoModal');
+    var modal = document.getElementById('quickSeoModal');
+    if (!btn || !modal) return;
+    btn.addEventListener('click', function() {
+        modal.style.display = 'flex';
+        setTimeout(function() {
+            var kw = modal.querySelector('input[name="keyword"]');
+            if (kw) kw.focus();
+        }, 100);
+    });
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeQuickSeoModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'flex') closeQuickSeoModal();
+    });
+})();
+function closeQuickSeoModal() {
+    document.getElementById('quickSeoModal').style.display = 'none';
+}
+</script>
+
+{# ── HOTFIX 1.88: Grup Adı Düzenleme Modalı (seo_graph varyantı) ── #}
+<div id="renameModalSeo" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99998; align-items:center; justify-content:center;">
+    <div style="background:var(--bg-card, #fff); border-radius:16px; max-width:480px; width:90%; padding:28px; box-shadow:0 25px 60px rgba(0,0,0,0.35); border:1px solid var(--border);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <div style="width:40px; height:40px; border-radius:10px; background:rgba(14,165,233,0.12); display:flex; align-items:center; justify-content:center; color:#0ea5e9;">
+                <i data-lucide="pencil" width="20" height="20"></i>
+            </div>
+            <div>
+                <h3 style="margin:0; font-size:18px; font-weight:800;">Grup Adını Düzenle</h3>
+                <p style="margin:2px 0 0 0; font-size:13px; color:var(--text-muted);">Bu grubun SEO grafiğinde görünecek ad</p>
+            </div>
+        </div>
+        <form id="renameModalSeoForm" method="POST" style="margin-top:18px;">
+            <input type="hidden" name="return_to" value="seo-graph">
+            <label class="form-label" style="font-size:13px; font-weight:600; margin-bottom:6px; display:block;">
+                Yeni Ad
+            </label>
+            <input type="text" name="group_name" id="renameInputSeo" maxlength="100"
+                   placeholder="Örn: Yaz Kampanyası Rakipleri, Premium Mamalar…"
+                   style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid var(--border); font-size:14px; background:var(--bg-primary, transparent); color:var(--text-primary);">
+            <p style="font-size:12px; color:var(--text-muted); margin:8px 0 0 0;">
+                Boş bırakırsanız ilk ürünün adından otomatik üretilen başlık tekrar kullanılır.
+            </p>
+            {# HOTFIX 1.97: SEO keyword senkronizasyon uyarısı #}
+            <div style="margin-top:12px; padding:10px 12px; background:rgba(14,165,233,0.08); border-left:3px solid #0ea5e9; border-radius:4px; font-size:12px; color:var(--text-secondary, var(--text-primary)); line-height:1.5;">
+                <strong style="color:#0ea5e9;">🔍 SEO Senkronizasyonu:</strong>
+                Bu gruba bağlı tüm anahtar kelime takipleri yeni adla güncellenir ve
+                bir sonraki tarama yeni kelimeyle yapılır. Eski tarihsel sıralama korunur.
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+                <button type="button" onclick="closeRenameModalSeo()" class="btn btn-outline btn-sm" style="padding:9px 16px;">İptal</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="padding:9px 18px; background:#0ea5e9; border-color:#0ea5e9;">
+                    Kaydet
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function() {
+    var modal = document.getElementById('renameModalSeo');
+    var form = document.getElementById('renameModalSeoForm');
+    var inp = document.getElementById('renameInputSeo');
+    if (!modal || !form) return;
+    document.querySelectorAll('.open-rename-modal-seo').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var gid = btn.getAttribute('data-group-id');
+            var current = btn.getAttribute('data-current-name') || '';
+            form.setAttribute('action', '/tracked-products/group/' + gid + '/rename');
+            inp.value = current;
+            modal.style.display = 'flex';
+            setTimeout(function() { inp.focus(); inp.select(); }, 100);
+        });
+    });
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeRenameModalSeo();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'flex') closeRenameModalSeo();
+    });
+})();
+function closeRenameModalSeo() {
+    document.getElementById('renameModalSeo').style.display = 'none';
+}
+</script>
+{% endblock %}

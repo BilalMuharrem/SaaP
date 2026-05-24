@@ -1,0 +1,187 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <h1 class="page-title">Genel Bakış 📊</h1>
+    <p class="page-subtitle">Sistem durumu ve son aktiviteler</p>
+</div>
+
+<!-- STATS -->
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+    <!-- MRR CARD -->
+    <div class="stat-card" style="position:relative; overflow:hidden; background:var(--bg-card); border-left:4px solid #10b981;">
+        <div style="position:absolute; right:-10px; bottom:-20px; opacity:0.04; transform:scale(2);">
+            <i data-lucide="trending-up" width="100" height="100"></i>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+                <div class="stat-label" style="color:var(--text-secondary); margin-bottom:8px;">Aylık Tahmini Gelir (MRR)</div>
+                <div class="stat-value" style="font-size:28px; color:var(--text-primary);">{{ "{:,.0f}".format(mrr) }} ₺</div>
+            </div>
+            {% if mrr_growth > 0 %}
+            <div style="background:rgba(16,185,129,0.1); color:#10b981; padding:4px 8px; border-radius:8px; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700;">
+                <i data-lucide="arrow-up-right" width="14" height="14"></i> %{{ mrr_growth }}
+            </div>
+            {% elif mrr_growth == 0 %}
+            <div style="background:rgba(148,163,184,0.1); color:#94a3b8; padding:4px 8px; border-radius:8px; font-size:12px; font-weight:700;">
+                Sabit
+            </div>
+            {% else %}
+            <div style="background:rgba(239,68,68,0.1); color:#ef4444; padding:4px 8px; border-radius:8px; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700;">
+                <i data-lucide="arrow-down-right" width="14" height="14"></i> %{{ mrr_growth|abs }}
+            </div>
+            {% endif %}
+        </div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Geçen aya göre büyüme</div>
+    </div>
+
+    <!-- ACTIVE CUSTOMERS -->
+    <div class="stat-card" style="position:relative; overflow:hidden; background:var(--bg-card); border-left:4px solid var(--accent);">
+        <div style="position:absolute; right:-10px; bottom:-20px; opacity:0.04; transform:scale(2);">
+            <i data-lucide="users" width="100" height="100"></i>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+                <div class="stat-label" style="color:var(--text-secondary); margin-bottom:8px;">Aktif Müşteri</div>
+                <div class="stat-value" style="font-size:28px; color:var(--text-primary);">{{ active_customers }}</div>
+            </div>
+            <div style="background:rgba(16,185,129,0.1); color:#10b981; padding:4px 8px; border-radius:8px; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700;">
+                <i data-lucide="arrow-up-right" width="14" height="14"></i> %5
+            </div>
+        </div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Toplam {{ total_customers }} kayıtlı kullanıcı</div>
+    </div>
+
+    <!-- PENDING APPROVALS -->
+    <div class="stat-card" style="position:relative; overflow:hidden; background:var(--bg-card); border-left:4px solid var(--warning);">
+        <div style="position:absolute; right:-10px; bottom:-20px; opacity:0.04; transform:scale(2);">
+            <i data-lucide="clock" width="100" height="100"></i>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+                <div class="stat-label" style="color:var(--text-secondary); margin-bottom:8px;">Bekleyen Onay</div>
+                <div class="stat-value" style="font-size:28px; color:var(--warning);">{{ pending_customers }}</div>
+            </div>
+            {% if pending_customers > 0 %}
+            <div style="background:rgba(245,158,11,0.1); color:var(--warning); padding:4px 8px; border-radius:8px; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700;">
+                Aksiyon Bekliyor
+            </div>
+            {% else %}
+            <div style="background:rgba(16,185,129,0.1); color:#10b981; padding:4px 8px; border-radius:8px; display:flex; align-items:center; font-size:12px; font-weight:700;">
+                Tümü Onaylı
+            </div>
+            {% endif %}
+        </div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">İncelenmeyi bekleyen talepler</div>
+    </div>
+
+    <!-- SYSTEM LOAD -->
+    <div class="stat-card" style="position:relative; overflow:hidden; background:var(--bg-card); border-left:4px solid var(--info);">
+        <div style="position:absolute; right:-10px; bottom:-20px; opacity:0.04; transform:scale(2);">
+            <i data-lucide="activity" width="100" height="100"></i>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+                <div class="stat-label" style="color:var(--text-secondary); margin-bottom:8px;">Sistem Yükü</div>
+                <div class="stat-value" style="font-size:28px; color:var(--info);">%{{ system_load }}</div>
+            </div>
+            <div style="background:rgba(56,189,248,0.1); color:var(--info); padding:4px 8px; border-radius:8px; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700;">
+                <i data-lucide="server" width="14" height="14"></i> {% if system_load < 50 %}Optimizasyon İyi{% elif system_load < 80 %}Normal{% else %}Yüksek Yük{% endif %}
+            </div>
+        </div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">{{ running_jobs }} arka plan görevi çalışıyor</div>
+    </div>
+</div>
+
+<!-- PLAN DISTRIBUTION -->
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:16px; margin-bottom:20px;">
+        <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+            <i data-lucide="pie-chart" width="20" height="20" color="var(--accent)"></i> Paket Dağılımı
+        </h3>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:20px;">
+        {% for plan in plan_distribution %}
+        {% set pct = (plan.count / active_customers * 100)|round|int if active_customers and active_customers > 0 else 0 %}
+        <div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+                <div style="font-weight:600; font-size:14px; color:var(--text-primary);">{{ plan.name }}</div>
+                <div style="font-size:13px; color:var(--text-secondary);">
+                    <span style="font-weight:700; color:var(--text-primary);">{{ plan.count }}</span> hesap <span style="opacity:0.6;">(%{{ pct }})</span>
+                </div>
+            </div>
+            <div style="width:100%; height:8px; background:var(--bg-input); border-radius:99px; overflow:hidden;">
+                <!-- Modern Progress Bar Fill -->
+                <div style="--progress: {{ pct }}%; width: var(--progress); height:100%; background:linear-gradient(90deg, var(--accent), #818cf8); border-radius:99px; transition:width 1s ease-in-out;"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- PENDING APPROVALS -->
+{% if pending_users %}
+<div class="card" style="margin-bottom:24px;border-left:3px solid var(--warning);">
+    <div class="card-header">
+        <h3 class="card-title">⏳ Onay Bekleyen Kullanıcılar</h3>
+        {# HOTFIX 1.63: target="_blank" kaldırıldı — aynı sekmede ilerle #}
+        <a href="{{ url_for('admin_customers') }}" class="btn btn-secondary btn-sm">Tümünü Gör →</a>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Ad Soyad</th><th>E-posta</th><th>Firma</th><th>Kayıt</th><th>İşlem</th></tr></thead>
+            <tbody>
+                {% for user in pending_users %}
+                <tr>
+                    <td style="font-weight:600;color:var(--text-primary);">{{ user.full_name }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.company or '-' }}</td>
+                    <td>{{ user.created_at|timeago }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin_approve_customer', user_id=user.id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-success btn-sm">✅ Onayla</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- RECENT JOBS -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Son Analizler</h3>
+        {# HOTFIX 1.63: target="_blank" kaldırıldı — aynı sekmede ilerle #}
+        <a href="{{ url_for('admin_jobs') }}" class="btn btn-secondary btn-sm">Tümünü Gör →</a>
+    </div>
+    {% if recent_jobs %}
+    <div class="table-wrapper scrollable-dashboard">
+        <table>
+            <thead><tr><th>#</th><th>Müşteri</th><th>Tür</th><th>Durum</th><th>Tarih</th><th>Süre</th></tr></thead>
+            <tbody>
+                {% for job in recent_jobs %}
+                <tr>
+                    <td style="color:var(--text-muted);">{{ job.id }}</td>
+                    <td style="font-weight:600;color:var(--text-primary);">{{ job.user.full_name if job.user else '—' }}</td>
+                    <td>{{ job.type_label }}</td>
+                    <td>
+                        {% if job.status == 'completed' %}<span class="badge badge-success">{{ job.status_label }}</span>
+                        {% elif job.status == 'running' %}<span class="badge badge-info">{{ job.status_label }}</span>
+                        {% elif job.status == 'failed' %}<span class="badge badge-danger">{{ job.status_label }}</span>
+                        {% else %}<span class="badge badge-muted">{{ job.status_label }}</span>{% endif %}
+                    </td>
+                    <td>{{ job.created_at|timeago }}</td>
+                    <td>{{ job.duration_str }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px;color:var(--text-muted);">Henüz analiz yok.</div>
+    {% endif %}
+</div>
+{% endblock %}

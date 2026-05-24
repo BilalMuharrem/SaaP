@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Hata {{ code }}{% endblock %}
+{% block body %}
+<div class="error-page">
+    <div>
+        <div class="error-code">{{ code }}</div>
+        <div class="error-message">{{ message }}</div>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">← Ana Sayfaya Dön</a>
+    </div>
+</div>
+{% endblock %}

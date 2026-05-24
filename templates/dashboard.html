@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% block title %}Panel{% endblock %}
+{% block head %}
+<style>
+    .alert-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 16px 18px;
+        border-radius: 14px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .alert-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    .alert-card-opportunity {
+        background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.03));
+        border: 1px solid rgba(16,185,129,0.2);
+    }
+    .alert-card-threat {
+        background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.03));
+        border: 1px solid rgba(239,68,68,0.2);
+    }
+    .alert-icon-box {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .alert-icon-opportunity {
+        background: rgba(16,185,129,0.15);
+    }
+    .alert-icon-threat {
+        background: rgba(239,68,68,0.15);
+    }
+</style>
+{% endblock %}
+{% block body %}
+<div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon">B</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+        
+        
+        <nav>
+            <div class="nav-section">
+                <div class="nav-label">Ana Menü</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link active"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                    <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
+                </a>
+                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">Hesabım</div>
+                <a href="{{ url_for('notifications') }}" class="nav-link">
+                    <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
+                    {% if unread_notifications > 0 %}
+                    <span class="badge notif-live-badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ current_user.full_name[0] }}</div>
+                <div>
+                    <div class="user-name">{{ current_user.full_name }}</div>
+                    <div class="user-email">{{ current_user.email }}</div>
+                </div>
+            </div>
+                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main-content">
+        <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <h1 class="page-title"><i data-lucide="sparkles" style="width:28px; height:28px; margin-right:12px; vertical-align:-4px; color: var(--accent); display:inline-block;"></i> Analiz Panosu </h1>
+                <p class="page-subtitle">Zamanlı verilerle e-ticaret rekabet analizlerinizi buradan yönetin</p>
+            </div>
+            
+            <!-- Global Status Indicator -->
+            <div id="header-status" class="header-status">
+                <div id="header-pulse-dot" class="pulse-dot idle"></div>
+                <span id="header-status-text">Sistem Bağlanıyor...</span>
+            </div>
+        </div>
+        
+        <script>
+        // HOTFIX 1.42: Tüm polling 20 saniyeye sabitlendi — sunucu log spam'i bitti
+        setInterval(() => {
+            fetch('/api/system-status?_t=' + new Date().getTime())
+            .then(r => r.json())
+            .then(data => {
+                const dot = document.getElementById('header-pulse-dot');
+                const txt = document.getElementById('header-status-text');
+                if (data.is_active) {
+                    dot.className = 'pulse-dot running';
+                    txt.textContent = data.text;
+                } else {
+                    dot.className = 'pulse-dot idle';
+                    txt.textContent = data.text;
+                }
+            }).catch(e=>{});
+        }, 20000);  // HOTFIX 1.42: 20s sabitlendi
+
+        // ---- Live Dashboard Refresh: auto-update job statuses & notification badge ----
+        setInterval(() => {
+            // 1. Update notification badge count
+            fetch('/api/notifications/unread-count?_t=' + new Date().getTime())
+            .then(r => r.json())
+            .then(data => {
+                const badges = document.querySelectorAll('.notif-live-badge');
+                badges.forEach(b => {
+                    if (data.count > 0) {
+                        b.textContent = data.count;
+                        b.style.display = 'inline-block';
+                    } else {
+                        b.style.display = 'none';
+                    }
+                });
+            }).catch(e => {});
+
+            // 2. Check if any pending/running jobs have completed → reload table
+            const pendingBadges = document.querySelectorAll('.badge-info, .badge-muted');
+            if (pendingBadges.length > 0) {
+                fetch('/api/dashboard/jobs-status?_t=' + new Date().getTime())
+                .then(r => r.json())
+                .then(data => {
+                    if (data.has_changes) {
+                        window.location.reload();
+                    }
+                }).catch(e => {});
+            }
+        }, 20000);  // HOTFIX 1.42: 20s sabitlendi (jobs-status + notifications)
+        </script>
+
+        <!-- QUOTA BAR -->
+        <div class="quota-bar" style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="quota-header" style="flex:1;">
+                    <span class="quota-label">
+                        {{ current_user.plan.display_name if current_user.plan else 'Ücretsiz Deneme' }}
+                        — {{ current_user.period_label }} analiz hakkı
+                    </span>
+                    <span class="quota-value">
+                        {% if current_user.remaining_quota >= 999 %}
+                            ∞ Sınırsız
+                        {% else %}
+                            {{ current_user.remaining_quota }} hak kaldı
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="quota-header" style="flex:1; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 20px; margin-left: 20px;">
+                    <span class="quota-label">Takip Kotası</span>
+                    <span class="quota-value">
+                        {% if current_user.remaining_tracked_quota >= 999 %}
+                            ∞ Sınırsız
+                        {% else %}
+                            {{ current_user.remaining_tracked_quota }} / {{ current_user.plan.max_tracked_products if current_user.plan else 20 }}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            
+            {% if current_user.is_trial_active %}
+            <div style="font-size:12px;color:var(--warning);margin-top:4px; font-weight:600;">⏰ Deneme süreniz: {{ current_user.trial_days_left }} gün kaldı</div>
+            {% endif %}
+        </div>
+
+        <!-- QUICK ACTION BAR -->
+        <form action="{{ url_for('new_request') }}" method="GET" class="quick-action-bar">
+            <i data-lucide="link" class="quick-action-icon" width="24" height="24"></i>
+            <input type="text" name="url" placeholder="Trendyol veya Hepsiburada ürün linkini yapıştırın ve anında analiz başlatın..." class="premium-input">
+            <button type="submit" class="btn btn-primary" style="padding: 10px 24px; white-space: nowrap;"><i data-lucide="zap" width="18" height="18" style="margin-right:6px;"></i> Hızlı Analiz</button>
+        </form>
+
+        <!-- STATS -->
+        <div class="stats-grid">
+            <div class="stat-card accent">
+                <div class="stat-icon" style="color:var(--accent);"><i data-lucide="bar-chart-2" stroke-width="2.5"></i></div>
+                <div class="stat-value">{{ total_jobs }}</div>
+                <div class="stat-label">Toplam Analiz</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-icon" style="color:var(--success);"><i data-lucide="check-circle-2" stroke-width="2.5"></i></div>
+                <div class="stat-value">{{ completed_jobs }}</div>
+                <div class="stat-label">Tamamlanan</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-icon" style="color:var(--warning);"><i data-lucide="hourglass" stroke-width="2.5"></i></div>
+                <div class="stat-value">{% if current_user.remaining_quota >= 999 %}∞{% else %}{{ current_user.remaining_quota }}{% endif %}</div>
+                <div class="stat-label">Analiz Hakkı</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #8b5cf6;">
+                <div class="stat-icon" style="color:#8b5cf6;"><i data-lucide="target" stroke-width="2.5"></i></div>
+                <div class="stat-value">{% if current_user.remaining_tracked_quota >= 999 %}∞{% else %}{{ current_user.remaining_tracked_quota }}{% endif %}</div>
+                <div class="stat-label">Takip Kotası</div>
+            </div>
+        </div>
+
+        <!-- ─── FAZ 3.1: Finansal Komuta Merkezi (3'lü renkli kart satırı) ─── -->
+        <!-- Mevcut stats-grid ile aynı responsive grid mantığı; renk şeritleri ve glassmorphism dokunuşu -->
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: -8px;">
+            <!-- 🟢 Kârlı Fırsatlar -->
+            <a href="{{ url_for('tracked_products') }}" style="text-decoration:none; color:inherit;">
+            <div class="stat-card" style="position:relative; overflow:hidden; border-left: 4px solid #10b981; background: linear-gradient(135deg, rgba(16,185,129,0.10) 0%, rgba(16,185,129,0.02) 100%);">
+                <div class="stat-icon" style="color:#10b981;"><i data-lucide="trending-up" stroke-width="2.5"></i></div>
+                <div class="stat-value" style="color:#059669;">{{ profitable_count }}</div>
+                <div class="stat-label" style="font-weight:700;">🟢 Kârlı Fırsatlar</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:4px; line-height:1.4;">
+                    Rakip fiyatı maliyetinizin <b style="color:#10b981;">üstünde</b>: kâr marjıyla satabileceğiniz ürünler.
+                </div>
+            </div>
+            </a>
+
+            <!-- 🔴 Zarar Riski -->
+            <a href="{{ url_for('tracked_products') }}" style="text-decoration:none; color:inherit;">
+            <div class="stat-card" style="position:relative; overflow:hidden; border-left: 4px solid #ef4444; background: linear-gradient(135deg, rgba(239,68,68,0.10) 0%, rgba(239,68,68,0.02) 100%);">
+                <div class="stat-icon" style="color:#ef4444;"><i data-lucide="trending-down" stroke-width="2.5"></i></div>
+                <div class="stat-value" style="color:#dc2626;">{{ risk_count }}</div>
+                <div class="stat-label" style="font-weight:700;">🔴 Zarar Riski</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:4px; line-height:1.4;">
+                    Rakip fiyatı maliyetinizin <b style="color:#ef4444;">altına</b> düşmüş ürünler — aksiyon gerekli.
+                </div>
+            </div>
+            </a>
+
+            <!-- 🔔 Aktif Alarmlar -->
+            <a href="{{ url_for('tracked_products') }}" style="text-decoration:none; color:inherit;">
+            <div class="stat-card" style="position:relative; overflow:hidden; border-left: 4px solid #f59e0b; background: linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(245,158,11,0.02) 100%);">
+                <div class="stat-icon" style="color:#f59e0b;"><i data-lucide="bell-ring" stroke-width="2.5"></i></div>
+                <div class="stat-value" style="color:#d97706;">{{ active_alerts_count }}</div>
+                <div class="stat-label" style="font-weight:700;">🔔 Aktif Alarmlar</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:4px; line-height:1.4;">
+                    Tetiklenmeyi bekleyen çift yönlü fiyat alarmı sayısı.
+                </div>
+            </div>
+            </a>
+        </div>
+
+        {# ── HOTFIX 1.75: Son Analizler (60%) + Son Bildirimler (40%) yan yana ──
+           Geniş ekranda iki kart yan yana, kullanıcı scroll'a gerek kalmadan
+           ana metriklerin tümünü tek bakışta görür. ≤992px'de alt alta yığılır. #}
+        <div class="dashboard-bottom-grid">
+
+            <!-- Sol kolon: Son Analizler (60%) -->
+            <div class="card" style="margin-top: 24px; min-width: 0;">
+                <div class="card-header">
+                    <h3 class="card-title">Son Analizler</h3>
+                    {# HOTFIX 1.63: target="_blank" kaldırıldı #}
+                    <a href="{{ url_for('history') }}" class="btn btn-secondary btn-sm">Tümünü Gör →</a>
+                </div>
+                {% if jobs %}
+                <div class="table-wrapper scrollable-dashboard">
+                    {# HOTFIX 1.76: Tablo sıkışmasını önle — sabit kolonları (ID, Durum, eylem)
+                       width:1% + white-space:nowrap ile içerik kadar daralt, Tür ve Tarih
+                       kalan alanı paylaşsın → yatay scroll kalkar. #}
+                    <table style="width:100%; table-layout:auto;">
+                        <thead>
+                            <tr>
+                                <th style="width:1%; white-space:nowrap;">#</th>
+                                <th>Tür</th>
+                                <th style="width:1%; white-space:nowrap;">Durum</th>
+                                <th>Tarih</th>
+                                <th style="width:1%; white-space:nowrap;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in jobs %}
+                            <tr>
+                                <td style="color:var(--text-muted);">{{ job.id }}</td>
+                                <td>{{ job.type_label }}</td>
+                                <td>
+                                    {% if job.status == 'completed' %}<span class="badge badge-success">{{ job.status_label }}</span>
+                                    {% elif job.status == 'running' %}<span class="badge badge-info">{{ job.status_label }}</span>
+                                    {% elif job.status == 'failed' %}<span class="badge badge-danger">{{ job.status_label }}</span>
+                                    {% else %}<span class="badge badge-muted">{{ job.status_label }}</span>{% endif %}
+                                </td>
+                                <td>{{ job.created_at|timeago }}</td>
+                                <td style="text-align: right;">
+                                    {% if job.status in ['pending', 'running'] %}
+                                    <form action="{{ url_for('cancel_job', job_id=job.id) }}" method="POST" style="display:inline; margin-right:8px;">
+                                        <button type="submit" class="btn btn-sm" style="background:var(--danger);color:white;border:none;" onclick="return confirm('Bu analizi iptal etmek istediğinize emin misiniz?');">İptal</button>
+                                    </form>
+                                    {% endif %}
+                                    <a href="{{ url_for('job_status', job_id=job.id) }}" class="btn btn-outline btn-sm" style="border-radius: 99px; font-size: 12px; padding: 4px 12px; border-color: var(--border-dark); color: var(--text-primary);">
+                                        <i data-lucide="file-search" width="13" height="13" style="margin-right:4px;"></i> Detay
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="text-align:center;padding:40px;color:var(--text-muted);">
+                    <div style="font-size:40px;margin-bottom:12px;">📭</div>
+                    <div>Henüz analiz talebiniz yok</div>
+                    <a href="{{ url_for('new_request') }}" class="btn btn-primary" style="margin-top:16px;">İlk Analizinizi Oluşturun</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Sağ kolon: Son Bildirimler (40%) -->
+            <div class="card" style="margin-top: 24px; min-width: 0;">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i data-lucide="bell" width="18" height="18" style="vertical-align:-3px; margin-right:6px; color:#8b5cf6;"></i>
+                    Son Bildirimler
+                </h3>
+                <span class="badge badge-muted" style="font-size:11px;">Son {{ recent_notifications|length }} kayıt</span>
+            </div>
+
+            {% if recent_notifications %}
+            {# HOTFIX 1.75: gap 10→6, padding 12px 14px → 8px 12px → kompakt liste
+               HOTFIX 1.76: dashboard-notif-list class'ı → max-height + iç scroll
+               → kart sonsuza uzamaz, simetri korunur #}
+            <div class="dashboard-notif-list" style="display:flex; flex-direction:column; gap:6px; padding:6px 4px;">
+                {% for n in recent_notifications %}
+                {# Mesaj öncüllerine göre renk seçimi — basit ama etkili #}
+                {% set msg = n.message or '' %}
+                {% if '🚨' in msg or 'KRİTİK' in msg or 'TEHDİT' in msg or '⚡' in msg %}
+                    {% set tone_color = '#ef4444' %}
+                    {% set tone_bg = 'rgba(239,68,68,0.08)' %}
+                    {% set tone_border = 'rgba(239,68,68,0.30)' %}
+                {% elif '📈' in msg or 'FIRSAT' in msg or '🏆' in msg %}
+                    {% set tone_color = '#10b981' %}
+                    {% set tone_bg = 'rgba(16,185,129,0.08)' %}
+                    {% set tone_border = 'rgba(16,185,129,0.30)' %}
+                {% elif '🎯' in msg or '🔔' in msg %}
+                    {% set tone_color = '#f59e0b' %}
+                    {% set tone_bg = 'rgba(245,158,11,0.08)' %}
+                    {% set tone_border = 'rgba(245,158,11,0.30)' %}
+                {% else %}
+                    {% set tone_color = '#6366f1' %}
+                    {% set tone_bg = 'rgba(99,102,241,0.06)' %}
+                    {% set tone_border = 'rgba(99,102,241,0.25)' %}
+                {% endif %}
+                {# HOTFIX 1.75: padding 12/14 → 8/10, gap 12 → 10, dot margin-top 8 → 5 #}
+                <div style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border-radius:10px; background:{{ tone_bg }}; border:1px solid {{ tone_border }};">
+                    <div style="width:8px; height:8px; border-radius:50%; background:{{ tone_color }}; margin-top:5px; flex-shrink:0; box-shadow: 0 0 0 3px {{ tone_bg }};"></div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:13px; font-weight:600; line-height:1.4; color:var(--text-primary); word-break:break-word;">
+                            {{ msg }}
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                            <span style="font-size:11px; color:var(--text-muted);">{{ n.created_at|timeago }}</span>
+                            {% if not n.is_read %}
+                            <span style="font-size:10px; font-weight:700; color:{{ tone_color }}; padding:1px 6px; border-radius:99px; background:{{ tone_bg }}; border:1px solid {{ tone_border }};">YENİ</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if n.link %}
+                    {# HOTFIX 1.63: Dış URL → yeni sekme + external-link ikonu;
+                       iç route (/job/X) → aynı sekme + arrow-right ikonu. #}
+                    {% set _ext = n.link.startswith('http') %}
+                    <a href="{{ n.link }}"
+                       {% if _ext %}target="_blank" rel="noopener"{% endif %}
+                       class="btn btn-outline btn-sm"
+                       style="flex-shrink:0; border-radius:99px; padding:4px 12px; font-size:12px; border-color:{{ tone_border }}; color:{{ tone_color }};">
+                        <i data-lucide="{{ 'external-link' if _ext else 'arrow-right' }}" width="12" height="12" style="margin-right:4px;"></i> Aç
+                    </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align:center; padding:24px; color:var(--text-muted);">
+                <div style="font-size:32px; margin-bottom:6px;">🔕</div>
+                <div style="font-size:13px;">Henüz bildirim yok. Bir ürüne fiyat alarmı kurarak başlayın.</div>
+                <a href="{{ url_for('tracked_products') }}" class="btn btn-primary btn-sm" style="margin-top:12px;">
+                    <i data-lucide="bell" width="14" height="14" style="margin-right:6px;"></i> Alarm Kur
+                </a>
+            </div>
+            {% endif %}
+            </div><!-- /Son Bildirimler card -->
+
+        </div><!-- /dashboard-bottom-grid (HOTFIX 1.75) -->
+
+        {# HOTFIX 1.75: Eski "Son Analizler" bloğu yukarıdaki 2-col grid'e taşındı,
+           burası boş bırakıldı. Action button placeholder ile geriye uyumluluk. #}
+        {% if current_user.can_submit %}
+        <div style="display:none;"></div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

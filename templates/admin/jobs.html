@@ -1,0 +1,155 @@
+{% extends "admin/base.html" %}
+{% block title %}Analizler{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <h1 class="page-title">Analiz İzleme 📋</h1>
+    <p class="page-subtitle">Tüm analiz talepleri</p>
+</div>
+
+<!-- FILTERS -->
+<style>
+.segmented-control {
+    display: inline-flex;
+    background: var(--bg-input);
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    gap: 4px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.seg-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.seg-btn:hover {
+    color: var(--text-primary);
+}
+.seg-btn.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.seg-count {
+    background: rgba(99,102,241,0.15);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 99px;
+    min-width: 20px;
+    text-align: center;
+}
+.seg-btn.active .seg-count {
+    background: var(--accent);
+    color: #fff;
+}
+</style>
+<div class="segmented-control">
+    <a href="{{ url_for('admin_jobs') }}" class="seg-btn {% if not status_filter %}active{% endif %}">
+        Tümü <span class="seg-count">{{ total_count }}</span>
+    </a>
+    <a href="{{ url_for('admin_jobs', status='pending') }}" class="seg-btn {% if status_filter == 'pending' %}active{% endif %}">
+        <i data-lucide="clock" width="14" height="14"></i> Bekleyen <span class="seg-count">{{ status_counts.get('pending', 0) }}</span>
+    </a>
+    <a href="{{ url_for('admin_jobs', status='running') }}" class="seg-btn {% if status_filter == 'running' %}active{% endif %}">
+        <i data-lucide="refresh-cw" width="14" height="14"></i> Çalışan <span class="seg-count">{{ status_counts.get('running', 0) }}</span>
+    </a>
+    <a href="{{ url_for('admin_jobs', status='completed') }}" class="seg-btn {% if status_filter == 'completed' %}active{% endif %}">
+        <i data-lucide="check-circle" width="14" height="14"></i> Tamamlanan <span class="seg-count">{{ status_counts.get('completed', 0) }}</span>
+    </a>
+    <a href="{{ url_for('admin_jobs', status='failed') }}" class="seg-btn {% if status_filter == 'failed' %}active{% endif %}">
+        <i data-lucide="x-circle" width="14" height="14"></i> Başarısız <span class="seg-count">{{ status_counts.get('failed', 0) }}</span>
+    </a>
+    <a href="{{ url_for('admin_jobs', status='cancelled') }}" class="seg-btn {% if status_filter == 'cancelled' %}active{% endif %}">
+        <i data-lucide="ban" width="14" height="14"></i> İptal <span class="seg-count">{{ status_counts.get('cancelled', 0) }}</span>
+    </a>
+</div>
+
+<div class="card">
+    {% if jobs.items %}
+    <div class="table-wrapper scrollable">
+        <table>
+            <thead><tr><th>#</th><th>Müşteri</th><th>Tür</th><th>URL</th><th>Durum</th><th>Tarih</th><th>Süre</th><th></th></tr></thead>
+            <tbody>
+                {% for job in jobs.items %}
+                <tr>
+                    <td style="color:var(--text-muted);">{{ job.id }}</td>
+                    <td style="font-weight:600;color:var(--text-primary);">{{ job.user.full_name if job.user else '—' }}</td>
+                    <td>{{ job.type_label }}</td>
+                    <td><span class="badge badge-muted">{{ job.get_urls()|length }} URL</span></td>
+                    <td>
+                        {% if job.status == 'completed' %}<span class="badge badge-success">{{ job.status_label }}</span>
+                        {% elif job.status == 'running' %}<span class="badge badge-info">{{ job.status_label }}</span>
+                        {% elif job.status == 'failed' %}<span class="badge badge-danger">{{ job.status_label }}</span>
+                        {% elif job.status == 'cancelled' %}<span class="badge" style="background:rgba(156,163,175,0.15);color:#9ca3af;">🚫 İptal Edildi</span>
+                        {% else %}<span class="badge badge-muted">{{ job.status_label }}</span>{% endif %}
+                    </td>
+                    <td>{{ job.created_at|turkdate }}</td>
+                    <td>{{ job.duration_str }}</td>
+                    <td>
+                        {% if job.status == 'completed' %}
+                        {# HOTFIX 1.63: target="_blank" → job_status sayfası (modal'lı rapor görüntüleme) #}
+                        <a href="{{ url_for('job_status', job_id=job.id) }}" class="btn btn-secondary btn-sm">Raporu Gör</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center; padding:60px 40px; color:var(--text-muted);">
+        <div style="font-size:48px; margin-bottom:16px;">
+            {% if status_filter == 'pending' %}⏳
+            {% elif status_filter == 'running' %}🔄
+            {% elif status_filter == 'failed' %}✅
+            {% elif status_filter == 'cancelled' %}🚫
+            {% else %}📭{% endif %}
+        </div>
+        <div style="font-size:16px; font-weight:600;">
+            {% if status_filter == 'pending' %}Bekleyen analiz bulunmuyor
+            {% elif status_filter == 'running' %}Şu an çalışan bir analiz yok
+            {% elif status_filter == 'failed' %}Başarısız analiz bulunmuyor — bu iyi bir haber! 🎉
+            {% elif status_filter == 'cancelled' %}İptal edilmiş analiz bulunmuyor
+            {% else %}Henüz hiç analiz talebi yok{% endif %}
+        </div>
+        <div style="font-size:13px; margin-top:8px; opacity:0.7;">
+            {% if status_filter == 'pending' %}Yeni bir analiz talebi geldiğinde burada görünecek.
+            {% elif status_filter == 'running' %}Bir analiz çalışmaya başladığında burada görünecek.
+            {% elif status_filter == 'failed' %}Hata alan analizler burada listelenecek.
+            {% elif status_filter == 'cancelled' %}Kullanıcılar tarafından iptal edilen analizler burada listelenecek.
+            {% else %}Kullanıcılar analiz talep ettiğinde burada listelenecek.{% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PAGINATION -->
+    {% if jobs.pages > 1 %}
+    <div class="pagination">
+        {% if jobs.has_prev %}
+        <a href="{{ url_for('admin_jobs', page=jobs.prev_num, status=status_filter) }}">← Önceki</a>
+        {% endif %}
+        {% for page_num in jobs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                <a href="{{ url_for('admin_jobs', page=page_num, status=status_filter) }}" class="{% if page_num == jobs.page %}active{% endif %}">{{ page_num }}</a>
+            {% else %}
+                <span>…</span>
+            {% endif %}
+        {% endfor %}
+        {% if jobs.has_next %}
+        <a href="{{ url_for('admin_jobs', page=jobs.next_num, status=status_filter) }}">Sonraki →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

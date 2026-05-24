@@ -1,0 +1,767 @@
+{% extends "base.html" %}
+{% block title %}SEO Takibi{% endblock %}
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon">B</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+        <nav>
+            <div class="nav-section">
+                <div class="nav-label">Ana Menü</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                    <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
+                </a>
+                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ current_user.full_name[0] }}</div>
+                <div>
+                    <div class="user-name">{{ current_user.full_name }}</div>
+                    <div class="user-email">{{ current_user.email }}</div>
+                </div>
+            </div>
+                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px;">
+            <div style="flex:1; min-width:0;">
+                <h1 class="page-title">
+                    <i data-lucide="search" style="width:28px; height:28px; margin-right:10px; vertical-align:-4px; color:#0ea5e9;"></i>
+                    SEO ve Arama Sırası Takibi 🔎
+                </h1>
+                <p class="page-subtitle">
+                    Trendyol aramalarında ürününüzün <b>kaçıncı sayfa, kaçıncı sırada</b> çıktığını anlık takip edin.
+                    Konumunuz değiştikçe geçmiş veriyi de saklarız.
+            </p>
+            </div>
+            {# HOTFIX 1.84: Grafik Görünümü + Yeni Sekme (job_result paralelizmi) #}
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a href="{{ url_for('seo_graph') }}" class="btn btn-primary btn-sm"
+                   style="background:#0ea5e9; border-color:#0ea5e9; display:inline-flex; align-items:center; gap:6px; padding:9px 16px;">
+                    <i data-lucide="line-chart" width="15" height="15"></i>
+                    Grafik Görünümü
+                </a>
+                <a href="{{ url_for('seo_graph') }}" target="_blank" rel="noopener"
+                   class="btn btn-outline btn-sm"
+                   style="display:inline-flex; align-items:center; gap:6px; padding:9px 14px;">
+                    <i data-lucide="external-link" width="14" height="14"></i>
+                    Yeni Sekmede Aç
+                </a>
+            </div>
+        </div>
+
+        <!-- Ekleme formu (HOTFIX 1.15: Trendyol + Hepsiburada platform seçici) -->
+        <div class="card" style="padding: 24px; margin-bottom: 24px;">
+            <form method="POST" action="{{ url_for('seo_tracker') }}" style="display:grid; grid-template-columns: 180px 1fr 1.3fr auto; gap:14px; align-items:end;">
+                <!-- Platform Seçici -->
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.4px; opacity:0.8;">
+                        🌐 Platform
+                    </label>
+                    <select name="platform" id="seo-platform-select"
+                            style="width:100%; padding:12px 14px; border-radius:10px; font-size:14px; font-weight:700; outline:none; border:1px solid var(--border); background:var(--bg-card,#fff); color:var(--text-primary); cursor:pointer;">
+                        <option value="Trendyol" selected>🟠 Trendyol</option>
+                        <option value="Hepsiburada" disabled>🟣 Hepsiburada — Yakında 🛠️</option>
+                    </select>
+                </div>
+
+                <!-- Anahtar Kelime -->
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.4px; opacity:0.8;">
+                        🔑 Arama Kelimesi
+                    </label>
+                    <input type="text" name="keyword" required maxlength="200"
+                           placeholder="Örn: şarjlı tüy toplayıcı"
+                           style="width:100%; padding:12px 14px; border-radius:10px; font-size:14px; font-weight:600; outline:none; border:1px solid var(--border);">
+                </div>
+
+                <!-- Hedef URL -->
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.4px; opacity:0.8;">
+                        🛒 Kendi Ürün Linkiniz
+                    </label>
+                    <input type="url" name="target_url" id="seo-target-url" required
+                           placeholder="https://www.trendyol.com/.../urun-adi-p-12345"
+                           style="width:100%; padding:12px 14px; border-radius:10px; font-size:14px; font-weight:600; outline:none; border:1px solid var(--border);">
+                </div>
+
+                <div>
+                    <button type="submit" class="btn btn-primary" style="padding:12px 22px; display:flex; align-items:center; gap:8px; white-space:nowrap;">
+                        <i data-lucide="plus-circle" width="18" height="18"></i> Takip Başlat
+                    </button>
+                </div>
+            </form>
+            <div style="margin-top:12px; font-size:12px; color:var(--text-muted);">
+                💡 İlk kontrol takip başlatıldıktan hemen sonra yapılır (~10-30 saniye). Sonrasında saatlik otomatik kontrol.
+                Şu an aktif platform: <b style="color:#f97316;">Trendyol</b>.
+                <span style="color:#d97706;"><b>Hepsiburada</b> SEO Takibi yakında — altyapı bakımında 🛠️</span>
+            </div>
+
+            <script>
+                // HOTFIX 1.15: Platform seçimine göre placeholder dinamik güncelle
+                (function(){
+                    var sel = document.getElementById('seo-platform-select');
+                    var url = document.getElementById('seo-target-url');
+                    if (!sel || !url) return;
+                    var placeholders = {
+                        'Trendyol':    'https://www.trendyol.com/.../urun-adi-p-12345',
+                        'Hepsiburada': 'https://www.hepsiburada.com/urun-adi-p-HBCV000XXXXXXX'
+                    };
+                    sel.addEventListener('change', function(){
+                        url.placeholder = placeholders[sel.value] || placeholders['Trendyol'];
+                    });
+                })();
+            </script>
+        </div>
+
+        {# HOTFIX 1.90: Grup bazlı kart görünümü — tek devasa tablo yerine
+           her grup ayrı bir kart bloku içinde tablo. Yenile/Sil butonları
+           her satırda kt.id ile korunuyor; akış aynı. #}
+        {% if trackers %}
+            {% for gid, kt_list in grouped_seo.items() %}
+            <div class="card" style="margin-bottom:24px;">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <h3 class="card-title" style="display:flex; align-items:center; gap:8px; font-size:16px;">
+                        {% if gid == '__bireysel__' %}
+                            <span style="font-size:20px;">🗂️</span>
+                            <span>{{ group_seo_labels.get(gid, 'Bireysel Aramalar') }}</span>
+                            <span style="font-size:11px; color:var(--text-muted); font-weight:500;">— gruba bağlı olmayan tekil takipler</span>
+                        {% else %}
+                            <span style="font-size:20px;">📁</span>
+                            <span>{{ group_seo_labels.get(gid, gid) }}</span>
+                        {% endif %}
+                    </h3>
+                    <span class="badge badge-muted">{{ kt_list|length }} kayıt</span>
+                </div>
+
+                <div class="table-wrapper scrollable">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Anahtar Kelime</th>
+                                <th>Hedef Ürün</th>
+                                <th style="text-align:center;">Sayfa</th>
+                                <th style="text-align:center;">Sıra</th>
+                                <th style="text-align:center;">Değişim</th>
+                                <th>Son Kontrol</th>
+                                <th style="text-align:right;">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for kt in kt_list %}
+                            <tr>
+                            <td>
+                                {% set _p = (kt.platform or '')|lower %}
+                                {% if 'trendyol' in _p %}
+                                    <span class="platform-badge badge-trendyol">Trendyol</span>
+                                {% elif 'hepsi' in _p or 'hb' in _p %}
+                                    <span class="platform-badge badge-hepsiburada">Hepsiburada</span>
+                                {% else %}
+                                    <span class="badge badge-info">{{ kt.platform }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-weight:700; color:var(--text-primary);">{{ kt.keyword }}</td>
+                            <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                <a href="{{ kt.target_url }}" target="_blank" rel="noopener" style="color:var(--accent); text-decoration:none; font-size:13px;" title="{{ kt.target_url }}">
+                                    {{ kt.target_url[:60] }}{% if kt.target_url|length > 60 %}…{% endif %} ↗
+                                </a>
+                            </td>
+                            <td style="text-align:center;">
+                                {% if kt.current_page == -1 %}
+                                    <span class="badge" style="background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.45); font-weight:800;">🛠️ Yakında</span>
+                                {% elif kt.current_page and kt.current_page > 0 %}
+                                    <span class="badge badge-info" style="font-weight:800;">Sayfa {{ kt.current_page }}</span>
+                                {% elif kt.last_checked %}
+                                    {# HOTFIX 1.96: Bulunamadı rozet + akıllı ipuçları popover #}
+                                    <span class="seo-notfound-wrap" style="position:relative; display:inline-flex; align-items:center; gap:4px;">
+                                        <span class="badge" style="background:rgba(239,68,68,0.12); color:#dc2626; border:1px solid rgba(239,68,68,0.35); font-weight:700; padding:4px 10px;">
+                                            ❌ Bulunamadı
+                                        </span>
+                                        <button type="button" class="seo-tips-trigger"
+                                                data-tracker-id="{{ kt.id }}"
+                                                data-keyword="{{ kt.keyword }}"
+                                                aria-label="Neden bulunamadı? YZ analizi"
+                                                style="background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.40); border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:12px; font-weight:800; line-height:1; padding:0; display:inline-flex; align-items:center; justify-content:center;"
+                                                title="YZ analizi — Neden bulunamadı?">?</button>
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-muted">⏳ Bekliyor</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align:center;">
+                                {% if kt.current_rank == -1 %}
+                                    <span style="color:#d97706; font-weight:700; font-size:12px;">Bakımda</span>
+                                {% elif kt.current_rank and kt.current_rank > 0 %}
+                                    <span style="font-size:18px; font-weight:800; color:#10b981;">#{{ kt.current_rank }}</span>
+                                {% elif kt.last_checked %}
+                                    <span style="color:var(--text-muted);">—</span>
+                                {% else %}
+                                    <span style="color:var(--text-muted);">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align:center;">
+                                {# Önceki konuma göre delta — sayfa & sıra birlikte değerlendirilir #}
+                                {% set is_maintenance = (kt.current_page == -1) %}
+                                {% set has_now = (kt.current_page or 0) > 0 and (kt.current_rank or 0) > 0 %}
+                                {% set has_prev = (kt.previous_page or 0) > 0 and (kt.previous_rank or 0) > 0 %}
+                                {% if is_maintenance %}
+                                    <span style="color:#d97706; font-weight:700; font-size:11px;" title="Hepsiburada SEO Takibi geçici olarak bakımdadır.">— bakımda —</span>
+                                {% elif has_now and has_prev %}
+                                    {% set now_score = (kt.current_page * 100) + kt.current_rank %}
+                                    {% set prev_score = (kt.previous_page * 100) + kt.previous_rank %}
+                                    {% if now_score < prev_score %}
+                                        <span style="color:#10b981; font-weight:800;">▲ Yükseldi</span>
+                                    {% elif now_score > prev_score %}
+                                        <span style="color:#ef4444; font-weight:800;">▼ Düştü</span>
+                                    {% else %}
+                                        <span style="color:var(--text-muted);">= Sabit</span>
+                                    {% endif %}
+                                {% elif has_now and not has_prev %}
+                                    <span style="color:#0ea5e9; font-weight:700; font-size:11px;">İLK ÖLÇÜM</span>
+                                {% else %}
+                                    <span style="color:var(--text-muted);">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size:13px; color:var(--text-muted);">
+                                {% if kt.last_checked %}
+                                    {{ kt.last_checked|timeago }}
+                                {% else %}
+                                    Henüz kontrol edilmedi
+                                {% endif %}
+                            </td>
+                            <td style="text-align:right;">
+                                <form action="{{ url_for('seo_tracker_refresh', tracker_id=kt.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-outline btn-sm" title="Şimdi yeniden kontrol et" style="margin-right:4px;">
+                                        <i data-lucide="refresh-cw" width="14" height="14"></i>
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('seo_tracker_delete', tracker_id=kt.id) }}" method="POST" style="display:inline;"
+                                      onsubmit="return confirm('Bu takibi silmek istediğinize emin misiniz?');">
+                                    <button type="submit" class="btn btn-sm" style="background:rgba(239,68,68,0.12); color:#ef4444; border:1px solid rgba(239,68,68,0.30);" title="Sil">
+                                        <i data-lucide="trash-2" width="14" height="14"></i>
+                                    </button>
+                                </form>
+                            </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        {# HOTFIX 1.90: Boş durum — grup yapısı için tek seferlik #}
+        <div class="card">
+            <div style="text-align:center; padding:48px 20px; color:var(--text-muted);">
+                <div style="font-size:46px; margin-bottom:14px;">🔎</div>
+                <h3 style="margin:0 0 8px; color:var(--text-primary);">Henüz Takip Eklemediniz</h3>
+                <p style="font-size:14px; max-width:480px; margin:0 auto; line-height:1.55;">
+                    Bir Trendyol arama kelimesi ve kendi ürün linkinizi yukarıdan ekleyin.
+                    Sistem ilk 5 sayfayı tarayıp ürününüzün konumunu otomatik raporlar; saatlik kontrolle değişimi takip eder.
+                    <br><span style="font-size:12px; color:#d97706;">🛠️ Hepsiburada SEO Takibi yakında aktif edilecektir.</span>
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+{# ── EPIC 8.1 / HOTFIX 1.98: Dinamik YZ SEO İpuçları Modal ──
+   "?" tıklamasında AJAX → /api/generate-seo-tips/<tracker_id> → YZ özel analiz.
+   Statik öneri yerine ürüne+keyword'e özel teşhis + 3 long-tail kelime önerisi. #}
+<div id="seoTipsModal" class="seo-tips-modal" onclick="closeSeoTipsModal(event)">
+    <div class="seo-tips-inner" onclick="event.stopPropagation()">
+        <div class="seo-tips-head">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div class="seo-tips-icon-bg" id="seoTipsHeadIcon">
+                    <i data-lucide="brain-circuit" width="22" height="22"></i>
+                </div>
+                <div>
+                    <h3 style="margin:0; font-size:17px; font-weight:800; color:var(--text-primary);">
+                        YZ SEO Danışmanı
+                    </h3>
+                    <p id="seoTipsSubtitle" style="margin:2px 0 0 0; font-size:12px; color:var(--text-muted);">
+                        Ürününüze özel teşhis ve uzun-kuyruklu kelime önerileri
+                    </p>
+                </div>
+            </div>
+            <button onclick="closeSeoTipsModal()" class="seo-tips-close" aria-label="Kapat">
+                <i data-lucide="x" width="18" height="18"></i>
+            </button>
+        </div>
+
+        <div class="seo-tips-body" id="seoTipsBody">
+            {# Loading state — JS dolduracak #}
+            <div id="seoTipsLoading" style="text-align:center; padding:36px 20px;">
+                <div class="seo-tips-spinner"></div>
+                <div style="margin-top:18px; font-size:15px; font-weight:700; color:var(--text-primary);">
+                    Yapay zeka ürününüzü ve kelimenizi analiz ediyor…
+                </div>
+                <div style="margin-top:6px; font-size:12.5px; color:var(--text-muted);">
+                    Bu işlem genellikle 3-8 saniye sürer.
+                </div>
+            </div>
+
+            {# Error state — gizli, JS gösterir #}
+            <div id="seoTipsError" style="display:none; padding:24px 20px; text-align:center;">
+                <div style="font-size:42px; margin-bottom:10px;">⚠️</div>
+                <div style="font-weight:700; color:var(--text-primary); margin-bottom:6px;">Analiz Yapılamadı</div>
+                <div id="seoTipsErrorMsg" style="font-size:13px; color:var(--text-muted);">—</div>
+                <button id="seoTipsRetry" class="btn btn-primary btn-sm" style="margin-top:16px;">
+                    🔄 Tekrar Dene
+                </button>
+            </div>
+
+            {# Result state — gizli, JS doldurur #}
+            <div id="seoTipsResult" style="display:none;">
+                <div id="seoTipsRelevanceBanner" class="seo-tips-relevance" style="display:none;">
+                    <span class="rel-emoji">🎯</span>
+                    <div>
+                        <div class="rel-label">Kelime-Ürün Uyumu</div>
+                        <div class="rel-text">—</div>
+                    </div>
+                </div>
+
+                <div class="seo-tips-section-head" style="margin-top:14px;">
+                    <span class="seo-tips-section-num">①</span>
+                    <span>YZ Teşhisi</span>
+                </div>
+                <div id="seoTipsDiagnosis" class="seo-tips-diagnosis-box">—</div>
+
+                <div class="seo-tips-section-head" style="margin-top:18px;">
+                    <span class="seo-tips-section-num">②</span>
+                    <span>Önerilen Anahtar Kelimeler</span>
+                </div>
+                <div id="seoTipsSuggestions" class="seo-tips-suggestions-wrap">
+                    {# JS dolduracak #}
+                </div>
+
+                <div class="seo-tips-info">
+                    <i data-lucide="info" width="14" height="14"></i>
+                    <span>Önerilen kelimelerden birini deneyip mevcut grup adını yenilemeniz yeterli — sistem otomatik yeni keyword ile tarar.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="seo-tips-footer">
+            <button onclick="closeSeoTipsModal()" class="btn btn-primary btn-sm" style="padding:9px 22px;">
+                Kapat
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* HOTFIX 1.96: SEO Tips Modal stilleri */
+    .seo-tips-modal {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(15, 23, 42, 0.70);
+        backdrop-filter: blur(4px);
+        z-index: 99998;
+        padding: 24px;
+    }
+    .seo-tips-modal.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .seo-tips-inner {
+        background: var(--bg-card, #fff);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 580px;
+        max-height: 88vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.40);
+    }
+    .seo-tips-head {
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        background: linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(14,165,233,0.04) 100%);
+        flex-shrink: 0;
+    }
+    .seo-tips-icon-bg {
+        width: 42px; height: 42px;
+        border-radius: 12px;
+        background: rgba(239,68,68,0.12);
+        color: #dc2626;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .seo-tips-close {
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        width: 32px; height: 32px;
+        cursor: pointer;
+        color: var(--text-muted);
+        display: inline-flex; align-items: center; justify-content: center;
+        transition: all 0.2s;
+    }
+    .seo-tips-close:hover { background: var(--accent-dark); color: var(--text-primary); }
+
+    .seo-tips-body {
+        padding: 20px 22px;
+        overflow-y: auto;
+        flex: 1;
+    }
+    .seo-tips-section { margin-bottom: 14px; }
+    .seo-tips-why {
+        background: rgba(239,68,68,0.05);
+        border-left: 3px solid #ef4444;
+        padding: 12px 14px;
+        border-radius: 6px;
+    }
+    .seo-tips-why p { margin: 0 0 8px 0; font-size: 13.5px; color: var(--text-primary); line-height: 1.55; }
+    .seo-tips-section-head {
+        font-size: 14px; font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .seo-tips-section-num {
+        background: var(--accent, #2563eb);
+        color: #fff;
+        width: 22px; height: 22px;
+        border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 800;
+    }
+    .seo-tips-card {
+        display: flex; gap: 12px; align-items: flex-start;
+        padding: 14px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        border: 1px solid;
+    }
+    .seo-tips-card-blue   { background: rgba(37,99,235,0.06);  border-color: rgba(37,99,235,0.20); }
+    .seo-tips-card-green  { background: rgba(16,185,129,0.07); border-color: rgba(16,185,129,0.22); }
+    .seo-tips-card-amber  { background: rgba(245,158,11,0.07); border-color: rgba(245,158,11,0.25); }
+    .seo-tips-card-icon { font-size: 22px; flex-shrink: 0; line-height: 1.2; }
+    .seo-tips-card-body { flex: 1; min-width: 0; }
+    .seo-tips-card-body h4 {
+        margin: 0 0 5px 0;
+        font-size: 14px; font-weight: 700;
+        color: var(--text-primary);
+    }
+    .seo-tips-card-body p {
+        margin: 0 0 8px 0;
+        font-size: 13px;
+        color: var(--text-secondary, var(--text-primary));
+        line-height: 1.5;
+    }
+    .seo-tips-card-body ul {
+        margin: 4px 0 0 18px;
+        padding: 0;
+        font-size: 12.5px;
+        color: var(--text-muted);
+    }
+    .seo-tips-card-body li { margin-bottom: 3px; line-height: 1.5; }
+    .seo-tips-card-body li strong { color: var(--text-primary); }
+    .seo-tips-info {
+        margin-top: 16px;
+        padding: 10px 12px;
+        background: rgba(14,165,233,0.07);
+        border-left: 2px solid #0ea5e9;
+        border-radius: 4px;
+        font-size: 12px;
+        color: var(--text-secondary, var(--text-primary));
+        display: flex; gap: 8px; align-items: flex-start;
+        line-height: 1.5;
+    }
+    .seo-tips-info i { color: #0ea5e9; flex-shrink: 0; margin-top: 1px; }
+    .seo-tips-footer {
+        padding: 14px 22px;
+        border-top: 1px solid var(--border);
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    /* ── HOTFIX 1.98: Dinamik YZ modal yeni bileşenler ── */
+    .seo-tips-spinner {
+        width: 48px; height: 48px;
+        border: 4px solid rgba(37, 99, 235, 0.15);
+        border-top-color: var(--accent, #2563eb);
+        border-radius: 50%;
+        margin: 0 auto;
+        animation: seo-tips-spin 0.9s linear infinite;
+    }
+    @keyframes seo-tips-spin { to { transform: rotate(360deg); } }
+
+    .seo-tips-relevance {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        margin-bottom: 4px;
+        border: 1px solid;
+    }
+    .seo-tips-relevance .rel-emoji { font-size: 26px; line-height: 1; }
+    .seo-tips-relevance .rel-label {
+        font-size: 10.5px; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.6px;
+        margin-bottom: 2px;
+        opacity: 0.85;
+    }
+    .seo-tips-relevance .rel-text {
+        font-size: 14px; font-weight: 700;
+        color: var(--text-primary);
+    }
+    .seo-tips-relevance.rel-good {
+        background: rgba(16, 185, 129, 0.07);
+        border-color: rgba(16, 185, 129, 0.30);
+    }
+    .seo-tips-relevance.rel-good .rel-label { color: #10b981; }
+    .seo-tips-relevance.rel-weak {
+        background: rgba(245, 158, 11, 0.07);
+        border-color: rgba(245, 158, 11, 0.30);
+    }
+    .seo-tips-relevance.rel-weak .rel-label { color: #d97706; }
+    .seo-tips-relevance.rel-off {
+        background: rgba(239, 68, 68, 0.07);
+        border-color: rgba(239, 68, 68, 0.30);
+    }
+    .seo-tips-relevance.rel-off .rel-label { color: #dc2626; }
+
+    .seo-tips-diagnosis-box {
+        background: rgba(37, 99, 235, 0.05);
+        border-left: 3px solid var(--accent, #2563eb);
+        padding: 12px 14px;
+        border-radius: 6px;
+        font-size: 13.5px;
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+
+    .seo-tips-suggestions-wrap {
+        display: flex; flex-direction: column;
+        gap: 8px;
+        margin-top: 6px;
+    }
+    .seo-tips-suggestion {
+        display: flex; align-items: center; gap: 10px;
+        padding: 11px 14px;
+        background: rgba(16, 185, 129, 0.06);
+        border: 1px solid rgba(16, 185, 129, 0.22);
+        border-radius: 10px;
+        font-size: 13.5px;
+        color: var(--text-primary);
+        line-height: 1.4;
+        transition: all 0.15s;
+    }
+    .seo-tips-suggestion:hover {
+        background: rgba(16, 185, 129, 0.10);
+        border-color: rgba(16, 185, 129, 0.40);
+    }
+    .seo-tips-suggestion .sug-icon {
+        font-size: 18px; flex-shrink: 0;
+    }
+    .seo-tips-suggestion .sug-text {
+        flex: 1; font-weight: 600;
+    }
+    .seo-tips-suggestion .sug-copy {
+        background: transparent;
+        border: 1px solid rgba(16, 185, 129, 0.40);
+        color: #10b981;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s;
+        flex-shrink: 0;
+    }
+    .seo-tips-suggestion .sug-copy:hover {
+        background: #10b981;
+        color: #fff;
+    }
+    .seo-tips-suggestion .sug-copy.copied {
+        background: #10b981;
+        color: #fff;
+        border-color: #10b981;
+    }
+</style>
+
+<script>
+// ── HOTFIX 1.98: Dinamik YZ SEO Danışmanı Modal ──
+(function() {
+    var modal = document.getElementById('seoTipsModal');
+    if (!modal) return;
+
+    var loadingEl = document.getElementById('seoTipsLoading');
+    var errorEl   = document.getElementById('seoTipsError');
+    var errMsgEl  = document.getElementById('seoTipsErrorMsg');
+    var resultEl  = document.getElementById('seoTipsResult');
+    var subtitle  = document.getElementById('seoTipsSubtitle');
+    var relBanner = document.getElementById('seoTipsRelevanceBanner');
+    var diagEl    = document.getElementById('seoTipsDiagnosis');
+    var sugsEl    = document.getElementById('seoTipsSuggestions');
+    var retryBtn  = document.getElementById('seoTipsRetry');
+    var currentTrackerId = null;
+    var currentKeyword = '';
+
+    function showState(state) {
+        loadingEl.style.display = (state === 'loading') ? 'block' : 'none';
+        errorEl.style.display   = (state === 'error')   ? 'block' : 'none';
+        resultEl.style.display  = (state === 'result')  ? 'block' : 'none';
+    }
+
+    function escapeHtml(s) {
+        return String(s || '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function renderResult(data) {
+        // Relevance banner
+        relBanner.classList.remove('rel-good', 'rel-weak', 'rel-off');
+        var rel = (data.relevance || 'weak').toLowerCase();
+        var relText = '', relEmoji = '🎯';
+        if (rel === 'good') {
+            relText = 'Mükemmel uyum — kelime ürünle iyi eşleşiyor (rekabet yüksek).';
+            relEmoji = '✅';
+        } else if (rel === 'off') {
+            relText = 'Bu kelime ürününüzle alakasız. Ürüne uygun kelimeler aşağıda.';
+            relEmoji = '❌';
+        } else {
+            relText = 'Kelime kısmen uygun ama çok jenerik. Daha spesifik öneriler aşağıda.';
+            relEmoji = '⚠️';
+        }
+        relBanner.classList.add('rel-' + rel);
+        relBanner.querySelector('.rel-emoji').textContent = relEmoji;
+        relBanner.querySelector('.rel-text').textContent = relText;
+        relBanner.style.display = 'flex';
+
+        // Diagnosis
+        diagEl.textContent = data.diagnosis || '—';
+
+        // Suggestions (3 long-tail)
+        sugsEl.innerHTML = '';
+        var suggestions = data.suggestions || [];
+        if (!suggestions.length) {
+            sugsEl.innerHTML = '<div style="color:var(--text-muted); font-size:13px; padding:10px;">YZ önerisi alınamadı. Tekrar dene.</div>';
+        } else {
+            suggestions.forEach(function(sug, i) {
+                var row = document.createElement('div');
+                row.className = 'seo-tips-suggestion';
+                row.innerHTML = '' +
+                    '<span class="sug-icon">' + (i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉') + '</span>' +
+                    '<span class="sug-text">' + escapeHtml(sug) + '</span>' +
+                    '<button type="button" class="sug-copy" data-text="' + escapeHtml(sug) + '">📋 Kopyala</button>';
+                sugsEl.appendChild(row);
+            });
+            // Copy butonları
+            sugsEl.querySelectorAll('.sug-copy').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var txt = btn.getAttribute('data-text');
+                    try {
+                        navigator.clipboard.writeText(txt);
+                        var orig = btn.textContent;
+                        btn.classList.add('copied');
+                        btn.textContent = '✓ Kopyalandı';
+                        setTimeout(function() {
+                            btn.classList.remove('copied');
+                            btn.textContent = orig;
+                        }, 1800);
+                    } catch (e) {
+                        console.error('Clipboard:', e);
+                    }
+                });
+            });
+        }
+
+        showState('result');
+        if (window.lucide && window.lucide.createIcons) lucide.createIcons();
+    }
+
+    function fetchTips(trackerId) {
+        if (!trackerId) return;
+        showState('loading');
+        currentTrackerId = trackerId;
+
+        fetch('/api/generate-seo-tips/' + trackerId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+        })
+        .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, body: j }; }); })
+        .then(function(res) {
+            if (!res.ok || !res.body || res.body.success === false) {
+                errMsgEl.textContent = (res.body && res.body.error)
+                    ? res.body.error
+                    : 'YZ servisine ulaşılamadı.';
+                showState('error');
+                return;
+            }
+            renderResult(res.body);
+        })
+        .catch(function(err) {
+            console.error('[SEO Tips Fetch]', err);
+            errMsgEl.textContent = 'Ağ hatası: ' + (err.message || 'bilinmiyor');
+            showState('error');
+        });
+    }
+
+    // Soru butonu tetikleyicileri
+    document.querySelectorAll('.seo-tips-trigger').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var trackerId = btn.getAttribute('data-tracker-id');
+            currentKeyword = btn.getAttribute('data-keyword') || '';
+            if (subtitle && currentKeyword) {
+                subtitle.textContent = '"' + currentKeyword + '" kelimesi için özel analiz';
+            }
+            modal.classList.add('show');
+            if (window.lucide && window.lucide.createIcons) lucide.createIcons();
+            fetchTips(trackerId);
+        });
+    });
+
+    // Tekrar Dene
+    if (retryBtn) {
+        retryBtn.addEventListener('click', function() {
+            if (currentTrackerId) fetchTips(currentTrackerId);
+        });
+    }
+
+    // ESC ile kapat
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('show')) closeSeoTipsModal();
+    });
+})();
+
+function closeSeoTipsModal(event) {
+    var modal = document.getElementById('seoTipsModal');
+    if (event && event.target !== modal) return;  // sadece overlay tıklamasında veya direct
+    if (modal) modal.classList.remove('show');
+}
+</script>
+
+{% endblock %}

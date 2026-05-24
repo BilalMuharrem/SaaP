@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+{% block title %}Bildirimler{% endblock %}
+{% block head %}
+<style>
+/* ── HOTFIX 1.80: Okundu / Okunmadı Görsel Hiyerarşi ──
+   Okunmamış: hafif renkli zemin + bold metin + sol-üstte mavi nokta
+   Okunmuş:   şeffaf zemin + normal weight + soluk görünüm
+   Light/Dark mode uyumlu (var-based) */
+.notification-unread {
+    background: rgba(37, 99, 235, 0.06);    /* light: hafif mavi yıkama */
+    border-left: 3px solid var(--primary, #2563eb);
+    position: relative;
+}
+[data-theme="dark"] .notification-unread {
+    background: rgba(37, 99, 235, 0.15);    /* dark: biraz daha belirgin */
+}
+.notification-unread .notif-message {
+    font-weight: 600;                        /* bold metin — yeni hissi */
+    color: var(--text-primary);
+}
+.notif-row:not(.notification-unread) .notif-message {
+    font-weight: 400;
+    color: var(--text-secondary, var(--text-muted));
+    opacity: 0.88;                           /* soluk, "geçmiş mail" hissi */
+}
+.notif-row:not(.notification-unread) {
+    opacity: 0.92;
+}
+/* Mavi unread dot — left margin'ı strip'in sağına denk getir */
+.unread-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--primary, #2563eb);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    margin-right: 8px;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+/* HOTFIX 1.54: kategori bazlı renk şeritleri */
+.cat-strip { width: 4px; align-self: stretch; border-radius: 4px; margin-right: 14px; }
+.cat-price_down  { background: #ef4444; }
+.cat-price_up    { background: #10b981; }
+.cat-combined    { background: #8b5cf6; }
+.cat-opportunity { background: #f59e0b; }
+.cat-threat      { background: #dc2626; }
+.cat-system      { background: #64748b; }
+.cat-seo         { background: #0ea5e9; }   /* HOTFIX 1.99 */
+/* Sekme aktif ve hover stilleri */
+.notif-tab {
+    padding: 8px 16px; border-radius: 99px; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border); background: transparent; color: var(--text-muted);
+    cursor: pointer; white-space: nowrap; transition: all 0.2s; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.notif-tab:hover { background: var(--accent-dark); color: var(--text-primary); }
+.notif-tab.active { background: var(--text-primary); color: var(--bg-primary); border-color: transparent; }
+/* HOTFIX 1.81: Rozet renk varyantları — okunmamış varsa ALARM rengi, yoksa soluk */
+.notif-tab .badge-count {
+    display: inline-block; min-width: 18px; padding: 2px 7px; border-radius: 99px;
+    font-size: 11px; font-weight: 800; text-align: center;
+    background: var(--primary, #2563eb);
+    color: #fff;
+    transition: all 0.2s ease;
+    line-height: 1.2;
+}
+/* Sayı 0 ise → soluk gri (data-count="0" attribute ile) */
+.notif-tab .badge-count[data-count="0"] {
+    background: rgba(148, 163, 184, 0.20);
+    color: var(--text-muted);
+    font-weight: 600;
+}
+[data-theme="dark"] .notif-tab .badge-count[data-count="0"] {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-muted);
+}
+/* Aktif sekme — primary tab arka planı koyu, rozet zaten 0 olacağı için soluk varyant geçerli */
+.notif-tab.active .badge-count[data-count="0"] {
+    background: rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.7);
+}
+/* Aktif sekme + sayı > 0 (nadir senaryo: sekme yeni açılırken sayım anlık güncelleniyor) */
+.notif-tab.active .badge-count { background: rgba(255, 255, 255, 0.30); color: #fff; }
+/* Opportunity / Threat sekmeleri renk vurgusu */
+.notif-tab.tab-opportunity .badge-count:not([data-count="0"]) { background: #f59e0b; }
+.notif-tab.tab-threat      .badge-count:not([data-count="0"]) { background: #dc2626; }
+.notif-tab.tab-seo         .badge-count:not([data-count="0"]) { background: #0ea5e9; }
+.notif-tab.tab-opportunity { border-color: rgba(245,158,11,0.4); color: #d97706; }
+.notif-tab.tab-threat      { border-color: rgba(220,38,38,0.4); color: #dc2626; }
+.notif-tab.tab-seo         { border-color: rgba(14,165,233,0.4); color: #0284c7; }
+.notif-tab.tab-opportunity.active { background: #f59e0b; color: #fff; }
+.notif-tab.tab-threat.active      { background: #dc2626; color: #fff; }
+.notif-tab.tab-seo.active         { background: #0ea5e9; color: #fff; }
+.notif-row { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: stretch; gap: 0; }
+.notif-row:last-child { border-bottom: none; }
+.pager-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-primary); text-decoration: none;
+    font-weight: 600; font-size: 13px;
+}
+.pager-btn:hover { background: var(--accent-dark); }
+.pager-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+/* ── HOTFIX 1.99: Bildirim Aksiyon Butonları (İç Grafik + Dış Pazaryeri) ── */
+.notif-action-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px; font-weight: 700;
+    text-decoration: none;
+    border: 1px solid;
+    transition: all 0.15s;
+    line-height: 1.3;
+}
+.notif-btn-internal {
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--primary, #2563eb);
+    border-color: rgba(37, 99, 235, 0.30);
+}
+.notif-btn-internal:hover {
+    background: rgba(37, 99, 235, 0.18);
+    border-color: rgba(37, 99, 235, 0.50);
+}
+.notif-btn-external {
+    background: rgba(148, 163, 184, 0.10);
+    color: var(--text-secondary, var(--text-muted));
+    border-color: rgba(148, 163, 184, 0.30);
+}
+.notif-btn-external:hover {
+    background: rgba(148, 163, 184, 0.20);
+    color: var(--text-primary);
+    border-color: rgba(148, 163, 184, 0.50);
+}
+</style>
+{% endblock %}
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon">B</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+
+        <nav>
+            <div class="nav-section">
+                <div class="nav-label">Ana Menü</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                    <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
+                </a>
+                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">Hesabım</div>
+                <a href="{{ url_for('notifications') }}" class="nav-link active">
+                    <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
+                    {% if unread_notifications > 0 %}
+                    <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ current_user.full_name[0] }}</div>
+                <div>
+                    <div class="user-name">{{ current_user.full_name }}</div>
+                    <div class="user-email">{{ current_user.email }}</div>
+                </div>
+            </div>
+                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;">
+            <div style="flex:1; min-width:0;">
+                <h1 class="page-title">Bildirimler 🔔</h1>
+                <p class="page-subtitle">YZ destekli akıllı sınıflandırma — toplam {{ total }} kayıt</p>
+
+                {# ── HOTFIX 1.81: Sekmeler — data-cat ile JS optimistic update'e hazır ── #}
+                <div id="notifTabs" style="display:flex; gap:8px; margin-top:20px; flex-wrap:wrap;">
+                    <a href="{{ url_for('notifications', cat='all') }}" data-cat="all"
+                       class="notif-tab {% if active_cat == 'all' %}active{% endif %}">
+                        Tümü <span class="badge-count" data-count="{{ cat_counts.get('all', 0) }}">{{ cat_counts.get('all', 0) }}</span>
+                    </a>
+                    <a href="{{ url_for('notifications', cat='price_down') }}" data-cat="price_down"
+                       class="notif-tab {% if active_cat == 'price_down' %}active{% endif %}">
+                        📉 Fiyatı Düşenler <span class="badge-count" data-count="{{ cat_counts.get('price_down', 0) }}">{{ cat_counts.get('price_down', 0) }}</span>
+                    </a>
+                    <a href="{{ url_for('notifications', cat='price_up') }}" data-cat="price_up"
+                       class="notif-tab {% if active_cat == 'price_up' %}active{% endif %}">
+                        📈 Fiyatı Yükselenler <span class="badge-count" data-count="{{ cat_counts.get('price_up', 0) }}">{{ cat_counts.get('price_up', 0) }}</span>
+                    </a>
+                    <a href="{{ url_for('notifications', cat='combined') }}" data-cat="combined"
+                       class="notif-tab {% if active_cat == 'combined' %}active{% endif %}">
+                        🔬 Kombine Analiz <span class="badge-count" data-count="{{ cat_counts.get('combined', 0) }}">{{ cat_counts.get('combined', 0) }}</span>
+                    </a>
+                    <a href="{{ url_for('notifications', cat='opportunity') }}" data-cat="opportunity"
+                       class="notif-tab tab-opportunity {% if active_cat == 'opportunity' %}active{% endif %}">
+                        🎯 Fırsat <span class="badge-count" data-count="{{ cat_counts.get('opportunity', 0) }}">{{ cat_counts.get('opportunity', 0) }}</span>
+                    </a>
+                    <a href="{{ url_for('notifications', cat='threat') }}" data-cat="threat"
+                       class="notif-tab tab-threat {% if active_cat == 'threat' %}active{% endif %}">
+                        ⚠️ Tehdit <span class="badge-count" data-count="{{ cat_counts.get('threat', 0) }}">{{ cat_counts.get('threat', 0) }}</span>
+                    </a>
+                    <a href="{{ url_for('notifications', cat='system') }}" data-cat="system"
+                       class="notif-tab {% if active_cat == 'system' %}active{% endif %}">
+                        ⚙️ Sistem Mesajı <span class="badge-count" data-count="{{ cat_counts.get('system', 0) }}">{{ cat_counts.get('system', 0) }}</span>
+                    </a>
+                    {# HOTFIX 1.99: SEO sıralama değişim bildirimleri sekmesi #}
+                    <a href="{{ url_for('notifications', cat='seo') }}" data-cat="seo"
+                       class="notif-tab tab-seo {% if active_cat == 'seo' %}active{% endif %}">
+                        🔍 SEO Takibi <span class="badge-count" data-count="{{ cat_counts.get('seo', 0) }}">{{ cat_counts.get('seo', 0) }}</span>
+                    </a>
+                </div>
+            </div>
+
+            {# Eylem butonları — sağ taraf #}
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                {# HOTFIX 1.99: "Tümünü Okundu" AJAX butonu — sayfa yenilenmeden çalışır.
+                   Auto-read kaldırıldığı için bu buton primary aksiyondur. #}
+                {% if unread_notifications > 0 %}
+                <button type="button" id="markAllReadBtn" class="btn btn-secondary"
+                        style="border-radius:10px; background:rgba(37,99,235,0.10); color:var(--primary); border:1px solid rgba(37,99,235,0.30); font-weight:600;">
+                    ✔️ Tümünü Okundu İşaretle
+                    <span id="markAllCount" style="margin-left:6px; background:var(--primary); color:#fff; padding:1px 7px; border-radius:99px; font-size:11px; font-weight:700;">{{ unread_notifications }}</span>
+                </button>
+                {% endif %}
+                {% if total > 0 %}
+                {# HOTFIX 1.54-B: Kategoriyi Temizle — sadece aktif sekmedeki kayıtları siler #}
+                {% if active_cat == 'all' %}
+                    {% set _confirm_msg = 'TÜM bildirimleri kalıcı olarak silmek istediğinize emin misiniz?' %}
+                    {% set _btn_label = 'Tümünü' %}
+                {% else %}
+                    {% set _confirm_msg = 'Bu kategorideki tüm bildirimleri kalıcı olarak silmek istediğinize emin misiniz?' %}
+                    {% set _btn_label = 'Kategoriyi' %}
+                {% endif %}
+                <form method="POST" action="{{ url_for('clear_notifications_category') }}"
+                      onsubmit="return confirm('{{ _confirm_msg }}');">
+                    <input type="hidden" name="cat" value="{{ active_cat }}">
+                    <button type="submit" class="btn" style="border-radius:10px; background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3);">
+                        🗑️ {{ _btn_label }} Temizle
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            {% if notifications %}
+            <div style="display:flex;flex-direction:column;">
+                {% for n in notifications %}
+                {% set cat = n.category or 'system' %}
+                {% set icon_map = {
+                    'price_down': '📉',
+                    'price_up': '📈',
+                    'combined': '🔬',
+                    'opportunity': '🎯',
+                    'threat': '⚠️',
+                    'system': '🔔',
+                    'seo': '🔍',
+                } %}
+                <div class="notif-row {% if not n.is_read %}notification-unread{% endif %}">
+                    {# Sol kenar — kategori renk şeridi #}
+                    <div class="cat-strip cat-{{ cat }}"></div>
+                    {# İkon #}
+                    <div style="font-size:24px; padding-right:14px; align-self:flex-start;">
+                        {{ icon_map.get(cat, '🔔') }}
+                    </div>
+                    {# İçerik — HOTFIX 1.80: notif-message span'ı (CSS read/unread state hook'u) #}
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:15px;line-height:1.5;margin-bottom:5px;">
+                            {% if not n.is_read %}<span class="unread-dot" aria-label="Okunmadı"></span>{% endif %}
+                            <span class="notif-message">{{ n.message }}</span>
+                        </div>
+                        <div style="color:var(--text-muted);font-size:12px;">
+                            <span>{{ n.created_at|timeago }}</span>
+                        </div>
+                        {# ── HOTFIX 1.99: İki ayrı buton — İç Grafik + Dış Pazaryeri ──
+                           Bildirim kartı altına yan yana 2 şık buton. Her ikisi de
+                           tıklamada bildirimi okundu işaretler (notification_open route).
+                           İç grafik için internal_link kullanılır (varsa); dış için n.link. #}
+                        <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                            {% set _is_seo = (n.category == 'seo') %}
+                            {% set _ext = n.link and n.link.startswith('http') %}
+                            {# İç grafik butonu — internal_link varsa veya kategori bilinen tipte #}
+                            {% if n.internal_link or n.category in ('price_down','price_up','threat','opportunity','seo','combined') %}
+                            <a href="{{ url_for('notification_open', notif_id=n.id) }}?to=internal"
+                               class="notif-action-btn notif-btn-internal"
+                               title="Grafiği açar">
+                                {% if _is_seo %}🔍 SEO Grafiğini İncele{% elif n.category == 'combined' %}📊 Analiz Raporunu Aç{% else %}📊 Fiyat Grafiğini İncele{% endif %}
+                            </a>
+                            {% endif %}
+                            {# Dış pazaryeri butonu — sadece n.link http* ise #}
+                            {% if _ext %}
+                            <a href="{{ url_for('notification_open', notif_id=n.id) }}?to=external"
+                               target="_blank" rel="noopener"
+                               class="notif-action-btn notif-btn-external"
+                               title="Pazaryeri sayfasını yeni sekmede açar">
+                                {% if _is_seo %}🔗 Pazaryerinde Ara{% else %}🔗 Pazaryerine Git{% endif %}
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align:center;padding:60px 40px;color:var(--text-muted);">
+                <div style="font-size:48px;margin-bottom:14px;">🍃</div>
+                <div style="font-size:16px; font-weight:600; margin-bottom:6px;">
+                    {% if active_cat == 'all' %}Hiç bildiriminiz yok{% else %}Bu kategoride bildirim yok{% endif %}
+                </div>
+                {% if active_cat != 'all' %}
+                <div style="font-size:13px;">
+                    <a href="{{ url_for('notifications', cat='all') }}" style="color:var(--primary); text-decoration:none;">← Tüm bildirimlere dön</a>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {# ── HOTFIX 1.54-C: Sayfalama (50/sayfa) ── #}
+        {% if total_pages > 1 %}
+        <div style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:20px;">
+            <a href="{{ url_for('notifications', cat=active_cat, page=page-1) }}"
+               class="pager-btn {% if page <= 1 %}disabled{% endif %}">← Önceki</a>
+            <span style="color:var(--text-muted); font-size:13px; font-weight:600;">
+                Sayfa {{ page }} / {{ total_pages }}
+            </span>
+            <a href="{{ url_for('notifications', cat=active_cat, page=page+1) }}"
+               class="pager-btn {% if page >= total_pages %}disabled{% endif %}">Sonraki →</a>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+{# ── HOTFIX 1.81: Sekme Tıklama Optimistic AJAX Update ──
+   Kullanıcı sekmeye tıklar → preventDefault → AJAX POST → rozetleri ANINDA
+   güncelle → DOM'daki bildirim vurguların okundu duruma çevir → sayfa
+   navigate. Sunucu zaten /notifications route'unda da aktif sekmeyi okundu
+   işaretler; AJAX bu yüzden "hızlı önizleme + sayfa hâlâ doğru" davranışı verir. #}
+<script>
+(function() {
+    var tabs = document.querySelectorAll('#notifTabs .notif-tab');
+    if (!tabs.length) return;
+
+    var endpoint = "{{ url_for('api_mark_category_read') }}";
+
+    function updateBadge(cat, count) {
+        document.querySelectorAll('#notifTabs .notif-tab').forEach(function(tab) {
+            if (tab.getAttribute('data-cat') === cat) {
+                var b = tab.querySelector('.badge-count');
+                if (b) {
+                    b.textContent = count;
+                    b.setAttribute('data-count', String(count));
+                }
+            }
+        });
+    }
+
+    function applyAllUnreadCounts(map) {
+        Object.keys(map || {}).forEach(function(k) {
+            updateBadge(k, map[k]);
+        });
+    }
+
+    function clearVisualUnread(cat) {
+        // Sayfada şu an listelenen bildirimleri "okundu" görünümüne çevir.
+        // Cat = 'all' ise tümü; aksi halde sadece o kategoriye ait kayıtlar.
+        document.querySelectorAll('.notif-row.notification-unread').forEach(function(row) {
+            // Cat bilgisi DOM'da yok — basit yaklaşım: 'all' geldiyse hepsini temizle,
+            // diğer durumda kullanıcı zaten o kategoriyi açacağı için navigate sonrası
+            // sayfa yeniden render olur ve sunucu doğru state'i basar.
+            if (cat === 'all') {
+                row.classList.remove('notification-unread');
+                var dot = row.querySelector('.unread-dot');
+                if (dot) dot.style.display = 'none';
+            }
+        });
+    }
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function(e) {
+            var cat = tab.getAttribute('data-cat') || 'all';
+            var href = tab.getAttribute('href');
+            var badge = tab.querySelector('.badge-count');
+            var currentCount = badge ? parseInt(badge.getAttribute('data-count') || '0', 10) : 0;
+
+            // Eğer o sekmede zaten 0 okunmamış varsa → AJAX gerekmez, sadece navigate et
+            if (currentCount === 0) return;  // browser default davranışı: link'e git
+
+            e.preventDefault();
+
+            // Optimistic update: rozetleri ANINDA değiştir
+            // 'all' tıklandıysa: tüm rozetleri 0'a düşür
+            // Spesifik kategori: o sekmeyi 0 yap + 'Tümü' rozetini eksilt
+            if (cat === 'all') {
+                document.querySelectorAll('#notifTabs .badge-count').forEach(function(b) {
+                    b.textContent = '0';
+                    b.setAttribute('data-count', '0');
+                });
+            } else {
+                updateBadge(cat, 0);
+                // "Tümü" rozetinden eksilt
+                var allBadge = document.querySelector('#notifTabs .notif-tab[data-cat="all"] .badge-count');
+                if (allBadge) {
+                    var allCount = parseInt(allBadge.getAttribute('data-count') || '0', 10);
+                    var newAllCount = Math.max(0, allCount - currentCount);
+                    allBadge.textContent = newAllCount;
+                    allBadge.setAttribute('data-count', String(newAllCount));
+                }
+            }
+
+            // AJAX: server-side de aynı işlemi yapsın (kalıcı DB güncellemesi)
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cat: cat })
+            })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+                if (data && data.cat_unread) {
+                    // Server'dan dönen gerçek sayıları uygula (race condition koruması)
+                    applyAllUnreadCounts(data.cat_unread);
+                }
+            })
+            .catch(function(){})
+            .finally(function() {
+                // Server-side güncelleme yapıldıktan sonra navigate et
+                // (sayfa yeniden render olduğunda da rozetler doğru kalır)
+                window.location.href = href;
+            });
+        });
+    });
+})();
+
+// ── HOTFIX 1.99: "Tümünü Okundu" AJAX butonu ──
+(function() {
+    var btn = document.getElementById('markAllReadBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+        var orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '⏳ İşaretleniyor...';
+        fetch("{{ url_for('read_all_notifications') }}", {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data && data.success) {
+                // Tüm rozetleri 0'a indir + tüm bildirim kartlarındaki unread vurgusunu kaldır
+                document.querySelectorAll('#notifTabs .badge-count').forEach(function(b) {
+                    b.textContent = '0';
+                    b.setAttribute('data-count', '0');
+                });
+                document.querySelectorAll('.notif-row.notification-unread').forEach(function(row) {
+                    row.classList.remove('notification-unread');
+                    var dot = row.querySelector('.unread-dot');
+                    if (dot) dot.style.display = 'none';
+                });
+                btn.innerHTML = '✓ Tümü Okundu';
+                setTimeout(function() {
+                    btn.style.display = 'none';
+                }, 1200);
+            } else {
+                btn.innerHTML = '❌ Hata';
+                setTimeout(function() {
+                    btn.innerHTML = orig;
+                    btn.disabled = false;
+                }, 2000);
+            }
+        })
+        .catch(function(err) {
+            console.error('[Mark All]', err);
+            btn.innerHTML = '❌ Ağ hatası';
+            setTimeout(function() {
+                btn.innerHTML = orig;
+                btn.disabled = false;
+            }, 2000);
+        });
+    });
+})();
+</script>
+
+{% endblock %}

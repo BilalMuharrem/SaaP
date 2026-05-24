@@ -1,0 +1,53 @@
+{% extends "admin/base.html" %}
+{% block title %}Ayarlar{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <h1 class="page-title">Sistem Ayarları ⚙️</h1>
+    <p class="page-subtitle">Genel sistem yapılandırması</p>
+</div>
+
+<form method="POST" class="card" style="max-width:800px; padding:0; overflow:hidden;">
+    <div style="padding: 24px; border-bottom: 1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="flex:1; padding-right:24px;">
+                <label style="display:block; font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Müşteri Onay Modu</label>
+                <div class="form-hint" style="margin-top:0;">Manuel: Sizin onayınızı bekler | Otomatik: Anında aktif olur.</div>
+            </div>
+            <div style="flex-shrink:0; width:240px;">
+                <select name="approval_mode" class="form-select">
+                    <option value="manual" {% if settings.approval_mode == 'manual' %}selected{% endif %}>Manuel Onay</option>
+                    <option value="auto" {% if settings.approval_mode == 'auto' %}selected{% endif %}>Otomatik Onay</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div style="padding: 24px; border-bottom: 1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="flex:1; padding-right:24px;">
+                <label style="display:block; font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Groq API Key</label>
+                <div class="form-hint" style="margin-top:0;">Global API anahtarı (Müşteri by-pass etmemişse).</div>
+            </div>
+            <div style="flex-shrink:0; width:240px;">
+                <input type="text" name="groq_api_key" value="{{ settings.groq_api_key }}" class="form-input" placeholder="gsk_...">
+            </div>
+        </div>
+    </div>
+
+    <div style="padding: 24px; border-bottom: 1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="flex:1; padding-right:24px;">
+                <label style="display:block; font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Ücretsiz Deneme Süresi</label>
+                <div class="form-hint" style="margin-top:0;">Yeni kayıtlara varsayılan verilecek süre (Gün).</div>
+            </div>
+            <div style="flex-shrink:0; width:240px;">
+                <input type="number" name="free_trial_days" value="{{ settings.free_trial_days }}" class="form-input" min="1" max="90">
+            </div>
+        </div>
+    </div>
+
+    <div style="padding: 24px; background:var(--bg-input); text-align:right;">
+        <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">💾 Değişiklikleri Kaydet</button>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Kayıt Ol{% endblock %}
+{% block body %}
+<div class="auth-page">
+    <div class="auth-box">
+        <div class="auth-logo">
+            <div class="brand-icon" style="width:56px;height:56px;font-size:24px;margin:0 auto 12px auto;">B</div>
+            <div style="font-size:22px;font-weight:800;">BMK Rekabet İstihbaratı</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Ücretsiz Deneme ile Başlayın</div>
+        </div>
+        <div class="auth-card">
+            <div class="auth-title">Kayıt Ol</div>
+            <div class="auth-subtitle">14 günlük ücretsiz deneme ile başlayın</div>
+            <form method="POST">
+                <div class="form-group">
+                    <label class="form-label">Ad Soyad *</label>
+                    <input type="text" name="full_name" class="form-input" placeholder="Ahmet Yılmaz" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Firma Adı</label>
+                    <input type="text" name="company" class="form-input" placeholder="Firma Ltd. Şti.">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Telefon</label>
+                    <input type="tel" name="phone" class="form-input" placeholder="05XX XXX XX XX">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">E-posta Adresi *</label>
+                    <input type="email" name="email" class="form-input" placeholder="ornek@firma.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Şifre *</label>
+                    <input type="password" name="password" class="form-input" placeholder="En az 6 karakter" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Şifre Tekrar *</label>
+                    <input type="password" name="confirm_password" class="form-input" placeholder="Şifrenizi tekrar girin" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:8px;">
+                    Hesap Oluştur →
+                </button>
+            </form>
+        </div>
+        <div class="auth-footer">
+            Zaten hesabınız var mı? <a href="{{ url_for('login') }}">Giriş Yap</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

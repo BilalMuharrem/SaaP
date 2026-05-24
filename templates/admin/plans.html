@@ -1,0 +1,72 @@
+{% extends "admin/base.html" %}
+{% block title %}Planlar{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <h1 class="page-title">Plan Yönetimi 📦</h1>
+    <p class="page-subtitle">Üyelik planlarını düzenleyin</p>
+</div>
+
+<style>
+.admin-plan-card {
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s, border-color 0.3s !important;
+}
+.admin-plan-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    z-index: 10;
+    border-color: var(--accent) !important;
+}
+.admin-plan-card.is-enterprise {
+    border-color: var(--accent);
+}
+</style>
+<div style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:15px;align-items:start;">
+    {% for plan in plans %}
+    <div class="card admin-plan-card {% if plan.name == 'enterprise' %}is-enterprise{% endif %}" style="padding:15px;">
+        <div style="text-align:center;margin-bottom:15px;">
+            <div style="font-size:24px;margin-bottom:4px;">
+                {% if plan.name == 'trial' %}🎁
+                {% elif plan.name == 'starter' %}🚀
+                {% elif plan.name == 'professional' %}⭐
+                {% else %}👑{% endif %}
+            </div>
+            <div style="font-size:15px;font-weight:800;">{{ plan.display_name }}</div>
+            <div style="font-size:18px;font-weight:800;color:var(--accent);margin-top:4px;">
+                {% if plan.price_monthly > 0 %}{{ plan.price_monthly|int }} ₺<span style="font-size:12px;color:var(--text-muted);font-weight:600;">/{% if plan.period_type == 'daily' %}gün{% elif plan.period_type == 'weekly' %}hafta{% else %}ay{% endif %}</span>
+                {% else %}Ücretsiz{% endif %}
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('admin_edit_plan', plan_id=plan.id) }}" style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+                <label style="display:block; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; letter-spacing:0.5px;">Plan Adı</label>
+                <input type="text" name="display_name" value="{{ plan.display_name }}" class="form-input">
+            </div>
+            <div>
+                <label style="display:block; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; letter-spacing:0.5px;">Analiz Limiti <span style="text-transform:none;opacity:0.6;">(0=sınırsız)</span></label>
+                <input type="number" name="max_requests" value="{{ plan.max_requests }}" class="form-input" min="0">
+            </div>
+            <div>
+                <label style="display:block; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; letter-spacing:0.5px;">Takip Grubu Limiti <span style="text-transform:none;opacity:0.6;">(0=sınırsız)</span></label>
+                <input type="number" name="max_tracked_products" value="{{ plan.max_tracked_products }}" class="form-input" min="0">
+            </div>
+            <div>
+                <label style="display:block; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; letter-spacing:0.5px;">Dönem</label>
+                <select name="period_type" class="form-select">
+                    <option value="daily" {% if plan.period_type == 'daily' %}selected{% endif %}>Günlük</option>
+                    <option value="weekly" {% if plan.period_type == 'weekly' %}selected{% endif %}>Haftalık</option>
+                    <option value="monthly" {% if plan.period_type == 'monthly' %}selected{% endif %}>Aylık</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; letter-spacing:0.5px;">Periyot Fiyatı (₺)</label>
+                <input type="number" name="price_monthly" value="{{ plan.price_monthly|int }}" class="form-input" min="0">
+            </div>
+            <button type="submit" class="btn" style="width:100%; justify-content:center; background:linear-gradient(135deg, var(--accent), #7c3aed); color:white; border:none; box-shadow:0 4px 15px rgba(79,70,229,0.3); transition:all 0.3s ease; margin-top:8px;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 25px rgba(79,70,229,0.4)';" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 15px rgba(79,70,229,0.3)';">Kaydet</button>
+        </form>
+        <div style="margin-top:12px;text-align:center;font-size:12px;color:var(--text-muted);">
+            {{ plan.users|length }} aktif kullanıcı
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

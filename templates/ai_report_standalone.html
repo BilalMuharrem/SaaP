@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}YZ Raporu — {{ report.created_at.strftime('%d %b %Y') }}{% endblock %}
+
+{% block body %}
+{# ── HOTFIX 1.74: Standalone YZ Raporu (Sidebar'sız, Tam Ekran Okuma) ──
+   Bu sayfa "Yeni Sekmede Aç" butonundan açılır. Sidebar yok, sadece rapor.
+   ai_consultant.html'in markdown stillerini birebir kopyalıyor → tutarlı görünüm. #}
+
+<style>
+    body { background: var(--bg-primary); }
+    .standalone-wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 24px 80px;
+    }
+    .back-bar {
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .back-btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 9px 14px; border-radius: 10px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-weight: 600; font-size: 13px;
+        transition: background 0.2s;
+    }
+    .back-btn:hover { background: var(--accent-dark); }
+    .report-card {
+        background: var(--bg-card);
+        border: 1px solid rgba(139, 92, 246, 0.20);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    .report-head {
+        background: rgba(139, 92, 246, 0.05);
+        padding: 24px 32px;
+        border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+        display: flex; justify-content: space-between; align-items: flex-start;
+        flex-wrap: wrap; gap: 14px;
+    }
+    .report-body {
+        padding: 32px 36px;
+        font-size: 15px; line-height: 1.7;
+        color: var(--text-primary);
+    }
+    /* Markdown styling (ai_consultant.html'den kopya) */
+    .markdown-content h2 {
+        font-size: 19px; font-weight: 800; color: var(--text-primary);
+        margin-top: 26px; margin-bottom: 12px;
+        padding: 11px 15px;
+        background: linear-gradient(135deg, rgba(139,92,246,0.10) 0%, rgba(217,70,239,0.04) 100%);
+        border-left: 4px solid #8b5cf6;
+        border-radius: 10px;
+    }
+    .markdown-content h2:first-child {
+        border-left-color: #10b981;
+        background: linear-gradient(135deg, rgba(16,185,129,0.10) 0%, rgba(16,185,129,0.02) 100%);
+    }
+    .markdown-content h3 {
+        font-size: 15px; font-weight: 700; color: var(--text-primary);
+        margin-top: 16px; margin-bottom: 8px;
+    }
+    .markdown-content p { color: var(--text-secondary); margin-bottom: 13px; }
+    .markdown-content ul, .markdown-content ol { padding-left: 22px; margin-bottom: 13px; }
+    .markdown-content li { margin-bottom: 5px; color: var(--text-secondary); }
+    .markdown-content strong { color: var(--text-primary); font-weight: 700; }
+    .markdown-content hr {
+        margin: 22px 0; border: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+    .markdown-content table {
+        width: 100%; border-collapse: collapse; margin: 14px 0;
+        font-size: 13px; background: var(--bg-secondary); border-radius: 10px; overflow: hidden;
+        border: 1px solid var(--border);
+    }
+    .markdown-content thead { background: linear-gradient(135deg,rgba(139,92,246,0.08),rgba(217,70,239,0.04)); }
+    .markdown-content th { text-align: left; padding: 9px 12px; font-weight: 700; color: var(--text-primary); border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .markdown-content td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+    .markdown-content tbody tr:last-child td { border-bottom: none; }
+    .markdown-content tbody tr:hover { background: rgba(139,92,246,0.04); }
+    .markdown-content code {
+        background: rgba(245,158,11,0.10); color: #d97706;
+        padding: 2px 6px; border-radius: 4px; font-size: 13px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    @media print {
+        .back-bar { display: none; }
+        .report-card { border: none; box-shadow: none; }
+    }
+</style>
+
+<div class="standalone-wrap">
+    <div class="back-bar">
+        <a href="{{ url_for('ai_consultant') }}" class="back-btn">
+            <i data-lucide="arrow-left" width="16" height="16"></i>
+            YZ Danışman'a Dön
+        </a>
+        {# HOTFIX 1.94: Client-side PDF — yeni sekmede açar, html2pdf.js indirir #}
+        <a href="{{ url_for('download_strategy_pdf', report_id=report.id) }}" target="_blank" rel="noopener" class="back-btn"
+           style="background:rgba(37,99,235,0.10); color:var(--accent, #2563eb); border-color:rgba(37,99,235,0.30); font-weight:700;">
+            <i data-lucide="file-down" width="16" height="16"></i>
+            📄 PDF Olarak İndir
+        </a>
+    </div>
+
+    <div class="report-card">
+        <div class="report-head">
+            <div>
+                <div style="font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+                    {{ report.sector or 'Genel E-Ticaret' }}
+                </div>
+                <div style="font-size:20px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <i data-lucide="brain-circuit" width="22" height="22" style="color:#8b5cf6;"></i>
+                    YZ Strateji Raporu
+                    <span style="font-size:13px; font-weight:600; color:var(--text-muted);">
+                        {{ report.created_at.strftime('%d %B %Y — %H:%M') }}
+                    </span>
+                </div>
+                {% if report.group_name %}
+                <div style="margin-top:8px; font-size:13px; color:#8b5cf6; font-weight:600;">
+                    📦 {{ report.group_name }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="report-body markdown-content" id="reportContent">{{ report.content | safe }}</div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    if (window.marked && marked.setOptions) {
+        marked.setOptions({ gfm: true, breaks: true });
+    }
+    var el = document.getElementById('reportContent');
+    if (el) el.innerHTML = marked.parse(el.innerHTML.trim());
+</script>
+{% endblock %}

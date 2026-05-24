@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="app-layout">
+    <!-- ADMIN SIDEBAR -->
+    <aside class="sidebar">
+        <style>
+            /* Admin Theme Overrides (B2B SaaS Premium Standards) */
+            [data-theme="light"] {
+                --bg-primary: #f8fafc;
+                --bg-secondary: #ffffff;
+                --bg-card: #ffffff;
+                --accent: #4f46e5;
+            }
+            [data-theme="dark"] {
+                --bg-primary: #020617;
+                --bg-secondary: #020617;
+                --bg-card: #0f172a;
+                --accent: #4f46e5;
+            }
+            
+            /* Modern Active Nav Link Overrides */
+            .sidebar .nav-link { 
+                transition: all 0.2s ease;
+                border-left: 4px solid transparent; 
+                padding: 10px 14px 10px 20px; 
+                margin: 4px 12px;
+                border-radius: 0 8px 8px 0;
+            }
+            .sidebar .nav-link:hover {
+                background: rgba(99, 102, 241, 0.05);
+                color: var(--text-primary);
+            }
+            .sidebar .nav-link.active {
+                background: rgba(99, 102, 241, 0.1) !important;
+                border-left: 4px solid #6366f1 !important;
+                box-shadow: none !important;
+                color: #6366f1 !important;
+                font-weight: 600;
+            }
+        </style>
+
+        <div class="brand" style="padding-left: 24px; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon" style="background:linear-gradient(135deg, #4f46e5, #4338ca);">A</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK Admin</div>
+                    <div class="brand-sub">Yönetim Paneli</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+        
+        <nav style="margin-top:20px;">
+            <div class="nav-section">
+                <div class="nav-label" style="padding-left:24px;">Yönetim</div>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                    <i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Genel Bakış
+                </a>
+                <a href="{{ url_for('admin_customers') }}" class="nav-link {% if request.endpoint == 'admin_customers' %}active{% endif %}">
+                    <i data-lucide="users" class="icon" width="20" height="20"></i> Müşteriler
+                    {% if pending_customers is defined and pending_customers > 0 %}<span class="nav-badge">{{ pending_customers }}</span>{% endif %}
+                </a>
+                <a href="{{ url_for('admin_jobs') }}" class="nav-link {% if request.endpoint == 'admin_jobs' %}active{% endif %}">
+                    <i data-lucide="cpu" class="icon" width="20" height="20"></i> Analizler
+                </a>
+                <a href="{{ url_for('admin_tracking') }}" class="nav-link {% if request.endpoint == 'admin_tracking' %}active{% endif %}">
+                    <i data-lucide="radar" class="icon" width="20" height="20"></i> Fiyat Takibi
+                </a>
+                <a href="{{ url_for('admin_plans') }}" class="nav-link {% if request.endpoint == 'admin_plans' %}active{% endif %}">
+                    <i data-lucide="package" class="icon" width="20" height="20"></i> Planlar
+                </a>
+                <a href="{{ url_for('ai_consultant') }}" class="nav-link {% if request.endpoint == 'ai_consultant' %}active{% endif %}">
+                    <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
+                </a>
+                <a href="{{ url_for('notifications') }}" class="nav-link {% if request.endpoint == 'notifications' %}active{% endif %}">
+                    <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
+                </a>
+                <a href="{{ url_for('admin_settings') }}" class="nav-link {% if request.endpoint == 'admin_settings' %}active{% endif %}">
+                    <i data-lucide="settings" class="icon" width="20" height="20"></i> Ayarlar
+                </a>
+            </div>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 0 16px; margin-bottom: 12px;">
+                <div class="user-info" style="padding:0;">
+                    <div class="user-avatar" style="background:linear-gradient(135deg, #4f46e5, #4338ca);">A</div>
+                    <div>
+                        <div class="user-name">{{ current_user.full_name }}</div>
+                        <div class="user-email">Admin</div>
+                    </div>
+                </div>
+                
+                <!-- Minimal Health Status -->
+                <div style="display:flex; align-items:center; gap:6px; background:rgba(34,197,94,0.1); padding:4px 8px; border-radius:12px; border:1px solid rgba(34,197,94,0.2);" title="Sistem Sağlıklı">
+                    <style>@keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); } 70% { box-shadow: 0 0 0 4px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }</style>
+                    <div class="pulse-dot" style="width:6px; height:6px; background:#22c55e; border-radius:50%; animation: pulse-green 2s infinite;"></div>
+                    <span style="font-size:10px; font-weight:600; color:#22c55e;">Sağlıklı</span>
+                </div>
+            </div>
+            
+                        
+            <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            
+            <a href="{{ url_for('logout') }}" class="nav-link" style="margin: 0 12px;">
+                <i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        {% block admin_content %}{% endblock %}
+    </main>
+</div>
+{% endblock %}

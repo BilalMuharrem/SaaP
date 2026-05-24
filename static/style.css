@@ -1,0 +1,1336 @@
+/* ============================================================
+   BMK SaaS Platform — Premium Dark Theme
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --bg-primary: #020617;
+    --bg-secondary: #020617;
+    --bg-card: #0f172a;
+    --bg-card-hover: #1e293b;
+    --bg-input: rgba(255, 255, 255, 0.05);
+    --border: rgba(255, 255, 255, 0.06);
+    --border-input: #334155; /* slate-700 */
+    --border-hover: rgba(255, 255, 255, 0.15);
+    --text-primary: #f8fafc;
+    --text-secondary: #9ca3af;
+    --text-muted: #64748b;
+    --accent: #4f46e5;
+    --accent-glow: rgba(79, 70, 229, 0.25);
+    --accent-dark: rgba(79, 70, 229, 0.10);
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #0ea5e9;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-lg: 24px;
+    --shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.4);
+    --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --sidebar-width: 260px;
+}
+
+.sidebar-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    margin-left: auto;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-primary);
+}
+
+.sidebar.collapsed .sidebar-toggle {
+    margin-left: 0;
+    width: 100%;
+}
+
+[data-theme="light"] {
+    --bg-primary: #f1f5f9;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f8fafc;
+    --bg-input: #f8fafc;
+    --border: #e2e8f0;
+    --border-input: #cbd5e1; /* slate-300 */
+    --border-hover: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --accent: #4f46e5;
+    --accent-glow: rgba(79, 70, 229, 0.15);
+    --accent-dark: rgba(79, 70, 229, 0.08);
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+}
+
+a { color: var(--accent); text-decoration: none; transition: var(--transition); }
+a:hover { color: #a5b4fc; }
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.app-layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    min-height: 100vh;
+    transition: grid-template-columns 0.3s ease;
+}
+
+.app-layout.sidebar-collapsed {
+    --sidebar-width: 80px;
+}
+
+.sidebar {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    padding: 30px 12px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    /* HOTFIX 1.66: transform tabanlı geçiş (width yerine) — daha smooth + GPU
+       hızlandırmalı + içerik yeniden flow etmez (text gizlenme bug'ı kalkar) */
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 200;
+}
+
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+/* HOTFIX 1.66: Sidebar.collapsed → tamamen ekran dışı (mini-sidebar değil) */
+.sidebar.collapsed {
+    transform: translateX(-100%);
+}
+
+/* HOTFIX 1.66: Layout grid — sidebar gizliyse main-content baştan başlar */
+.app-layout.sidebar-collapsed {
+    grid-template-columns: 0 1fr;
+}
+
+.main-content {
+    grid-column: 2;
+    padding: 32px 24px;
+    min-width: 0;
+    transition: padding 0.3s ease;
+}
+
+/* ── HOTFIX 1.67: Hamburger Butonu Overlap Önleme ──
+   Sidebar kapalıyken sol üstte 42x42 hamburger butonu görünüyor (top:16, left:16).
+   Bu buton yaklaşık 58px alan kaplıyor — sayfa başlıklarına biniyor.
+   Sidebar kapalıyken main-content'a 70px sol padding ver → buton ile başlık
+   arasında temiz boşluk kalır. Sidebar açıkken hamburger gizli olduğu için
+   bu padding gereksiz (default 24px sol padding korunur). */
+.app-layout.sidebar-collapsed .main-content {
+    padding-left: 70px;
+}
+
+/* Logo / Brand */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+    padding: 0 8px;
+}
+
+.brand-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+}
+
+.brand-text {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.brand-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* Nav */
+.nav-section {
+    margin-bottom: 24px;
+}
+
+.nav-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 0 12px;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: opacity 0.2s ease;
+}
+
+/* ── HOTFIX 1.66: Mini-Sidebar mantığı KALDIRILDI ──────────────────────────
+   Önceki davranış: .collapsed → 80px mini sidebar, sadece ikonlar görünüyordu.
+   Bu davranış kullanıcı için kafa karıştırıcıydı ve mobil'de "text gizli"
+   kuralları sidebar açıldığında bile metinleri görünmez bırakıyordu (bug).
+   Yeni davranış: .collapsed → sidebar tamamen ekran dışı (translateX -100%),
+   sol üstte hamburger butonu kalır. İçerik gizleme kuralları kaldırıldı
+   çünkü sidebar görünür olduğunda HER ZAMAN tam içerikle açılır. */
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 99px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--transition);
+    margin-bottom: 4px;
+}
+
+.nav-link:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.nav-link.active {
+    background: var(--accent-dark);
+    color: var(--accent);
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.nav-link .icon { font-size: 18px; width: 24px; text-align: center; }
+
+.nav-badge {
+    background: var(--danger);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 99px;
+    margin-left: auto;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.user-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.user-email { font-size: 11px; color: var(--text-muted); }
+
+/* ============================================================
+   PAGE HEADER
+   ============================================================ */
+.page-header {
+    margin-bottom: 30px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.page-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    transition: var(--transition);
+}
+
+.card:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+/* Stat Cards */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    transition: var(--transition);
+}
+
+.stat-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    /* HOTFIX 1.75: 24px → 28px → daha okunabilir komuta merkezi */
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.05;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-card.accent .stat-value { color: var(--accent); }
+.stat-card.success .stat-value { color: var(--success); }
+.stat-card.warning .stat-value { color: var(--warning); }
+.stat-card.danger .stat-value { color: var(--danger); }
+
+/* ============================================================
+   TABLES
+   ============================================================ */
+.table-wrapper {
+    /* Changed from overflow-x: auto to visible to avoid breaking custom tooltips */
+    overflow: visible;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+}
+
+.table-wrapper.scrollable {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.table-wrapper.scrollable-dashboard {
+    max-height: 280px; /* Approximately 5 rows + header */
+    overflow-y: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+}
+
+thead {
+    background: transparent;
+}
+
+.table-wrapper.scrollable th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-card);
+}
+
+th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+}
+
+td {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    color: var(--text-secondary);
+}
+[data-theme="dark"] td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+tr:last-child td { border-bottom: none; }
+
+tr { transition: var(--transition); }
+tr:hover td {
+    background: var(--bg-card-hover);
+}
+
+/* ============================================================
+   FORMS
+   ============================================================ */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-input);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    transition: var(--transition);
+    outline: none;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+    outline: none;
+}
+
+.form-input::placeholder { color: var(--text-muted); }
+
+.form-textarea {
+    min-height: 120px;
+    resize: vertical;
+    line-height: 1.6;
+}
+
+.form-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 99px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: var(--transition);
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), #7c3aed);
+    color: white;
+    box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px var(--accent-glow);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-input);
+    border-color: var(--accent);
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.pagination a, .pagination span {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    transition: var(--transition);
+}
+
+.pagination a:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.pagination a.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+.btn-success {
+    background: var(--success);
+    color: #09090b;
+}
+
+.btn-success:hover { opacity: 0.9; color: #09090b; }
+
+.btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-lg {
+    padding: 14px 28px;
+    font-size: 16px;
+}
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-success { background: rgba(52, 211, 153, 0.1); color: var(--success); }
+.badge-warning { background: rgba(251, 191, 36, 0.1); color: var(--warning); }
+.badge-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+.badge-info { background: rgba(56, 189, 248, 0.1); color: var(--info); }
+.badge-accent { background: var(--accent-dark); color: var(--accent); }
+.badge-muted { background: rgba(82, 82, 91, 0.3); color: var(--text-muted); }
+
+/* ============================================================
+   QUOTA BAR
+   ============================================================ */
+.quota-bar {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.quota-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.quota-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.quota-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.quota-track {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-input);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.quota-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #6366f1);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+/* ============================================================
+   ALERTS / FLASH MESSAGES
+   ============================================================ */
+/* HOTFIX 1.10: Flash mesajları üst-ortaya alındı.
+   Eski konum (top:20px right:20px) ai_consultant.html'deki "Yeni Rapor Üret"
+   butonu ile çakışıyordu. Şimdi page-header'lardan tamamen ayrı bir bantta. */
+.flash-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: auto;
+    max-width: min(560px, calc(100vw - 40px));
+    pointer-events: none;
+}
+.flash-container .flash-msg { pointer-events: auto; }
+
+.flash-msg {
+    padding: 14px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    border-left: 4px solid;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04);
+    animation: slideIn 0.3s ease;
+    background-color: var(--bg-card, #ffffff);
+    backdrop-filter: blur(12px);
+}
+[data-theme="dark"] .flash-msg {
+    background-color: #1e1e2d;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+.flash-msg.success { background: rgba(52, 211, 153, 0.1); border-color: var(--success); color: var(--success); }
+.flash-msg.error { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); color: var(--danger); }
+.flash-msg.warning { background: rgba(251, 191, 36, 0.1); border-color: var(--warning); color: var(--warning); }
+.flash-msg.info { background: rgba(56, 189, 248, 0.1); border-color: var(--info); color: var(--info); }
+
+/* HOTFIX 1.10: top-center konumlandırma için yukarıdan kaydırma animasyonu.
+   Container zaten translateX(-50%) ile yatayda merkezleniyor → kart yukarıdan iner. */
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* ============================================================
+   AUTH PAGES (LOGIN / REGISTER) — Centered layout, no sidebar
+   ============================================================ */
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(129, 140, 248, 0.08) 0%, transparent 60%);
+}
+
+.auth-box {
+    width: 100%;
+    max-width: 440px;
+    padding: 40px;
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.auth-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+}
+
+.auth-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.auth-subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* ============================================================
+   JOB STATUS / RESULT
+   ============================================================ */
+.job-status-card {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.job-status-icon {
+    font-size: 56px;
+    margin-bottom: 16px;
+}
+
+.job-status-text {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.job-status-sub {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.report-frame {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    min-height: 600px;
+    background: var(--bg-primary);
+}
+
+/* ============================================================
+   REQUEST FORM — Type selector radio cards
+   ============================================================ */
+.type-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.type-option {
+    position: relative;
+}
+
+.type-option input { display: none; }
+
+.type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: center;
+}
+
+.type-card:hover {
+    border-color: var(--border-hover);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.type-option input:checked + .type-card {
+    border-color: var(--accent);
+    background: var(--accent-dark);
+}
+
+.type-card .icon { font-size: 28px; margin-bottom: 8px; }
+.type-card .label { font-size: 14px; font-weight: 600; }
+.type-card .desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ============================================================
+   PAGINATION
+   ============================================================ */
+.pagination {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pagination a, .pagination span {
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.pagination a:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.pagination .active {
+    background: var(--accent-dark);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ============================================================
+   ERROR PAGE
+   ============================================================ */
+.error-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.error-code {
+    font-size: 120px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    opacity: 0.2;
+}
+
+.error-message {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin: 16px 0 32px 0;
+}
+
+/* ============================================================
+   SPINNER
+   ============================================================ */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+/* ── HOTFIX 1.65: Sidebar Overlay Backdrop (mobil çekmece için) ── */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 150;
+    animation: overlayFadeIn 0.25s ease;
+}
+.sidebar-overlay.show {
+    display: block;
+}
+@keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ── HOTFIX 1.65: Grafik / Geniş İçerik Taşma Koruması ──
+   ApexCharts container'ları küçük ekranlarda parent grid item'ı zorlayabiliyor.
+   Hem .card hem doğrudan #chart-* elementlerine güvence. */
+.card {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+[id^="chart-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden;
+}
+
+/* ============================================================
+   RESPONSIVE BREAKPOINTS (HOTFIX 1.65 — Yeniden Yazıldı)
+   ============================================================
+   Felsefe:
+     • > 992px: Sidebar + main content yan yana (grid)
+     • ≤ 992px: Sidebar off-canvas çekmece, ana içerik %100 genişlik
+     • ≤ 768px: Form'lar dikey, grid'ler tek kolon
+*/
+
+/* Tablet: 993px - 1200px arası — sidebar biraz daralır */
+@media (max-width: 1200px) and (min-width: 993px) {
+    .app-layout {
+        grid-template-columns: 240px 1fr;
+    }
+    .sidebar { width: 240px; padding: 30px 15px; }
+}
+
+/* Mobil/Tablet: ≤ 992px — sidebar üstüne biner, grid tek kolon */
+@media (max-width: 992px) {
+    /* HOTFIX 1.66: mobil'de grid layout sidebar'ı saymaz —
+       sidebar zaten fixed pozisyon, üstüne biner. Hem collapsed hem değil
+       senaryoda main-content full width kullanır. */
+    .app-layout,
+    .app-layout.sidebar-collapsed {
+        grid-template-columns: 1fr;
+    }
+    .sidebar {
+        width: 280px;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+        /* transform/transition zaten .sidebar global tanımında — burada
+           override yok. .collapsed translateX(-100%) tüm boyutlarda çalışır. */
+    }
+    .main-content {
+        grid-column: 1;
+        padding: 24px 20px 24px 70px;   /* sol-üst hamburger butonuna alan */
+        width: 100%;
+        min-width: 0;
+    }
+    /* Theme toggle butonu mobilde yukarı çekilir → hamburger ile çakışmasın */
+    body > button[onclick="toggleTheme()"] {
+        bottom: 80px;
+    }
+}
+
+/* Küçük mobil: ≤ 768px — form'lar dikey, grid'ler tek kolon */
+@media (max-width: 768px) {
+    .main-content {
+        padding: 20px 16px 20px 64px;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .type-selector {
+        grid-template-columns: 1fr !important;
+    }
+    /* Form'lardaki yatay flex'i dikey aksa zorlama */
+    .card form[style*="flex"],
+    .page-header[style*="flex"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .card form button,
+    .card form input,
+    .card form select,
+    .card form .btn {
+        width: 100% !important;
+    }
+    /* Geniş tablo'ları yatay scroll'a izin ver, taşırma */
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* Page header başlıkları */
+    .page-title { font-size: 22px !important; }
+    .page-subtitle { font-size: 13px !important; }
+}
+
+/* Çok küçük: ≤ 480px — kart padding'leri daral */
+@media (max-width: 480px) {
+    .main-content {
+        padding: 16px 12px 16px 60px;
+    }
+    .card {
+        padding: 16px;
+    }
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 8px;
+    }
+}
+/* ============================================================
+   B2B UI EXTENSIONS (Header Pulse, Action Bar, Buttons)
+   ============================================================ */
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes pulse-orange {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.pulse-dot.idle {
+    background: var(--success);
+    animation: pulse 2s infinite;
+}
+
+.pulse-dot.running {
+    background: var(--warning);
+    animation: pulse-orange 2s infinite;
+}
+
+.header-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 99px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+/* ── HOTFIX 1.75 / 1.76: Dashboard 2-Col Bottom Grid (Analizler + Bildirimler) ──
+   Geniş ekranda 60/40 (sol: analizler, sağ: bildirimler) — kullanıcı scroll'a
+   gerek kalmadan tüm metrikleri tek bakışta görür.
+   ≤992px'de tek kolon (alt alta yığılır).
+   HOTFIX 1.76: align-items: stretch → iki kart aynı yükseklikte biter. */
+.dashboard-bottom-grid {
+    display: grid;
+    grid-template-columns: 3fr 2fr;     /* 60% / 40% */
+    gap: 20px;
+    align-items: stretch;                /* ← start → stretch (equal height) */
+}
+@media (max-width: 992px) {
+    .dashboard-bottom-grid {
+        grid-template-columns: 1fr;
+    }
+}
+/* HOTFIX 1.76: Bottom grid içindeki kartlar tam yükseklik kaplasın */
+.dashboard-bottom-grid > .card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    margin-top: 0 !important;   /* ana margin grid'den geliyor; çift boşluğu önle */
+}
+/* Kart header sabit kalır, içerik (tablo / bildirim listesi) kalan alanı doldurur */
+.dashboard-bottom-grid > .card > .card-header {
+    flex-shrink: 0;
+}
+/* HOTFIX 1.76: Bildirim listesi kartı içinde kaydırılabilir, kartın dışına taşmaz */
+.dashboard-notif-list {
+    flex: 1;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;  /* scrollbar alanı için */
+}
+.dashboard-notif-list::-webkit-scrollbar { width: 6px; }
+.dashboard-notif-list::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.30);
+    border-radius: 99px;
+}
+/* HOTFIX 1.76: Sol kart (Son Analizler) — tablo wrapper'ı kalan alanı doldurur */
+.dashboard-bottom-grid > .card > .table-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 420px;
+}
+.dashboard-bottom-grid > .card > .table-wrapper::-webkit-scrollbar { width: 6px; }
+.dashboard-bottom-grid > .card > .table-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.30);
+    border-radius: 99px;
+}
+
+/* ── HOTFIX 1.75: Quick Action Bar — Ana CTA Vurgusu ──
+   Sönük "tek satır input" görünümünden, belirgin bir CTA card'ına yükseltildi.
+   Gradient border + box-shadow + biraz daha büyük padding ile dikkat çeker. */
+.quick-action-bar {
+    background: linear-gradient(135deg,
+                rgba(99, 102, 241, 0.06) 0%,
+                rgba(139, 92, 246, 0.04) 100%);
+    border: 1.5px solid rgba(99, 102, 241, 0.30);
+    border-radius: var(--radius-lg);
+    padding: 16px 16px 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 30px;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 20px -4px rgba(99, 102, 241, 0.18);
+}
+
+.quick-action-bar:hover {
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: 0 8px 30px -4px rgba(99, 102, 241, 0.28);
+    transform: translateY(-1px);
+}
+
+.quick-action-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 10px 32px -4px rgba(99, 102, 241, 0.35);
+}
+
+.quick-action-icon {
+    color: var(--text-muted);
+}
+
+.quick-action-bar:focus-within .quick-action-icon {
+    color: var(--accent);
+}
+
+.premium-input {
+    flex-grow: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 15px;
+    padding: 8px 0;
+    outline: none;
+}
+
+.premium-input::placeholder {
+    color: var(--text-muted);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.btn-outline:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dark);
+}
+
+/* ============================================================
+   ADVANCED SETTINGS ACCORDION
+   ============================================================ */
+.advanced-settings-accordion {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.advanced-settings-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    list-style: none;
+}
+
+.advanced-settings-summary::-webkit-details-marker {
+    display: none;
+}
+
+.advanced-settings-summary:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+
+.advanced-settings-content {
+    padding: 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-main);
+}
+
+.accordion-chevron {
+    transition: transform 0.3s ease;
+}
+
+details[open] .accordion-chevron {
+    transform: rotate(180deg);
+}
+
+/* ============================================================
+   PREMIUM CHART TOOLTIP
+   ============================================================ */
+.apexcharts-tooltip {
+    background: rgba(15, 23, 42, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 12px !important;
+    padding: 4px !important;
+    backdrop-filter: blur(10px);
+}
+
+.apexcharts-tooltip-title {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 700 !important;
+    color: #cbd5e1 !important;
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+    margin-bottom: 4px !important;
+}
+
+.apexcharts-tooltip-text-y-value {
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    font-size: 15px !important;
+}
+
+.apexcharts-tooltip-text-y-label {
+    color: #94a3b8 !important;
+    font-size: 13px !important;
+}
+
+/* ============================================================
+   FAZ 3 — PLATFORM ROZETLERİ (N11, Çiçeksepeti, PttAVM, vs.)
+   ============================================================ */
+.platform-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    line-height: 1;
+    border: 1px solid;
+    white-space: nowrap;
+}
+
+/* Trendyol — Turuncu */
+.platform-badge.badge-trendyol {
+    background: rgba(249, 115, 22, 0.12);
+    color: #f97316;
+    border-color: rgba(249, 115, 22, 0.35);
+}
+
+/* Hepsiburada — Mor/Turuncu Gradient */
+.platform-badge.badge-hepsiburada {
+    background: linear-gradient(90deg, rgba(255, 96, 0, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+    color: #ff6000;
+    border-color: rgba(255, 96, 0, 0.35);
+}
+
+/* N11 — Kırmızı */
+.platform-badge.badge-n11 {
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
+    border-color: rgba(220, 38, 38, 0.35);
+}
+
+/* Çiçeksepeti — Yeşil/Mavi (kurumsal kimlik) */
+.platform-badge.badge-ciceksepeti {
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.12) 0%, rgba(14, 165, 233, 0.12) 100%);
+    color: #16a34a;
+    border-color: rgba(34, 197, 94, 0.35);
+}
+
+/* PttAVM — Sarı/Lacivert (PTT kurumsal) */
+.platform-badge.badge-pttavm {
+    background: linear-gradient(90deg, rgba(250, 204, 21, 0.18) 0%, rgba(30, 58, 138, 0.18) 100%);
+    color: #1e3a8a;
+    border-color: rgba(30, 58, 138, 0.40);
+}
+[data-theme="dark"] .platform-badge.badge-pttavm {
+    color: #fde047;
+    background: linear-gradient(90deg, rgba(250, 204, 21, 0.15) 0%, rgba(30, 58, 138, 0.30) 100%);
+}
+
+/* Amazon — Antrasit/Turuncu */
+.platform-badge.badge-amazon {
+    background: rgba(15, 23, 42, 0.12);
+    color: #0f172a;
+    border-color: rgba(255, 153, 0, 0.5);
+}
+[data-theme="dark"] .platform-badge.badge-amazon {
+    color: #ff9900;
+    background: rgba(255, 153, 0, 0.10);
+}
