@@ -22,8 +22,10 @@ from models import (
     get_tr_now,
 )
 from config import Config
+from utils.filters import register_filters, turkdate as turkdate_filter
+from utils.decorators import admin_required
+from utils.analytics import extract_review_insights_from_jobs as _extract_review_insights_from_jobs
 from datetime import timedelta
-from functools import wraps
 import json
 import os
 import threading
@@ -49,6 +51,7 @@ def create_app(config_object=Config):
 
     db.init_app(flask_app)
     login_manager.init_app(flask_app)
+    register_filters(flask_app)
 
     return flask_app
 
@@ -62,17 +65,9 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
-def admin_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
-            abort(403)
-        return f(*args, **kwargs)
-    return decorated
-
-
 # =========================================================================
-# CONTEXT PROCESSORS & TEMPLATE FILTERS
+# CONTEXT PROCESSORS
+# (Template filtreleri utils/filters.py'de, register_filters(app) ile bağlandı.)
 # =========================================================================
 
 @app.context_processor
@@ -81,36 +76,6 @@ def inject_global_data():
         unread = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
         return dict(unread_notifications=unread)
     return dict(unread_notifications=0)
-
-@app.template_filter('turkdate')
-def turkdate_filter(dt):
-    if not dt:
-        return '-'
-    months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
-    return f"{dt.day} {months[dt.month - 1]} {dt.year} {dt.strftime('%H:%M')}"
-
-
-@app.template_filter('timeago')
-def timeago_filter(dt):
-    if not dt:
-        return '-'
-    now = get_tr_now()
-    delta = now - dt
-    total_seconds = int(delta.total_seconds())
-    if total_seconds < 0:
-        return 'Az önce'
-    elif delta.days >= 7:
-        return turkdate_filter(dt)
-    elif delta.days >= 2:
-        return f'{delta.days} gün önce'
-    elif delta.days == 1:
-        return 'Dün'
-    elif total_seconds >= 3600:
-        return f'{total_seconds // 3600} saat önce'
-    elif total_seconds >= 60:
-        return f'{total_seconds // 60} dk önce'
-    else:
-        return 'Az önce'
 
 
 # =========================================================================
@@ -448,105 +413,6 @@ def download_strategy_pdf(report_id):
         pdf_filename=pdf_filename,
     )
 
-
-def _extract_review_insights_from_jobs(user_id, target_urls):
-    """FAZ 5: Kullanıcının geçmiş 'review' / 'combined' Job'larındaki kayıtlı HTML'i parse
-    ederek belirli URL'ler için BAŞARILI YÖNLER, KRİTİK ŞİKAYETLER ve GENEL KANI metinlerini
-    yapısal sözlük olarak döndürür.
-
-    Returns: {
-        "<url>": { "praises": [..], "complaints": [..], "general": ".." }
-    }
-    En yeni Job'tan başlanır; aynı URL için ikinci kez parse edilmez.
-    """
-    from bs4 import BeautifulSoup
-    insights = {}
-    if not target_urls:
-        return insights
-
-    target_set = set(target_urls)
-    try:
-        jobs = (Job.query
-                .filter(Job.user_id == user_id,
-                        Job.status == 'completed',
-                        Job.job_type.in_(('review', 'combined')))
-                .order_by(Job.created_at.desc())
-                .limit(40)
-                .all())
-    except Exception as e:
-        print(f"[YZ Danışman] Job sorgulama hatası: {e}")
-        return insights
-
-    for job in jobs:
-        if not job.result_html:
-            continue
-        try:
-            job_urls = set(job.get_urls(filter_metadata=True))
-        except Exception:
-            continue
-        if not (job_urls & target_set):
-            continue
-        # Aranan URL'lerin hepsi zaten doluysa daha eski Job'a bakmaya gerek yok
-        if all(u in insights for u in (job_urls & target_set)):
-            continue
-
-        try:
-            soup = BeautifulSoup(job.result_html, 'lxml')
-            for anchor in soup.find_all('a', href=True):
-                href = anchor.get('href')
-                if href not in target_set or href in insights:
-                    continue
-                # Bu URL'i içeren ürün kartını bul (yukarı doğru en yakın "BAŞARILI YÖNLER" barındıran div)
-                card = anchor
-                for _ in range(10):
-                    card = card.parent
-                    if card is None:
-                        break
-                    if getattr(card, 'name', None) == 'div' and card.find(
-                        string=lambda s: s and 'BAŞARILI YÖNLER' in s
-                    ):
-                        break
-                if not card or getattr(card, 'name', None) != 'div':
-                    continue
-
-                praises, complaints, general = [], [], ""
-
-                praise_label = card.find(string=lambda s: s and 'BAŞARILI YÖNLER' in s)
-                if praise_label and praise_label.parent:
-                    praise_block = praise_label.parent.find_next('ul')
-                    if praise_block:
-                        for li in praise_block.find_all('li'):
-                            txt = li.get_text(separator=' ', strip=True).lstrip('•').strip()
-                            if txt and len(txt) > 4:
-                                praises.append(txt)
-
-                complaint_label = card.find(string=lambda s: s and 'KRİTİK ŞİKAYETLER' in s)
-                if complaint_label and complaint_label.parent:
-                    complaint_block = complaint_label.parent.find_next('ul')
-                    if complaint_block:
-                        for li in complaint_block.find_all('li'):
-                            txt = li.get_text(separator=' ', strip=True).lstrip('•').strip()
-                            if txt and len(txt) > 4:
-                                complaints.append(txt)
-
-                gen_label = card.find(string=lambda s: s and 'GENEL KANI' in s)
-                if gen_label and gen_label.parent and gen_label.parent.parent:
-                    full = gen_label.parent.parent.get_text(separator=' ', strip=True)
-                    parts = full.split('GENEL KANI:', 1)
-                    if len(parts) > 1:
-                        general = parts[1].strip()[:600]
-
-                if praises or complaints or general:
-                    insights[href] = {
-                        "praises": praises[:5],
-                        "complaints": complaints[:5],
-                        "general": general,
-                    }
-        except Exception as e:
-            print(f"[YZ Danışman] Job #{job.id} HTML parse hatası: {e}")
-            continue
-
-    return insights
 
 
 @app.route('/ai-consultant/generate', methods=['POST'])
