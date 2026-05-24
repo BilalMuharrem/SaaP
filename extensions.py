@@ -1,3 +1,15 @@
+"""
+extensions.py — Tekil Flask uzantısı örnekleri.
+
+Bu modül circular import'ları engellemek için merkezi bir uzantı kaynağıdır.
+Her uzantı burada PARAMETRE'siz oluşturulur; Flask app'e bağlama (init_app)
+işlemi `app.py:create_app()` içinde yapılır.
+
+İçerik:
+    db              — SQLAlchemy ORM örneği
+    login_manager   — Flask-Login örneği (login_view ve mesajlar burada ayarlanır)
+    celery          — Celery örneği + beat schedule (worker.py bunu import eder)
+"""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -5,8 +17,25 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from datetime import timedelta
 from celery import Celery
 from celery.schedules import crontab  # kept for backward-compat / ad-hoc usage
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 from config import Config
 
+
+# ── SQLAlchemy ─────────────────────────────────────────────────────────────
+# Tüm modeller `from extensions import db` kullanır.
+db = SQLAlchemy()
+
+
+# ── Flask-Login ────────────────────────────────────────────────────────────
+# NOT: login_view Faz 1C'de blueprint refactor sırasında 'auth.login'a güncellenecek.
+login_manager = LoginManager()
+login_manager.login_view = 'login'
+login_manager.login_message = 'Bu sayfaya erişmek için giriş yapmanız gerekiyor.'
+login_manager.login_message_category = 'warning'
+
+
+# ── Celery ─────────────────────────────────────────────────────────────────
 def make_celery(app_name=__name__):
     return Celery(
         app_name,

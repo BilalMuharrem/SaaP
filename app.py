@@ -1,7 +1,19 @@
+"""
+app.py — BMK Rekabet İstihbaratı Flask uygulaması.
+
+Mimari (Faz 1A): App factory pattern.
+    create_app()   → yeni Flask örneği üretir, uzantıları bağlar.
+    app            → modül seviyesinde tek örnek; worker.py ve gunicorn bunu bekler.
+
+Rotalar şu an hâlâ bu dosyada kayıtlı (Faz 1C-F'de blueprint'lere taşınacak).
+"""
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import login_user, logout_user, login_required, current_user
+import logging
+
+from extensions import db, login_manager
 from models import (
-    db, User, Plan, Job, UsageLog, Setting, init_db,
+    User, Plan, Job, UsageLog, Setting, init_db,
     TrackedProduct, PriceHistory, StockHistory, VulnerabilityAlert,
     Notification, AiReport, PriceAlert, KeywordTracker, SEOHistory,
     GlobalProduct, KeywordPool,
@@ -17,23 +29,32 @@ import os
 import threading
 import requests
 
-app = Flask(__name__)
-app.config.from_object(Config)
 
-# Mute Werkzeug logging for the 5-second health checks so the terminal stays clean
-import logging
-class EndpointFilter(logging.Filter):
+# ── Werkzeug log gürültüsünü sustur ───────────────────────────────────────
+# /api/system-status 5 saniyede bir poll ediliyor; logu kirletir.
+class _EndpointFilter(logging.Filter):
     def filter(self, record):
         return '/api/system-status' not in record.getMessage()
-logging.getLogger('werkzeug').addFilter(EndpointFilter())
 
-db.init_app(app)
+logging.getLogger('werkzeug').addFilter(_EndpointFilter())
 
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = 'Bu sayfaya erişmek için giriş yapmanız gerekiyor.'
-login_manager.login_message_category = 'warning'
+
+def create_app(config_object=Config):
+    """Yeni Flask uygulaması üret ve uzantıları bağla.
+
+    Test'lerde farklı config nesnesi geçilerek izole örnek üretilebilir.
+    """
+    flask_app = Flask(__name__)
+    flask_app.config.from_object(config_object)
+
+    db.init_app(flask_app)
+    login_manager.init_app(flask_app)
+
+    return flask_app
+
+
+# Modül seviyesinde tek örnek — worker.py `from app import app` ile bunu bekler.
+app = create_app()
 
 
 @login_manager.user_loader
