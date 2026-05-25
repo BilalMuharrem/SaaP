@@ -1,0 +1,30 @@
+{% extends 'onboarding/_base.html' %}
+{% block title %}Adım 1 — Ürün Ekle{% endblock %}
+{% block content %}
+    <div class="progress">
+        <div class="step done"></div>
+        <div class="step active"></div>
+        <div class="step"></div>
+    </div>
+
+    <h1>İlk takip edeceğin ürünü ekle</h1>
+    <p class="lead">
+        Kendi ürününün ya da takip etmek istediğin bir rakibin linkini yapıştır.
+        Trendyol veya Hepsiburada'dan olabilir.
+    </p>
+
+    <form method="POST" action="{{ url_for('onboarding.product') }}">
+        <div class="form-row">
+            <label for="url">Ürün Linki</label>
+            <input type="url" name="url" id="url" required
+                   placeholder="https://www.trendyol.com/..."
+                   autocomplete="off" autofocus>
+            <div class="hint">Örnek: https://www.trendyol.com/marka/urun-adi-p-12345678</div>
+        </div>
+
+        <div class="actions">
+            <a href="{{ url_for('onboarding.skip') }}" class="btn btn-ghost">Atla</a>
+            <button type="submit" class="btn btn-primary">Devam →</button>
+        </div>
+    </form>
+{% endblock %}

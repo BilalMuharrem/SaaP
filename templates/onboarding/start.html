@@ -1,0 +1,26 @@
+{% extends 'onboarding/_base.html' %}
+{% block title %}Hoşgeldin{% endblock %}
+{% block content %}
+    <div class="progress">
+        <div class="step active"></div>
+        <div class="step"></div>
+        <div class="step"></div>
+    </div>
+
+    <h1>Hoşgeldin, {{ current_user.full_name.split()[0] }} 👋</h1>
+    <p class="lead">
+        BMK ile <strong>2 dakika</strong> içinde ilk rakibini takibe alalım.
+        Sana üç kısa adımda sistemin nasıl çalıştığını göstereceğim.
+    </p>
+
+    <ul style="color: var(--muted); font-size: 14px; line-height: 1.8; padding-left: 18px; margin: 0 0 28px 0;">
+        <li>Bir <strong>Trendyol</strong> veya <strong>Hepsiburada</strong> ürün linki ekleyeceğiz</li>
+        <li>Sistem fiyatı, stoğu ve sıralamayı arka planda izlemeye başlayacak</li>
+        <li>İstersen ürünün maliyetini girip kâr/zarar analizi yaptırabilirsin</li>
+    </ul>
+
+    <div class="actions">
+        <a href="{{ url_for('onboarding.skip') }}" class="btn btn-ghost">Atla — Direkt panele git</a>
+        <a href="{{ url_for('onboarding.product') }}" class="btn btn-primary">Başlayalım →</a>
+    </div>
+{% endblock %}

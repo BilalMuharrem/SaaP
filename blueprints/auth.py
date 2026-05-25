@@ -50,6 +50,9 @@ def login():
 
             if user.is_admin:
                 return redirect(url_for('admin.admin_dashboard'))
+            # FAZ 5A: İlk girişte onboarding wizard'a yönlendir
+            if not user.onboarding_completed:
+                return redirect(url_for('onboarding.start'))
             return redirect(url_for('dashboard.dashboard'))
         else:
             flash('Geçersiz e-posta veya şifre.', 'error')

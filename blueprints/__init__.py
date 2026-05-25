@@ -13,6 +13,7 @@ from .ai_consultant import bp as ai_consultant_bp
 from .notifications import bp as notifications_bp
 from .plans import bp as plans_bp
 from .admin import bp as admin_bp
+from .onboarding import bp as onboarding_bp
 
 
 def register_blueprints(app):
@@ -26,3 +27,4 @@ def register_blueprints(app):
     app.register_blueprint(notifications_bp)
     app.register_blueprint(plans_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(onboarding_bp)

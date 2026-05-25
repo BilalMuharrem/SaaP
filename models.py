@@ -57,6 +57,9 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=get_tr_now)
     last_login = db.Column(db.DateTime, nullable=True)
     notes = db.Column(db.Text, default='')
+    # FAZ 5A: Onboarding wizard tamamlandı mı? Kayıt sonrası ilk girişte /onboarding'e
+    # yönlendiriyoruz; "Atla" veya 3 adımı tamamlama ile True olur.
+    onboarding_completed = db.Column(db.Boolean, default=False, nullable=False)
 
     jobs = db.relationship('Job', backref='user', lazy=True, order_by='Job.created_at.desc()')
     usage_logs = db.relationship('UsageLog', backref='user', lazy=True)
@@ -738,6 +741,16 @@ def init_db(app):
                 'ON notifications (category)'
             ))
             db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        # FAZ 5A: User.onboarding_completed kolonu
+        try:
+            db.session.execute(text(
+                'ALTER TABLE users ADD COLUMN onboarding_completed BOOLEAN DEFAULT FALSE'
+            ))
+            db.session.commit()
+            log.info('[Migration] users.onboarding_completed KOLON EKLENDİ.')
         except Exception:
             db.session.rollback()
 

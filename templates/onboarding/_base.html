@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Başlangıç{% endblock %} — BMK</title>
+    <script>
+        // FOUC önleyici inline theme
+        (function() {
+            var saved = localStorage.getItem('bmk-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root[data-theme="light"] {
+            --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b;
+            --border: rgba(15,23,42,0.08); --primary: #2563eb; --primary-hover: #1d4ed8;
+            --accent: #10b981; --shadow: 0 20px 60px -10px rgba(15,23,42,0.12);
+            --input-bg: #f8fafc; --input-border: rgba(15,23,42,0.12);
+        }
+        :root[data-theme="dark"] {
+            --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8;
+            --border: rgba(255,255,255,0.06); --primary: #3b82f6; --primary-hover: #60a5fa;
+            --accent: #10b981; --shadow: 0 30px 80px -10px rgba(0,0,0,0.4);
+            --input-bg: #0f172a; --input-border: rgba(255,255,255,0.1);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg); color: var(--text);
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 20px; box-shadow: var(--shadow);
+            max-width: 540px; width: 100%; padding: 48px 44px;
+        }
+        .progress {
+            display: flex; gap: 8px; margin-bottom: 32px;
+        }
+        .step {
+            flex: 1; height: 4px; border-radius: 2px;
+            background: var(--border); transition: background 0.3s;
+        }
+        .step.active { background: var(--primary); }
+        .step.done { background: var(--accent); }
+        h1 {
+            font-size: 28px; font-weight: 800; line-height: 1.2;
+            margin: 0 0 12px 0; letter-spacing: -0.02em;
+        }
+        .lead {
+            color: var(--muted); font-size: 16px; line-height: 1.55;
+            margin: 0 0 28px 0;
+        }
+        .form-row { margin-bottom: 20px; }
+        label {
+            display: block; font-size: 13px; font-weight: 600;
+            color: var(--text); margin-bottom: 8px;
+        }
+        .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+        input[type="text"], input[type="url"], input[type="number"] {
+            width: 100%; padding: 13px 14px; font-size: 15px;
+            border-radius: 10px; border: 1.5px solid var(--input-border);
+            background: var(--input-bg); color: var(--text);
+            font-family: inherit; transition: border-color 0.15s;
+        }
+        input:focus { outline: none; border-color: var(--primary); }
+        .actions {
+            display: flex; gap: 12px; margin-top: 28px;
+            justify-content: space-between; align-items: center;
+        }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 13px 22px; font-size: 15px; font-weight: 600;
+            border-radius: 10px; border: none; cursor: pointer;
+            font-family: inherit; transition: all 0.15s;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background: var(--primary); color: white;
+        }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-ghost {
+            background: transparent; color: var(--muted);
+        }
+        .btn-ghost:hover { color: var(--text); }
+        .flash {
+            padding: 12px 14px; border-radius: 8px;
+            margin-bottom: 16px; font-size: 14px;
+        }
+        .flash-warning { background: rgba(245,158,11,0.1); color: #b45309; border: 1px solid rgba(245,158,11,0.3); }
+        .flash-error { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.3); }
+        .flash-info { background: rgba(59,130,246,0.1); color: #1d4ed8; border: 1px solid rgba(59,130,246,0.3); }
+        [data-theme="dark"] .flash-warning { color: #fbbf24; }
+        [data-theme="dark"] .flash-error { color: #fca5a5; }
+        [data-theme="dark"] .flash-info { color: #93c5fd; }
+        .skip-bar {
+            text-align: center; margin-top: 20px; font-size: 13px;
+        }
+        .skip-bar a { color: var(--muted); text-decoration: none; }
+        .skip-bar a:hover { color: var(--text); text-decoration: underline; }
+        .check-icon {
+            font-size: 56px; line-height: 1; text-align: center;
+            margin: 0 auto 20px auto; width: 88px; height: 88px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            background: rgba(16,185,129,0.1); color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for cat, msg in messages %}
+                <div class="flash flash-{{ cat if cat in ['warning','error','info'] else 'info' }}">{{ msg }}</div>
+            {% endfor %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

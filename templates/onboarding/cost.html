@@ -1,0 +1,29 @@
+{% extends 'onboarding/_base.html' %}
+{% block title %}Adım 2 — Maliyet{% endblock %}
+{% block content %}
+    <div class="progress">
+        <div class="step done"></div>
+        <div class="step done"></div>
+        <div class="step active"></div>
+    </div>
+
+    <h1>Birim maliyetin nedir? <span style="color:var(--muted); font-weight:500; font-size: 18px;">(Opsiyonel)</span></h1>
+    <p class="lead">
+        Bu ürünün <strong>sana mal oluş fiyatını</strong> girersen, kâr marjını ve "rakipler maliyetinin
+        altına inmiş mi?" sinyalini otomatik hesaplarız. Boş bırakırsan da takip çalışmaya devam eder.
+    </p>
+
+    <form method="POST" action="{{ url_for('onboarding.cost', product_id=product.id) }}">
+        <div class="form-row">
+            <label for="unit_cost">Birim Maliyet (₺)</label>
+            <input type="number" name="unit_cost" id="unit_cost"
+                   placeholder="Örn: 149.90" step="0.01" min="0">
+            <div class="hint">KDV dahil mi hariç mi — kâr marjı hesabında kullanacağın değer.</div>
+        </div>
+
+        <div class="actions">
+            <a href="{{ url_for('onboarding.done') }}" class="btn btn-ghost">Sonra eklerim</a>
+            <button type="submit" class="btn btn-primary">Devam →</button>
+        </div>
+    </form>
+{% endblock %}

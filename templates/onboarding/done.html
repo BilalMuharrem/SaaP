@@ -1,0 +1,30 @@
+{% extends 'onboarding/_base.html' %}
+{% block title %}Hazırsın{% endblock %}
+{% block content %}
+    <div class="progress">
+        <div class="step done"></div>
+        <div class="step done"></div>
+        <div class="step done"></div>
+    </div>
+
+    <div class="check-icon">✓</div>
+
+    <h1 style="text-align:center;">Her şey hazır 🎉</h1>
+    <p class="lead" style="text-align:center;">
+        Eklediğin ürünün fiyatı arka planda taranıyor. Birkaç dakika içinde panelde
+        ilk veriyi göreceksin.
+    </p>
+
+    <div style="background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.18); border-radius: 12px; padding: 18px 20px; margin: 8px 0 28px 0;">
+        <div style="font-weight: 600; margin-bottom: 6px; font-size: 14px;">Sonra yapabileceklerin</div>
+        <ul style="margin: 0; padding-left: 20px; font-size: 13.5px; color: var(--muted); line-height: 1.7;">
+            <li>Rakipleri aynı gruba ekleyip fiyat karşılaştırması yap</li>
+            <li>SEO sıralamanı takip et — "ürün arama" kelimesi gir</li>
+            <li>Fiyat düşüş/artış alarmı kur, mailden haber al</li>
+        </ul>
+    </div>
+
+    <div class="actions" style="justify-content: center;">
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-primary">Panele git →</a>
+    </div>
+{% endblock %}
