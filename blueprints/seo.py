@@ -21,7 +21,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 
-from extensions import db
+from extensions import db, limiter
 from models import (
     KeywordTracker, SEOHistory, TrackedProduct, GlobalProduct,
     attach_keyword_tracker_to_pool, detach_keyword_tracker_from_pool,
@@ -175,8 +175,12 @@ def seo_tracker_delete(tracker_id):
 
 @bp.route('/api/generate-seo-tips/<int:tracker_id>', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("10 per hour;3 per minute")
 def api_generate_seo_tips(tracker_id):
-    """EPIC 8.1 / HOTFIX 1.98: Dinamik YZ SEO ipuçları."""
+    """EPIC 8.1 / HOTFIX 1.98: Dinamik YZ SEO ipuçları.
+
+    Rate limit: kullanıcı başına 3/dk, 10/saat — Groq API maliyeti koruması.
+    """
     kt = KeywordTracker.query.filter_by(id=tracker_id, user_id=current_user.id).first()
     if not kt:
         return jsonify({'success': False, 'error': 'Takip kaydı bulunamadı.'}), 404
@@ -313,8 +317,12 @@ def api_generate_seo_tips(tracker_id):
 
 @bp.route('/seo-tracker/<int:tracker_id>/refresh', methods=['POST'])
 @login_required
+@limiter.limit("20 per hour")
 def seo_tracker_refresh(tracker_id):
-    """Tek bir kelime takibini anında yeniden kontrol et."""
+    """Tek bir kelime takibini anında yeniden kontrol et.
+
+    Rate limit: 20/saat — scraper kuyruğunu doldurmayı engeller.
+    """
     kt = KeywordTracker.query.filter_by(id=tracker_id, user_id=current_user.id).first()
     if not kt:
         flash('Kayıt bulunamadı.', 'warning')
@@ -384,14 +392,22 @@ def start_group_seo(group_id):
 
     db.session.commit()
 
+    queued = False
     if new_ids:
         try:
             from worker import check_keyword_trackers_task
             check_keyword_trackers_task.delay(new_ids)
+            queued = True
         except Exception:
             log.exception("[SEO group-start] Celery tetikleme hatası")
 
-    flash(f'🔍 SEO takibi başlatıldı: {added} yeni, {skipped} atlandı (zaten var).', 'success')
+    if new_ids and not queued:
+        flash(
+            f'🔍 SEO takibi kaydedildi ({added} yeni, {skipped} atlandı), ancak görev kuyruğu '
+            f'erişilemiyor. Periyodik taramada (her 6 saatte bir) işlenecek.', 'warning'
+        )
+    else:
+        flash(f'🔍 SEO takibi başlatıldı: {added} yeni, {skipped} atlandı (zaten var).', 'success')
     return redirect(url_for('seo.seo_graph'))
 
 

@@ -19,6 +19,9 @@ from celery import Celery
 from celery.schedules import crontab  # kept for backward-compat / ad-hoc usage
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_login import current_user as _current_user
 from config import Config
 
 
@@ -32,6 +35,29 @@ login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Bu sayfaya erişmek için giriş yapmanız gerekiyor.'
 login_manager.login_message_category = 'warning'
+
+
+# ── Flask-Limiter (Rate Limiting) ──────────────────────────────────────────
+# Anahtar fonksiyonu: giriş yapmış kullanıcı varsa user_id, yoksa IP.
+# Bu sayede aynı IP arkasındaki birden fazla kullanıcı birbirini etkilemez.
+def _rate_limit_key():
+    try:
+        if _current_user.is_authenticated:
+            return f"user:{_current_user.id}"
+    except Exception:
+        pass
+    return get_remote_address()
+
+
+# Storage: Redis varsa onu kullan (paylaşımlı), yoksa in-memory (tek worker).
+_storage_uri = Config.broker_url if Config.broker_url.startswith('redis') else 'memory://'
+
+limiter = Limiter(
+    key_func=_rate_limit_key,
+    storage_uri=_storage_uri,
+    default_limits=[],   # Endpoint başına explicit verilir
+    headers_enabled=True,  # X-RateLimit-* header'ları döner
+)
 
 
 # ── Celery ─────────────────────────────────────────────────────────────────

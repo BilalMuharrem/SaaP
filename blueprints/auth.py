@@ -10,7 +10,7 @@ Rotalar:
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 
-from extensions import db
+from extensions import db, limiter
 from models import User, UsageLog, Plan, Setting, get_tr_now
 
 bp = Blueprint('auth', __name__)
@@ -23,6 +23,7 @@ def index():
 
 
 @bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute;30 per hour", methods=['POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('auth.index'))
@@ -57,6 +58,7 @@ def login():
 
 
 @bp.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per hour;20 per day", methods=['POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('auth.index'))

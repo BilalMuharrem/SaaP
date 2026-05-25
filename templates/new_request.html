@@ -209,19 +209,10 @@ https://www.hepsiburada.com/urun-adi-pm-12345" rows="6" required></textarea>
                 </div>
             </div>
 
-            <!-- API KEY (Optional) -->
-            <details class="advanced-settings-accordion">
-                <summary class="advanced-settings-summary">
-                    <span style="display:flex;align-items:center;"><i data-lucide="settings" width="16" height="16" style="margin-right:8px;"></i> Gelişmiş Ayarlar (Kendi API Anahtarını Kullan)</span>
-                    <i data-lucide="chevron-down" width="16" height="16" class="accordion-chevron"></i>
-                </summary>
-                <div class="advanced-settings-content">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" name="api_key" class="form-input" placeholder="sk-... (Llama-3 API Key)" style="background:var(--bg-card); border-color:var(--border);">
-                        <div class="form-hint" style="margin-top:10px;line-height:1.5;">Boş bırakırsanız sistemin ortak kaynakları kullanılır. Toplu talepler için Groq Cloud üzerinden kendi ücretsiz anahtarınızı temin etmeniz önerilir.</div>
-                    </div>
-                </div>
-            </details>
+            {# API KEY alanı Faz 2D'de kaldırıldı:
+               • Güvenlik: form üzerinden plain-text key gönderimi risk
+               • Operasyonel: admin-kontrollü key + rate-limiting daha temiz
+               Anahtar artık admin Settings'ten veya GROQ_API_KEY env'den okunuyor. #}
 
             <button id="submit-btn" type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">
                 🚀 Analizi Başlat

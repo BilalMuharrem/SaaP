@@ -21,7 +21,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 
-from extensions import db
+from extensions import db, limiter
 from models import (
     Job, TrackedProduct, UsageLog, Setting, get_tr_now,
     attach_tracked_product_to_global,
@@ -34,6 +34,7 @@ bp = Blueprint('jobs', __name__)
 
 @bp.route('/new-request', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("10 per hour", methods=['POST'])
 def new_request():
     if not current_user.can_submit:
         flash('Talep hakkınız kalmadı. Planınızı yükseltin veya dönem yenilenmesini bekleyin.', 'warning')
@@ -42,7 +43,6 @@ def new_request():
     if request.method == 'POST':
         job_type = request.form.get('job_type', 'combined')
         urls_raw = request.form.get('urls', '')
-        api_key = request.form.get('api_key', '').strip()
         base_cost = request.form.get('base_cost', '').strip()
 
         urls = [u.strip() for u in urls_raw.strip().split('\n')
@@ -69,9 +69,8 @@ def new_request():
                 )
                 return render_template('new_request.html')
 
-        # HOTFIX 1.44: DB yoksa .env'den oku
-        if not api_key:
-            api_key = Setting.get('groq_api_key', '') or os.environ.get('GROQ_API_KEY', '')
+        # Faz 2D: API key form'dan kaldırıldı; admin Settings veya .env'den
+        api_key = Setting.get('groq_api_key', '') or os.environ.get('GROQ_API_KEY', '')
 
         if job_type == 'radar':
             flash('Zafiyet Radarı (stok takibi) geçici olarak devre dışıdır. Fiyat Takibi ile devam edebilirsiniz.', 'info')
@@ -149,7 +148,11 @@ def new_request():
                     flash(f'{added} adet ürün eklendi. İlk kontrol asenkron olarak başlatıldı.', 'success')
                 except Exception:
                     log.exception("[App] Background task error")
-                    flash(f'{added} adet ürün eklendi. Kontrol sıraya alındı.', 'success')
+                    flash(
+                        f'{added} adet ürün eklendi, ancak görev kuyruğu (Celery) şu an erişilemiyor. '
+                        f'Ürünler bir sonraki periyodik taramada (her 6 saatte bir) otomatik işlenecek.',
+                        'warning'
+                    )
             else:
                 flash('Girdiğiniz ürünler zaten takip ediliyor.', 'info')
 
@@ -178,14 +181,21 @@ def new_request():
         try:
             from worker import process_job_task
             process_job_task.delay(job.id)
+            flash(
+                '✅ Analiziniz başarıyla sıraya alındı! Arka planda yüzlerce veriyi tarıyoruz, '
+                'tamamlandığında size bildirim göndereceğiz. Sitede özgürce gezinebilirsiniz.',
+                'success'
+            )
         except Exception:
             log.exception("[App] Hata! Celery görevi başlatılamadı")
-
-        flash(
-            '✅ Analiziniz başarıyla sıraya alındı! Arka planda yüzlerce veriyi tarıyoruz, '
-            'tamamlandığında size bildirim göndereceğiz. Sitede özgürce gezinebilirsiniz.',
-            'success'
-        )
+            # Job DB'ye kaydedildi ama queue ulaşılamadı — kullanıcıya dürüst ol.
+            # Job 'pending' kalır; worker döndüğünde işlenecek.
+            flash(
+                '⚠️ Analiz talebi kaydedildi ancak görev kuyruğu (Celery) şu an erişilemiyor. '
+                'Sistem yöneticisi bilgilendirildi. Worker'
+                ' yeniden başladığında bekleyen işiniz otomatik işlenecek.',
+                'warning'
+            )
         return redirect(url_for('dashboard.dashboard'))
 
     return render_template('new_request.html')

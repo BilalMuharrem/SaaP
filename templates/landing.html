@@ -88,13 +88,10 @@
             "availability": "https://schema.org/InStock",
             "description": "14 gün ücretsiz deneme — kredi kartı gerekmez"
         },
-        "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.8",
-            "ratingCount": "127",
-            "bestRating": "5",
-            "worstRating": "1"
-        },
+        {# aggregateRating bilinçli olarak yok:
+           Gerçek müşteri rating sistemi kurulana kadar sahte değer Google'a
+           yanlış sinyal verir ve manuel penaltıya yol açabilir.
+           Phase 5'te NPS/rating akışı kurulunca dinamik olarak eklenecek. #}
         "publisher": {
             "@type": "Organization",
             "name": "BMK",

@@ -102,13 +102,21 @@ def tracked_products():
 
         db.session.commit()
         if added_count > 0:
+            queued = False
             try:
                 from worker import check_single_product_task
                 for pid in added_ids:
                     check_single_product_task.delay(pid)
+                queued = True
             except Exception:
                 log.exception("[App] Background task error")
-            flash(f'{added_count} ürün takibe alındı. İlk fiyat kontrolü arka planda başlatıldı.', 'success')
+            if queued:
+                flash(f'{added_count} ürün takibe alındı. İlk fiyat kontrolü arka planda başlatıldı.', 'success')
+            else:
+                flash(
+                    f'{added_count} ürün takibe alındı, ancak görev kuyruğu (Celery) erişilemiyor. '
+                    f'Bir sonraki periyodik taramada otomatik fiyat çekilecek.', 'warning'
+                )
         else:
             flash('Girdiğiniz ürünler zaten takip ediliyor veya geçerli değil.', 'info')
         return redirect(url_for('tracked.tracked_products'))
@@ -441,16 +449,23 @@ def add_to_tracked_group(group_id):
 
     db.session.commit()
 
+    queued = False
     if added_count > 0:
         try:
             from worker import check_single_product_task
             for pid in added_ids:
                 check_single_product_task.delay(pid)
+            queued = True
         except Exception:
             log.exception("[App] Background task error")
 
     if quota_exceeded:
         flash(f'Kota sınırı nedeniyle eklenebilen ürün sayısı: {added_count}.', 'warning')
+    elif added_count > 0 and not queued:
+        flash(
+            f'{added_count} ürün gruba eklendi, ancak görev kuyruğu (Celery) erişilemiyor. '
+            f'Bir sonraki periyodik taramada işlenecek.', 'warning'
+        )
     else:
         flash(f'{added_count} yeni ürün başarıyla gruba eklendi! Arka planda fiyatı kontrol edilecek.', 'success')
     return redirect(url_for('tracked.tracked_products'))

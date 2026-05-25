@@ -16,7 +16,7 @@ import os
 from flask import render_template
 from flask_login import current_user
 
-from extensions import db, login_manager
+from extensions import db, login_manager, limiter
 from models import User, Notification, init_db
 from config import Config
 from logging_config import setup_logging
@@ -48,6 +48,7 @@ def create_app(config_object=Config):
     # Uzantılar
     db.init_app(flask_app)
     login_manager.init_app(flask_app)
+    limiter.init_app(flask_app)
 
     # Jinja filtreleri + blueprint'ler
     register_filters(flask_app)
@@ -57,6 +58,7 @@ def create_app(config_object=Config):
     flask_app.context_processor(_inject_global_data)
     flask_app.register_error_handler(403, _forbidden)
     flask_app.register_error_handler(404, _not_found)
+    flask_app.register_error_handler(429, _too_many_requests)
 
     return flask_app
 
@@ -84,6 +86,19 @@ def _forbidden(e):
 def _not_found(e):
     return render_template('error.html', code=404,
                            message='Aradığınız sayfa bulunamadı.'), 404
+
+
+def _too_many_requests(e):
+    # AJAX/JSON istemcisi ise JSON döndür; normal sayfa ise HTML
+    from flask import request, jsonify
+    detail = getattr(e, 'description', 'İstek limiti aşıldı. Birkaç dakika sonra tekrar deneyin.')
+    if (request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or 'application/json' in (request.headers.get('Accept') or '')):
+        return jsonify({'success': False, 'error': str(detail), 'rate_limited': True}), 429
+    return render_template(
+        'error.html', code=429,
+        message=f'İstek limitiniz aşıldı. {detail} Lütfen birkaç dakika sonra tekrar deneyin.'
+    ), 429
 
 
 # Modül seviyesinde tek örnek — worker.py ve gunicorn bunu bekler.

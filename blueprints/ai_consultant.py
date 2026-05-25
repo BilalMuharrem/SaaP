@@ -19,7 +19,7 @@ from flask import (
 from flask_login import login_required, current_user
 from sqlalchemy import func as sqlfunc
 
-from extensions import db
+from extensions import db, limiter
 from models import (
     AiReport, TrackedProduct, KeywordTracker, KeywordPool, Setting, get_tr_now,
 )
@@ -172,8 +172,13 @@ def _seo_status_for_url(user_id, url):
 
 @bp.route('/ai-consultant/generate', methods=['POST'])
 @login_required
+@limiter.limit("5 per hour;15 per day")
 def generate_ai_consultant():
-    """FAZ 3.2 / HOTFIX 1.45 — Veri güdümlü YZ Strateji Danışmanı."""
+    """FAZ 3.2 / HOTFIX 1.45 — Veri güdümlü YZ Strateji Danışmanı.
+
+    Rate limit: kullanıcı başına 5/saat, 15/gün — Llama-3.3-70b çok pahalı
+    (rapor başına ~4500 token + sektör tespiti).
+    """
     if not current_user.has_enterprise_access:
         flash('Bu özellik Kurumsal plana özeldir.', 'warning')
         return redirect(url_for('ai_consultant.ai_consultant'))
