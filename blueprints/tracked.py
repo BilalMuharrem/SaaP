@@ -11,7 +11,6 @@ Rotalar:
     POST     /tracked-products/group/<gid>/add
     POST     /tracked-products/group/<gid>/cost
     POST     /tracked-products/alert/add
-    GET      /zafiyet-radari[*]   (legacy redirect — Faz 3'te tamamen kaldırılacak)
 """
 import csv
 import io
@@ -284,21 +283,10 @@ def delete_tracked_product(id):
     return redirect(url_for('tracked.tracked_products'))
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Zafiyet Radarı — Faz 3'te tamamen kaldırılacak. Şu an sadece redirect.
-# ═══════════════════════════════════════════════════════════════════════════
-@bp.route('/zafiyet-radari')
-@login_required
-def zafiyet_radari_list():
-    flash('Zafiyet Radarı geçici olarak devre dışıdır.', 'info')
-    return redirect(url_for('tracked.tracked_products'))
-
-
-@bp.route('/zafiyet-radari/<string:group_id>')
-@login_required
-def zafiyet_radari(group_id):
-    flash('Zafiyet Radarı geçici olarak devre dışıdır.', 'info')
-    return redirect(url_for('tracked.tracked_products'))
+# NOT (Faz 3A): Zafiyet Radarı (/zafiyet-radari/*) tamamen kaldırıldı.
+# Eski URL'lere gelen istekler Flask varsayılan 404 döner — bilinçli karar.
+# VulnerabilityAlert ve StockHistory modelleri DB'de kalır (migration yok),
+# ama UI/route tarafında hiçbir referans yok.
 
 
 @bp.route('/tracked-products/group/<string:group_id>/rename', methods=['POST'])

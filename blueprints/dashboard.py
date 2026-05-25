@@ -11,7 +11,7 @@ from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required, current_user
 
 from models import (
-    Job, TrackedProduct, VulnerabilityAlert, PriceAlert, Notification,
+    Job, TrackedProduct, PriceAlert, Notification,
 )
 
 log = logging.getLogger(__name__)
@@ -26,11 +26,6 @@ def dashboard():
                    .order_by(Job.created_at.desc()).limit(50).all())
     total_jobs = Job.query.filter_by(user_id=current_user.id).count()
     completed_jobs = Job.query.filter_by(user_id=current_user.id, status='completed').count()
-
-    # Vulnerability Radar: son 5 aktif uyarı (uyku modunda olsa da UI dinleyebilir)
-    vulnerability_alerts = (VulnerabilityAlert.query.filter_by(
-        user_id=current_user.id, is_active=True
-    ).order_by(VulnerabilityAlert.created_at.desc()).limit(5).all())
 
     # ── FAZ 3.1: Finansal Komuta Merkezi metrikleri ────────────────────────
     # Tüm base ürünleri çek → her base'in grubundaki rakip min fiyatı bul →
@@ -86,7 +81,6 @@ def dashboard():
         jobs=recent_jobs,
         total_jobs=total_jobs,
         completed_jobs=completed_jobs,
-        vulnerability_alerts=vulnerability_alerts,
         profitable_count=profitable_count,
         risk_count=risk_count,
         active_alerts_count=active_alerts_count,

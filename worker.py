@@ -376,7 +376,7 @@ def check_tracked_products(app, product_ids=None):
         product_ids: Opsiyonel — Sadece belirli ürünleri kontrol et (yeni eklenen ürünler için).
                      None ise saatlik periyodik taramayı çalıştırır.
     """
-    from models import db, TrackedProduct, PriceHistory, StockHistory, VulnerabilityAlert, Notification, PriceAlert, get_tr_now
+    from models import db, TrackedProduct, PriceHistory, Notification, PriceAlert, get_tr_now
     
     if product_ids:
         # Belirli ürünleri anında kontrol et (yeni eklenenler — süre filtresi uygulanmaz)
@@ -689,9 +689,8 @@ def check_tracked_products(app, product_ids=None):
                         if is_break:
                             msg = (f"{ikon} Fiyat Değişti: {short_name2} — Değişim: {oran_str}. "
                                    f"(Eski: {eski_str} ➔ Yeni: {yeni_str}) ⚡ KRİTİK")
-                            db.session.add(VulnerabilityAlert(
-                                user_id=product.user_id, product_id=product.id,
-                                alert_type='threat' if fark < 0 else 'opportunity', message=msg))
+                            # Faz 3A: VulnerabilityAlert kaldırıldı — Notification
+                            # zaten 'threat'/'opportunity' kategorisiyle aşağıda oluşturuluyor.
                         else:
                             msg = (f"{ikon} Fiyat Değişti: {short_name2} — Değişim: {oran_str}. "
                                    f"(Eski: {eski_str} ➔ Yeni: {yeni_str})")
@@ -713,45 +712,9 @@ def check_tracked_products(app, product_ids=None):
                         )
                         db.session.add(noti)
 
-                # [DEVRE DIŞI] Stok takibi konsepti uyku modunda.
-                # FAZ 2.1: Playwright temizliği sonrası yeni_stok zaten -1 kalır;
-                # _is_radar=False bayrağı stok/VulnerabilityAlert mantığını kapalı tutar.
-                _is_radar = False
-                if _is_radar:
-                    eski_stok = product.current_stock
-                    product.current_stock = yeni_stok
-                    if yeni_stok >= 0:
-                        stock_record = StockHistory(product_id=product.id, stock=yeni_stok)
-                        db.session.add(stock_record)
-
-                        short_name3 = " ".join(product.product_name.split()[:5]) + "..." if product.product_name else "Ürün"
-                        if 0 < yeni_stok <= 5:
-                            existing = VulnerabilityAlert.query.filter_by(product_id=product.id, alert_type='opportunity', is_active=True).first()
-                            if not existing:
-                                msg = f"🎯 KRİTİK FIRSAT: {short_name3} stoğu 5'in altına düştü (Sadece {yeni_stok} adet kaldı!). Buy Box her an size geçebilir!"
-                                db.session.add(VulnerabilityAlert(user_id=product.user_id, product_id=product.id, alert_type='opportunity', message=msg))
-                                # HOTFIX 1.54
-                                db.session.add(Notification(user_id=product.user_id, message=msg, link=product.url, category='opportunity'))
-                        elif 5 < yeni_stok <= 10:
-                            pass
-                        elif yeni_stok >= 11 and (eski_stok == 0 or eski_stok == -1):
-                            existing = VulnerabilityAlert.query.filter_by(product_id=product.id, alert_type='threat', is_active=True).first()
-                            if not existing:
-                                msg = f"⚠️ TEHDİT: {short_name3} stoklarını güncelledi ve rekabete geri döndü ({yeni_stok}+ adet). Satış hızınızı korumak için stratejinizi gözden geçirin."
-                                db.session.add(VulnerabilityAlert(user_id=product.user_id, product_id=product.id, alert_type='threat', message=msg))
-                                # HOTFIX 1.54
-                                db.session.add(Notification(user_id=product.user_id, message=msg, link=product.url, category='threat'))
-                        elif yeni_stok == 0 and eski_stok > 0:
-                            existing = VulnerabilityAlert.query.filter_by(product_id=product.id, alert_type='opportunity', is_active=True).first()
-                            if not existing:
-                                msg = f"🏆 BÜYÜK FIRSAT: {short_name3} tamamen tükendi! Rakibiniz satış yapamıyor. Fiyatınızı artırmanın tam zamanı!"
-                                db.session.add(VulnerabilityAlert(user_id=product.user_id, product_id=product.id, alert_type='opportunity', message=msg))
-                                # HOTFIX 1.54
-                                db.session.add(Notification(user_id=product.user_id, message=msg, link=product.url, category='opportunity'))
-
-                        if yeni_stok > 10:
-                            old_opps = VulnerabilityAlert.query.filter_by(product_id=product.id, alert_type='opportunity', is_active=True).all()
-                            for o in old_opps: o.is_active = False
+                # Faz 3A: Zafiyet Radarı tamamen kaldırıldı. Eskiden burada
+                # stok seviyesi izleme + VulnerabilityAlert üretimi vardı. Stok
+                # takibi konsepti resmi API entegrasyonu gelene kadar geri dönmeyecek.
 
                 # FAZ 4: Yorum/Puan kalıcılaştırma — yeni veri varsa override, yoksa eskisini koru
                 if yeni_rating is not None:

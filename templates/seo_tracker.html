@@ -114,7 +114,7 @@
             <div style="margin-top:12px; font-size:12px; color:var(--text-muted);">
                 💡 İlk kontrol takip başlatıldıktan hemen sonra yapılır (~10-30 saniye). Sonrasında saatlik otomatik kontrol.
                 Şu an aktif platform: <b style="color:#f97316;">Trendyol</b>.
-                <span style="color:#d97706;"><b>Hepsiburada</b> SEO Takibi yakında — altyapı bakımında 🛠️</span>
+                <span style="color:#d97706;"><b>Hepsiburada</b> SEO takibi yakında — entegrasyon geliştirme aşamasında 🚧</span>
             </div>
 
             <script>
@@ -211,7 +211,7 @@
                             </td>
                             <td style="text-align:center;">
                                 {% if kt.current_rank == -1 %}
-                                    <span style="color:#d97706; font-weight:700; font-size:12px;">Bakımda</span>
+                                    <span style="color:#d97706; font-weight:700; font-size:12px;" title="Hepsiburada SEO entegrasyonu yakında">Yakında</span>
                                 {% elif kt.current_rank and kt.current_rank > 0 %}
                                     <span style="font-size:18px; font-weight:800; color:#10b981;">#{{ kt.current_rank }}</span>
                                 {% elif kt.last_checked %}
@@ -226,7 +226,7 @@
                                 {% set has_now = (kt.current_page or 0) > 0 and (kt.current_rank or 0) > 0 %}
                                 {% set has_prev = (kt.previous_page or 0) > 0 and (kt.previous_rank or 0) > 0 %}
                                 {% if is_maintenance %}
-                                    <span style="color:#d97706; font-weight:700; font-size:11px;" title="Hepsiburada SEO Takibi geçici olarak bakımdadır.">— bakımda —</span>
+                                    <span style="color:#d97706; font-weight:700; font-size:11px;" title="Hepsiburada SEO entegrasyonu yakında geliyor.">— yakında —</span>
                                 {% elif has_now and has_prev %}
                                     {% set now_score = (kt.current_page * 100) + kt.current_rank %}
                                     {% set prev_score = (kt.previous_page * 100) + kt.previous_rank %}

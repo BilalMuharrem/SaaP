@@ -45,10 +45,10 @@ def seo_tracker():
         group_label = group_label_raw or None
         return_to = (request.form.get('return_to') or '').strip()
 
-        # HOTFIX 1.23: Hepsiburada SEO Takibi geçici olarak bakımda — sunucu tarafı savunma
+        # Faz 3E: Hepsiburada SEO entegrasyonu yakında — şu an Trendyol-only.
         raw_platform = (request.form.get('platform') or 'Trendyol').strip().lower()
         if raw_platform.startswith('hep'):
-            flash('🛠️ Hepsiburada SEO Takibi şu an bakımdadır. Trendyol takibini kullanabilirsiniz.', 'warning')
+            flash('🛠️ Hepsiburada SEO takibi yakında geliyor. Şu an Trendyol arama sırası takibi aktif.', 'info')
             return redirect(url_for(return_to or 'seo.seo_tracker'))
         platform = 'Trendyol'
 

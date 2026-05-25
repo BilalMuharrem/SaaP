@@ -72,9 +72,10 @@ def new_request():
         # Faz 2D: API key form'dan kaldırıldı; admin Settings veya .env'den
         api_key = Setting.get('groq_api_key', '') or os.environ.get('GROQ_API_KEY', '')
 
+        # Faz 3A: 'radar' job_type kaldırıldı (Zafiyet Radarı silindi).
+        # Eski client'lardan gelirse Fiyat Takibi'ne yönlendir.
         if job_type == 'radar':
-            flash('Zafiyet Radarı (stok takibi) geçici olarak devre dışıdır. Fiyat Takibi ile devam edebilirsiniz.', 'info')
-            return redirect(url_for('jobs.new_request'))
+            job_type = 'track'
 
         if job_type == 'track':
             if (current_user.plan and current_user.plan.max_tracked_products > 0

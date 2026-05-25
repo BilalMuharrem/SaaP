@@ -45,8 +45,7 @@ ENDPOINT_MAP = {
     'add_to_tracked_group': 'tracked.add_to_tracked_group',
     'update_tracked_group_cost': 'tracked.update_tracked_group_cost',
     'add_price_alert': 'tracked.add_price_alert',
-    'zafiyet_radari_list': 'tracked.zafiyet_radari_list',
-    'zafiyet_radari': 'tracked.zafiyet_radari',
+    # 'zafiyet_radari_list', 'zafiyet_radari' → Faz 3'te kaldırıldı
     # seo
     'seo_tracker': 'seo.seo_tracker',
     'seo_tracker_delete': 'seo.seo_tracker_delete',
