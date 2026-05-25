@@ -112,3 +112,34 @@ class Config:
     worker_prefetch_multiplier = 1
     task_acks_late = True
     task_reject_on_worker_lost = True
+
+
+# ── Test Config ─────────────────────────────────────────────────────────────
+# pytest fixture'ları bu Config'i kullanır — SQLite in-memory, CSRF/limit kapalı.
+# Config'in fail-loud SECRET_KEY kontrolünden kaçınmak için BAĞIMSIZ class.
+class TestConfig:
+    TESTING = True
+    SECRET_KEY = 'test-secret-key-not-for-production-' + 'x' * 32
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {}  # SQLite pool opsiyonları kabul etmez
+    WTF_CSRF_ENABLED = False
+    APP_NAME = 'BMK (Test)'
+    APP_VERSION = 'test'
+    APPROVAL_MODE = 'auto'  # Testte kayıt sonrası onay beklemesin
+    FREE_TRIAL_DAYS = 14
+    GROQ_API_KEY = ''  # Testte Groq çağrılarını mock'larız
+
+    # Celery — testte memory broker (queue gerçekten çalışmaz, .delay no-op)
+    broker_url = 'memory://'
+    result_backend = 'cache+memory://'
+    task_always_eager = True       # task.delay() → senkron çağrı, await
+    task_eager_propagates = False  # task içi exception test'i bozmasın
+    task_serializer = 'json'
+    accept_content = ['json']
+    result_serializer = 'json'
+    timezone = 'Europe/Istanbul'
+
+    # Rate limiter — testte memory + yüksek limit (rate-limit testleri hariç)
+    RATELIMIT_STORAGE_URI = 'memory://'
+    RATELIMIT_ENABLED = True  # default'lar tetiklenmesin, endpoint başına override
