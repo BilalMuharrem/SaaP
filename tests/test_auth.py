@@ -12,14 +12,19 @@ from extensions import db
 def test_login_with_valid_credentials(client, app, starter_user):
     with app.app_context():
         # starter_user fixture password 'testpass123' ile oluşturuldu
-        # Fixture içinde User session'a bağlı, email'i alalım
         email = User.query.filter_by(id=starter_user.id).first().email
+        # FAZ 5A sonrası: yeni kullanıcı /onboarding'e gider. Burada "klasik
+        # login → dashboard" davranışını ölçtüğümüz için completed=True yap.
+        starter_user.onboarding_completed = True
+        from extensions import db as _db
+        _db.session.commit()
 
     r = client.post('/login', data={'email': email, 'password': 'testpass123'},
                     follow_redirects=False)
-    # Başarılı login → /dashboard (veya admin → /admin)
+    # Başarılı login → /dashboard (admin değil) veya /admin
     assert r.status_code == 302
-    assert '/dashboard' in r.headers['Location'] or '/admin' in r.headers['Location']
+    loc = r.headers['Location']
+    assert '/dashboard' in loc or '/admin' in loc
 
 
 def test_login_with_wrong_password(client, app, starter_user):

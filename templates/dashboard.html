@@ -190,6 +190,40 @@
             {% endif %}
         </div>
 
+        {# FAZ 5B: Tamamen boş kullanıcı için karşılama banner'ı — onboarding'i atlamış
+           veya tamamlamış ama henüz hiç aktivitesi olmayan kullanıcıya yönlendirme. #}
+        {% if is_first_time_user %}
+        <div style="margin: 20px 0; padding: 28px 32px; border-radius: 16px;
+                    background: linear-gradient(135deg, rgba(37,99,235,0.10) 0%, rgba(16,185,129,0.08) 100%);
+                    border: 1px solid rgba(37,99,235,0.25); position: relative; overflow: hidden;">
+            <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+                <div style="width:64px; height:64px; border-radius:50%; background:rgba(37,99,235,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i data-lucide="rocket" width="32" height="32" style="color:var(--accent);"></i>
+                </div>
+                <div style="flex:1; min-width:240px;">
+                    <h3 style="margin:0 0 6px; font-size:18px; font-weight:800; color:var(--text-primary);">
+                        Hoşgeldin{% if current_user.full_name %}, {{ current_user.full_name.split()[0] }}{% endif %} 👋
+                    </h3>
+                    <p style="margin:0; color:var(--text-secondary); font-size:14px; line-height:1.55;">
+                        Henüz takip ettiğin ürün yok. <strong>İlk rakibini eklemen 30 saniye sürer</strong> —
+                        sistem fiyat, stok ve sıralamayı arka planda izlemeye başlar.
+                    </p>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <a href="{{ url_for('tracked.tracked_products') }}" class="btn btn-primary" style="font-weight:700; white-space:nowrap;">
+                        <i data-lucide="plus-circle" width="16" height="16" style="margin-right:6px;"></i>
+                        İlk Ürünü Ekle
+                    </a>
+                    {% if not current_user.onboarding_completed %}
+                    <a href="{{ url_for('onboarding.start') }}" class="btn btn-secondary" style="white-space:nowrap;">
+                        Rehbere Geri Dön
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- QUICK ACTION BAR -->
         <form action="{{ url_for('jobs.new_request') }}" method="GET" class="quick-action-bar">
             <i data-lucide="link" class="quick-action-icon" width="24" height="24"></i>

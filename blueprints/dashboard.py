@@ -26,6 +26,11 @@ def dashboard():
                    .order_by(Job.created_at.desc()).limit(50).all())
     total_jobs = Job.query.filter_by(user_id=current_user.id).count()
     completed_jobs = Job.query.filter_by(user_id=current_user.id, status='completed').count()
+    # FAZ 5B: "Tamamen boş kullanıcı" tespiti — onboarding banner için
+    tracked_count = TrackedProduct.query.filter_by(
+        user_id=current_user.id, is_price_tracked=True
+    ).count()
+    is_first_time_user = (total_jobs == 0 and tracked_count == 0)
 
     # ── FAZ 3.1: Finansal Komuta Merkezi metrikleri ────────────────────────
     # Tüm base ürünleri çek → her base'in grubundaki rakip min fiyatı bul →
@@ -81,6 +86,8 @@ def dashboard():
         jobs=recent_jobs,
         total_jobs=total_jobs,
         completed_jobs=completed_jobs,
+        tracked_count=tracked_count,
+        is_first_time_user=is_first_time_user,
         profitable_count=profitable_count,
         risk_count=risk_count,
         active_alerts_count=active_alerts_count,
