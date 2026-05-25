@@ -97,12 +97,12 @@
 
 <div class="standalone-wrap">
     <div class="back-bar">
-        <a href="{{ url_for('ai_consultant') }}" class="back-btn">
+        <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="back-btn">
             <i data-lucide="arrow-left" width="16" height="16"></i>
             YZ Danışman'a Dön
         </a>
         {# HOTFIX 1.94: Client-side PDF — yeni sekmede açar, html2pdf.js indirir #}
-        <a href="{{ url_for('download_strategy_pdf', report_id=report.id) }}" target="_blank" rel="noopener" class="back-btn"
+        <a href="{{ url_for('ai_consultant.download_strategy_pdf', report_id=report.id) }}" target="_blank" rel="noopener" class="back-btn"
            style="background:rgba(37,99,235,0.10); color:var(--accent, #2563eb); border-color:rgba(37,99,235,0.30); font-weight:700;">
             <i data-lucide="file-down" width="16" height="16"></i>
             📄 PDF Olarak İndir

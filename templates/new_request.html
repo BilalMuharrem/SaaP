@@ -20,19 +20,19 @@
         <nav>
             <div class="nav-section">
                 <div class="nav-label">Ana Menü</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
-                <a href="{{ url_for('new_request') }}" class="nav-link active"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
-                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
-                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
-                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
-                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('jobs.new_request') }}" class="nav-link active"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo.seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo.seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
                     <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
                 </a>
-                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+                <a href="{{ url_for('plans.user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
             </div>
             <div class="nav-section">
                 <div class="nav-label">Hesabım</div>
-                <a href="{{ url_for('notifications') }}" class="nav-link">
+                <a href="{{ url_for('notifications.notifications') }}" class="nav-link">
                     <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
                     {% if unread_notifications > 0 %}
                     <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
@@ -42,8 +42,8 @@
         </nav>
         <div class="sidebar-footer">
             <div class="user-info"><div class="user-avatar">{{ current_user.full_name[0] }}</div><div><div class="user-name">{{ current_user.full_name }}</div><div class="user-email">{{ current_user.email }}</div></div></div>
-                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
-            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+                        <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
         </div>
     </aside>
 
@@ -143,7 +143,7 @@
                     <b>yalnızca Trendyol ve Hepsiburada</b> linklerini desteklemektedir.<br>
                     <span style="opacity:0.8;">
                         Diğer pazar yerlerini (N11, Çiçeksepeti, PttAVM, Amazon)
-                        <a href="{{ url_for('tracked_products') }}" style="color:#8b5cf6; font-weight:700; text-decoration:none;">Fiyat Takibi</a>
+                        <a href="{{ url_for('tracked.tracked_products') }}" style="color:#8b5cf6; font-weight:700; text-decoration:none;">Fiyat Takibi</a>
                         modülüne ekleyerek <b>fiyat + yıldız puanı + YZ Danışman raporu</b> kapsamında
                         izleyebilirsiniz.
                     </span>

@@ -193,20 +193,20 @@
         <nav>
             <div class="nav-section">
                 <div class="nav-label">Ana Menü</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
-                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
-                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
-                <a href="{{ url_for('zafiyet_radari_list') }}" class="nav-link{% if request.endpoint == 'zafiyet_radari_list' or request.endpoint == 'zafiyet_radari' %} active{% endif %}">
+                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('jobs.new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('tracked.zafiyet_radari_list') }}" class="nav-link{% if request.endpoint == 'zafiyet_radari_list' or request.endpoint == 'zafiyet_radari' %} active{% endif %}">
                     <i data-lucide="radar" class="icon" width="20" height="20" style="color:#f59e0b;"></i> Zafiyet Radarı
                 </a>
-                <a href="{{ url_for('ai_consultant') }}" class="nav-link">
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link">
                     <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
                 </a>
-                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+                <a href="{{ url_for('plans.user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
             </div>
             <div class="nav-section">
                 <div class="nav-label">Hesabım</div>
-                <a href="{{ url_for('notifications') }}" class="nav-link">
+                <a href="{{ url_for('notifications.notifications') }}" class="nav-link">
                     <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
                     {% if unread_notifications > 0 %}
                     <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
@@ -216,8 +216,8 @@
         </nav>
         <div class="sidebar-footer">
             <div class="user-info"><div class="user-avatar">{{ current_user.full_name[0] }}</div><div><div class="user-name">{{ current_user.full_name }}</div><div class="user-email">{{ current_user.email }}</div></div></div>
-                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
-            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+                        <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
         </div>
     </aside>
 
@@ -230,9 +230,9 @@
                 <p class="page-subtitle" style="margin-top:8px;">Rakip stok erime hızları, tehdit uyarıları ve "Buy Box" fırsatları</p>
              </div>
              <div style="display:flex; gap:12px; align-items:center;">
-                 <a href="{{ url_for('new_request') }}" class="btn btn-secondary btn-sm"><i data-lucide="plus-circle" width="16" height="16"></i> Yeni Radar</a>
-                 <a href="{{ url_for('zafiyet_radari_list') }}" class="btn btn-secondary btn-sm"><i data-lucide="radar" width="16" height="16"></i> Tüm Radarlarım</a>
-                 <form method="POST" action="{{ url_for('delete_tracked_group', group_id=group_id) }}" style="margin:0;" onsubmit="return confirm('Bu radar analizini tamamen silmek istediğinize emin misiniz?');">
+                 <a href="{{ url_for('jobs.new_request') }}" class="btn btn-secondary btn-sm"><i data-lucide="plus-circle" width="16" height="16"></i> Yeni Radar</a>
+                 <a href="{{ url_for('tracked.zafiyet_radari_list') }}" class="btn btn-secondary btn-sm"><i data-lucide="radar" width="16" height="16"></i> Tüm Radarlarım</a>
+                 <form method="POST" action="{{ url_for('tracked.delete_tracked_group', group_id=group_id) }}" style="margin:0;" onsubmit="return confirm('Bu radar analizini tamamen silmek istediğinize emin misiniz?');">
                      <button type="submit" class="btn btn-sm" style="background:var(--danger); color:white; border:none; height:32px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
                          <i data-lucide="trash-2" width="14" height="14"></i> Radarı İptal Et
                      </button>

@@ -32,7 +32,7 @@
                     </td>
                     <td>{{ user.company or '—' }}</td>
                     <td>
-                        <form method="POST" action="{{ url_for('admin_change_plan', user_id=user.id) }}" style="display:inline;">
+                        <form method="POST" action="{{ url_for('admin.admin_change_plan', user_id=user.id) }}" style="display:inline;">
                             <select name="plan_id" class="form-select" style="width:130px;padding:4px 8px;font-size:12px;" onchange="this.form.submit()">
                                 {% for plan in plans %}
                                 <option value="{{ plan.id }}" {% if user.plan_id == plan.id %}selected{% endif %}>{{ plan.display_name }}</option>
@@ -54,11 +54,11 @@
                     <td>{{ user.last_login|timeago if user.last_login else '—' }}</td>
                     <td style="white-space:nowrap;">
                         {% if not user.is_approved %}
-                        <form method="POST" action="{{ url_for('admin_approve_customer', user_id=user.id) }}" style="display:inline;">
+                        <form method="POST" action="{{ url_for('admin.admin_approve_customer', user_id=user.id) }}" style="display:inline;">
                             <button type="submit" class="btn btn-success btn-sm">Onayla</button>
                         </form>
                         {% endif %}
-                        <form method="POST" action="{{ url_for('admin_toggle_customer', user_id=user.id) }}" style="display:inline;">
+                        <form method="POST" action="{{ url_for('admin.admin_toggle_customer', user_id=user.id) }}" style="display:inline;">
                             <button type="submit" class="btn {% if user.is_active %}btn-danger{% else %}btn-success{% endif %} btn-sm">
                                 {{ 'Durdur' if user.is_active else 'Aktifle' }}
                             </button>

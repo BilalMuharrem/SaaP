@@ -28,9 +28,8 @@ db = SQLAlchemy()
 
 
 # ── Flask-Login ────────────────────────────────────────────────────────────
-# NOT: login_view Faz 1C'de blueprint refactor sırasında 'auth.login'a güncellenecek.
 login_manager = LoginManager()
-login_manager.login_view = 'login'
+login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Bu sayfaya erişmek için giriş yapmanız gerekiyor.'
 login_manager.login_message_category = 'warning'
 

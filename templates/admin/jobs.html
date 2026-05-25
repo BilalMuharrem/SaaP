@@ -55,22 +55,22 @@
 }
 </style>
 <div class="segmented-control">
-    <a href="{{ url_for('admin_jobs') }}" class="seg-btn {% if not status_filter %}active{% endif %}">
+    <a href="{{ url_for('admin.admin_jobs') }}" class="seg-btn {% if not status_filter %}active{% endif %}">
         Tümü <span class="seg-count">{{ total_count }}</span>
     </a>
-    <a href="{{ url_for('admin_jobs', status='pending') }}" class="seg-btn {% if status_filter == 'pending' %}active{% endif %}">
+    <a href="{{ url_for('admin.admin_jobs', status='pending') }}" class="seg-btn {% if status_filter == 'pending' %}active{% endif %}">
         <i data-lucide="clock" width="14" height="14"></i> Bekleyen <span class="seg-count">{{ status_counts.get('pending', 0) }}</span>
     </a>
-    <a href="{{ url_for('admin_jobs', status='running') }}" class="seg-btn {% if status_filter == 'running' %}active{% endif %}">
+    <a href="{{ url_for('admin.admin_jobs', status='running') }}" class="seg-btn {% if status_filter == 'running' %}active{% endif %}">
         <i data-lucide="refresh-cw" width="14" height="14"></i> Çalışan <span class="seg-count">{{ status_counts.get('running', 0) }}</span>
     </a>
-    <a href="{{ url_for('admin_jobs', status='completed') }}" class="seg-btn {% if status_filter == 'completed' %}active{% endif %}">
+    <a href="{{ url_for('admin.admin_jobs', status='completed') }}" class="seg-btn {% if status_filter == 'completed' %}active{% endif %}">
         <i data-lucide="check-circle" width="14" height="14"></i> Tamamlanan <span class="seg-count">{{ status_counts.get('completed', 0) }}</span>
     </a>
-    <a href="{{ url_for('admin_jobs', status='failed') }}" class="seg-btn {% if status_filter == 'failed' %}active{% endif %}">
+    <a href="{{ url_for('admin.admin_jobs', status='failed') }}" class="seg-btn {% if status_filter == 'failed' %}active{% endif %}">
         <i data-lucide="x-circle" width="14" height="14"></i> Başarısız <span class="seg-count">{{ status_counts.get('failed', 0) }}</span>
     </a>
-    <a href="{{ url_for('admin_jobs', status='cancelled') }}" class="seg-btn {% if status_filter == 'cancelled' %}active{% endif %}">
+    <a href="{{ url_for('admin.admin_jobs', status='cancelled') }}" class="seg-btn {% if status_filter == 'cancelled' %}active{% endif %}">
         <i data-lucide="ban" width="14" height="14"></i> İptal <span class="seg-count">{{ status_counts.get('cancelled', 0) }}</span>
     </a>
 </div>
@@ -99,7 +99,7 @@
                     <td>
                         {% if job.status == 'completed' %}
                         {# HOTFIX 1.63: target="_blank" → job_status sayfası (modal'lı rapor görüntüleme) #}
-                        <a href="{{ url_for('job_status', job_id=job.id) }}" class="btn btn-secondary btn-sm">Raporu Gör</a>
+                        <a href="{{ url_for('jobs.job_status', job_id=job.id) }}" class="btn btn-secondary btn-sm">Raporu Gör</a>
                         {% endif %}
                     </td>
                 </tr>
@@ -137,17 +137,17 @@
     {% if jobs.pages > 1 %}
     <div class="pagination">
         {% if jobs.has_prev %}
-        <a href="{{ url_for('admin_jobs', page=jobs.prev_num, status=status_filter) }}">← Önceki</a>
+        <a href="{{ url_for('admin.admin_jobs', page=jobs.prev_num, status=status_filter) }}">← Önceki</a>
         {% endif %}
         {% for page_num in jobs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
             {% if page_num %}
-                <a href="{{ url_for('admin_jobs', page=page_num, status=status_filter) }}" class="{% if page_num == jobs.page %}active{% endif %}">{{ page_num }}</a>
+                <a href="{{ url_for('admin.admin_jobs', page=page_num, status=status_filter) }}" class="{% if page_num == jobs.page %}active{% endif %}">{{ page_num }}</a>
             {% else %}
                 <span>…</span>
             {% endif %}
         {% endfor %}
         {% if jobs.has_next %}
-        <a href="{{ url_for('admin_jobs', page=jobs.next_num, status=status_filter) }}">Sonraki →</a>
+        <a href="{{ url_for('admin.admin_jobs', page=jobs.next_num, status=status_filter) }}">Sonraki →</a>
         {% endif %}
     </div>
     {% endif %}

@@ -70,20 +70,20 @@
         <nav>
             <div class="nav-section">
                 <div class="nav-label">Ana Menü</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
-                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
-                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
-                <a href="{{ url_for('zafiyet_radari_list') }}" class="nav-link active">
+                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('jobs.new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('tracked.zafiyet_radari_list') }}" class="nav-link active">
                     <i data-lucide="radar" class="icon" width="20" height="20" style="color:#f59e0b;"></i> Zafiyet Radarı
                 </a>
-                <a href="{{ url_for('ai_consultant') }}" class="nav-link">
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link">
                     <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
                 </a>
-                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+                <a href="{{ url_for('plans.user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
             </div>
             <div class="nav-section">
                 <div class="nav-label">Hesabım</div>
-                <a href="{{ url_for('notifications') }}" class="nav-link">
+                <a href="{{ url_for('notifications.notifications') }}" class="nav-link">
                     <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
                     {% if unread_notifications > 0 %}
                     <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
@@ -93,8 +93,8 @@
         </nav>
         <div class="sidebar-footer">
             <div class="user-info"><div class="user-avatar">{{ current_user.full_name[0] }}</div><div><div class="user-name">{{ current_user.full_name }}</div><div class="user-email">{{ current_user.email }}</div></div></div>
-                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
-            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+                        <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
         </div>
     </aside>
 
@@ -106,7 +106,7 @@
                 </h1>
                 <p class="page-subtitle" style="margin-top:8px;">Geçmiş Zafiyet Radarı analizleriniz ve aktif takipleriniz</p>
              </div>
-             <a href="{{ url_for('new_request') }}" class="btn btn-primary btn-sm"><i data-lucide="plus-circle" width="16" height="16"></i> Yeni Radar Başlat</a>
+             <a href="{{ url_for('jobs.new_request') }}" class="btn btn-primary btn-sm"><i data-lucide="plus-circle" width="16" height="16"></i> Yeni Radar Başlat</a>
         </div>
 
         {% if grouped_products %}
@@ -183,10 +183,10 @@
                     </div>
                     
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top: auto;">
-                        <form method="POST" action="{{ url_for('delete_tracked_group', group_id=gid) }}" onsubmit="return confirm('Bu radar analizini tamamen silmek istediğinize emin misiniz?');">
+                        <form method="POST" action="{{ url_for('tracked.delete_tracked_group', group_id=gid) }}" onsubmit="return confirm('Bu radar analizini tamamen silmek istediğinize emin misiniz?');">
                             <button type="submit" class="btn btn-sm" style="background:transparent; color:var(--danger); border:1px solid var(--danger); padding:6px 12px; font-size:12px;">Radarı Kapat</button>
                         </form>
-                        <a href="{{ url_for('zafiyet_radari', group_id=gid) }}" class="btn btn-primary btn-sm" style="padding:6px 16px; background:#f59e0b; border-color:#f59e0b;">Analizi Gör <i data-lucide="arrow-right" width="14" height="14" style="margin-left:4px;"></i></a>
+                        <a href="{{ url_for('tracked.zafiyet_radari', group_id=gid) }}" class="btn btn-primary btn-sm" style="padding:6px 16px; background:#f59e0b; border-color:#f59e0b;">Analizi Gör <i data-lucide="arrow-right" width="14" height="14" style="margin-left:4px;"></i></a>
                     </div>
                 </div>
             {% endfor %}
@@ -198,7 +198,7 @@
                 </div>
                 <h3 style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">Henüz Zafiyet Radarı Başlatmadınız</h3>
                 <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; max-width: 400px; margin-left: auto; margin-right: auto;">Rakiplerinizin stoklarını ve Buy Box tehditlerini anlık izlemek için ilk radarınızı kurun.</p>
-                <a href="{{ url_for('new_request') }}" class="btn btn-primary" style="background:#f59e0b; border-color:#f59e0b;">
+                <a href="{{ url_for('jobs.new_request') }}" class="btn btn-primary" style="background:#f59e0b; border-color:#f59e0b;">
                     <i data-lucide="plus" width="18" height="18"></i> Yeni Analiz Başlat
                 </a>
             </div>

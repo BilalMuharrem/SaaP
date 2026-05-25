@@ -125,7 +125,7 @@
     <div class="card-header">
         <h3 class="card-title">⏳ Onay Bekleyen Kullanıcılar</h3>
         {# HOTFIX 1.63: target="_blank" kaldırıldı — aynı sekmede ilerle #}
-        <a href="{{ url_for('admin_customers') }}" class="btn btn-secondary btn-sm">Tümünü Gör →</a>
+        <a href="{{ url_for('admin.admin_customers') }}" class="btn btn-secondary btn-sm">Tümünü Gör →</a>
     </div>
     <div class="table-wrapper">
         <table>
@@ -138,7 +138,7 @@
                     <td>{{ user.company or '-' }}</td>
                     <td>{{ user.created_at|timeago }}</td>
                     <td>
-                        <form method="POST" action="{{ url_for('admin_approve_customer', user_id=user.id) }}" style="display:inline;">
+                        <form method="POST" action="{{ url_for('admin.admin_approve_customer', user_id=user.id) }}" style="display:inline;">
                             <button type="submit" class="btn btn-success btn-sm">✅ Onayla</button>
                         </form>
                     </td>
@@ -155,7 +155,7 @@
     <div class="card-header">
         <h3 class="card-title">Son Analizler</h3>
         {# HOTFIX 1.63: target="_blank" kaldırıldı — aynı sekmede ilerle #}
-        <a href="{{ url_for('admin_jobs') }}" class="btn btn-secondary btn-sm">Tümünü Gör →</a>
+        <a href="{{ url_for('admin.admin_jobs') }}" class="btn btn-secondary btn-sm">Tümünü Gör →</a>
     </div>
     {% if recent_jobs %}
     <div class="table-wrapper scrollable-dashboard">

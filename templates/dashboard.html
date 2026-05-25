@@ -60,19 +60,19 @@
         <nav>
             <div class="nav-section">
                 <div class="nav-label">Ana Menü</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-link active"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
-                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
-                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
-                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
-                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
-                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link active"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('jobs.new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo.seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo.seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
                     <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
                 </a>
-                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+                <a href="{{ url_for('plans.user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
             </div>
             <div class="nav-section">
                 <div class="nav-label">Hesabım</div>
-                <a href="{{ url_for('notifications') }}" class="nav-link">
+                <a href="{{ url_for('notifications.notifications') }}" class="nav-link">
                     <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
                     {% if unread_notifications > 0 %}
                     <span class="badge notif-live-badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
@@ -88,8 +88,8 @@
                     <div class="user-email">{{ current_user.email }}</div>
                 </div>
             </div>
-                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
-            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+                        <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
         </div>
     </aside>
 
@@ -191,7 +191,7 @@
         </div>
 
         <!-- QUICK ACTION BAR -->
-        <form action="{{ url_for('new_request') }}" method="GET" class="quick-action-bar">
+        <form action="{{ url_for('jobs.new_request') }}" method="GET" class="quick-action-bar">
             <i data-lucide="link" class="quick-action-icon" width="24" height="24"></i>
             <input type="text" name="url" placeholder="Trendyol veya Hepsiburada ürün linkini yapıştırın ve anında analiz başlatın..." class="premium-input">
             <button type="submit" class="btn btn-primary" style="padding: 10px 24px; white-space: nowrap;"><i data-lucide="zap" width="18" height="18" style="margin-right:6px;"></i> Hızlı Analiz</button>
@@ -225,7 +225,7 @@
         <!-- Mevcut stats-grid ile aynı responsive grid mantığı; renk şeritleri ve glassmorphism dokunuşu -->
         <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: -8px;">
             <!-- 🟢 Kârlı Fırsatlar -->
-            <a href="{{ url_for('tracked_products') }}" style="text-decoration:none; color:inherit;">
+            <a href="{{ url_for('tracked.tracked_products') }}" style="text-decoration:none; color:inherit;">
             <div class="stat-card" style="position:relative; overflow:hidden; border-left: 4px solid #10b981; background: linear-gradient(135deg, rgba(16,185,129,0.10) 0%, rgba(16,185,129,0.02) 100%);">
                 <div class="stat-icon" style="color:#10b981;"><i data-lucide="trending-up" stroke-width="2.5"></i></div>
                 <div class="stat-value" style="color:#059669;">{{ profitable_count }}</div>
@@ -237,7 +237,7 @@
             </a>
 
             <!-- 🔴 Zarar Riski -->
-            <a href="{{ url_for('tracked_products') }}" style="text-decoration:none; color:inherit;">
+            <a href="{{ url_for('tracked.tracked_products') }}" style="text-decoration:none; color:inherit;">
             <div class="stat-card" style="position:relative; overflow:hidden; border-left: 4px solid #ef4444; background: linear-gradient(135deg, rgba(239,68,68,0.10) 0%, rgba(239,68,68,0.02) 100%);">
                 <div class="stat-icon" style="color:#ef4444;"><i data-lucide="trending-down" stroke-width="2.5"></i></div>
                 <div class="stat-value" style="color:#dc2626;">{{ risk_count }}</div>
@@ -249,7 +249,7 @@
             </a>
 
             <!-- 🔔 Aktif Alarmlar -->
-            <a href="{{ url_for('tracked_products') }}" style="text-decoration:none; color:inherit;">
+            <a href="{{ url_for('tracked.tracked_products') }}" style="text-decoration:none; color:inherit;">
             <div class="stat-card" style="position:relative; overflow:hidden; border-left: 4px solid #f59e0b; background: linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(245,158,11,0.02) 100%);">
                 <div class="stat-icon" style="color:#f59e0b;"><i data-lucide="bell-ring" stroke-width="2.5"></i></div>
                 <div class="stat-value" style="color:#d97706;">{{ active_alerts_count }}</div>
@@ -271,7 +271,7 @@
                 <div class="card-header">
                     <h3 class="card-title">Son Analizler</h3>
                     {# HOTFIX 1.63: target="_blank" kaldırıldı #}
-                    <a href="{{ url_for('history') }}" class="btn btn-secondary btn-sm">Tümünü Gör →</a>
+                    <a href="{{ url_for('dashboard.history') }}" class="btn btn-secondary btn-sm">Tümünü Gör →</a>
                 </div>
                 {% if jobs %}
                 <div class="table-wrapper scrollable-dashboard">
@@ -302,11 +302,11 @@
                                 <td>{{ job.created_at|timeago }}</td>
                                 <td style="text-align: right;">
                                     {% if job.status in ['pending', 'running'] %}
-                                    <form action="{{ url_for('cancel_job', job_id=job.id) }}" method="POST" style="display:inline; margin-right:8px;">
+                                    <form action="{{ url_for('jobs.cancel_job', job_id=job.id) }}" method="POST" style="display:inline; margin-right:8px;">
                                         <button type="submit" class="btn btn-sm" style="background:var(--danger);color:white;border:none;" onclick="return confirm('Bu analizi iptal etmek istediğinize emin misiniz?');">İptal</button>
                                     </form>
                                     {% endif %}
-                                    <a href="{{ url_for('job_status', job_id=job.id) }}" class="btn btn-outline btn-sm" style="border-radius: 99px; font-size: 12px; padding: 4px 12px; border-color: var(--border-dark); color: var(--text-primary);">
+                                    <a href="{{ url_for('jobs.job_status', job_id=job.id) }}" class="btn btn-outline btn-sm" style="border-radius: 99px; font-size: 12px; padding: 4px 12px; border-color: var(--border-dark); color: var(--text-primary);">
                                         <i data-lucide="file-search" width="13" height="13" style="margin-right:4px;"></i> Detay
                                     </a>
                                 </td>
@@ -319,7 +319,7 @@
                 <div style="text-align:center;padding:40px;color:var(--text-muted);">
                     <div style="font-size:40px;margin-bottom:12px;">📭</div>
                     <div>Henüz analiz talebiniz yok</div>
-                    <a href="{{ url_for('new_request') }}" class="btn btn-primary" style="margin-top:16px;">İlk Analizinizi Oluşturun</a>
+                    <a href="{{ url_for('jobs.new_request') }}" class="btn btn-primary" style="margin-top:16px;">İlk Analizinizi Oluşturun</a>
                 </div>
                 {% endif %}
             </div>
@@ -391,7 +391,7 @@
             <div style="text-align:center; padding:24px; color:var(--text-muted);">
                 <div style="font-size:32px; margin-bottom:6px;">🔕</div>
                 <div style="font-size:13px;">Henüz bildirim yok. Bir ürüne fiyat alarmı kurarak başlayın.</div>
-                <a href="{{ url_for('tracked_products') }}" class="btn btn-primary btn-sm" style="margin-top:12px;">
+                <a href="{{ url_for('tracked.tracked_products') }}" class="btn btn-primary btn-sm" style="margin-top:12px;">
                     <i data-lucide="bell" width="14" height="14" style="margin-right:6px;"></i> Alarm Kur
                 </a>
             </div>

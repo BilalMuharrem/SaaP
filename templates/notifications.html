@@ -154,19 +154,19 @@
         <nav>
             <div class="nav-section">
                 <div class="nav-label">Ana Menü</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
-                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
-                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
-                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
-                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
-                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('jobs.new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo.seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo.seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
                     <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
                 </a>
-                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+                <a href="{{ url_for('plans.user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
             </div>
             <div class="nav-section">
                 <div class="nav-label">Hesabım</div>
-                <a href="{{ url_for('notifications') }}" class="nav-link active">
+                <a href="{{ url_for('notifications.notifications') }}" class="nav-link active">
                     <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
                     {% if unread_notifications > 0 %}
                     <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
@@ -182,8 +182,8 @@
                     <div class="user-email">{{ current_user.email }}</div>
                 </div>
             </div>
-                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
-            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+                        <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
         </div>
     </aside>
 
@@ -195,36 +195,36 @@
 
                 {# ── HOTFIX 1.81: Sekmeler — data-cat ile JS optimistic update'e hazır ── #}
                 <div id="notifTabs" style="display:flex; gap:8px; margin-top:20px; flex-wrap:wrap;">
-                    <a href="{{ url_for('notifications', cat='all') }}" data-cat="all"
+                    <a href="{{ url_for('notifications.notifications', cat='all') }}" data-cat="all"
                        class="notif-tab {% if active_cat == 'all' %}active{% endif %}">
                         Tümü <span class="badge-count" data-count="{{ cat_counts.get('all', 0) }}">{{ cat_counts.get('all', 0) }}</span>
                     </a>
-                    <a href="{{ url_for('notifications', cat='price_down') }}" data-cat="price_down"
+                    <a href="{{ url_for('notifications.notifications', cat='price_down') }}" data-cat="price_down"
                        class="notif-tab {% if active_cat == 'price_down' %}active{% endif %}">
                         📉 Fiyatı Düşenler <span class="badge-count" data-count="{{ cat_counts.get('price_down', 0) }}">{{ cat_counts.get('price_down', 0) }}</span>
                     </a>
-                    <a href="{{ url_for('notifications', cat='price_up') }}" data-cat="price_up"
+                    <a href="{{ url_for('notifications.notifications', cat='price_up') }}" data-cat="price_up"
                        class="notif-tab {% if active_cat == 'price_up' %}active{% endif %}">
                         📈 Fiyatı Yükselenler <span class="badge-count" data-count="{{ cat_counts.get('price_up', 0) }}">{{ cat_counts.get('price_up', 0) }}</span>
                     </a>
-                    <a href="{{ url_for('notifications', cat='combined') }}" data-cat="combined"
+                    <a href="{{ url_for('notifications.notifications', cat='combined') }}" data-cat="combined"
                        class="notif-tab {% if active_cat == 'combined' %}active{% endif %}">
                         🔬 Kombine Analiz <span class="badge-count" data-count="{{ cat_counts.get('combined', 0) }}">{{ cat_counts.get('combined', 0) }}</span>
                     </a>
-                    <a href="{{ url_for('notifications', cat='opportunity') }}" data-cat="opportunity"
+                    <a href="{{ url_for('notifications.notifications', cat='opportunity') }}" data-cat="opportunity"
                        class="notif-tab tab-opportunity {% if active_cat == 'opportunity' %}active{% endif %}">
                         🎯 Fırsat <span class="badge-count" data-count="{{ cat_counts.get('opportunity', 0) }}">{{ cat_counts.get('opportunity', 0) }}</span>
                     </a>
-                    <a href="{{ url_for('notifications', cat='threat') }}" data-cat="threat"
+                    <a href="{{ url_for('notifications.notifications', cat='threat') }}" data-cat="threat"
                        class="notif-tab tab-threat {% if active_cat == 'threat' %}active{% endif %}">
                         ⚠️ Tehdit <span class="badge-count" data-count="{{ cat_counts.get('threat', 0) }}">{{ cat_counts.get('threat', 0) }}</span>
                     </a>
-                    <a href="{{ url_for('notifications', cat='system') }}" data-cat="system"
+                    <a href="{{ url_for('notifications.notifications', cat='system') }}" data-cat="system"
                        class="notif-tab {% if active_cat == 'system' %}active{% endif %}">
                         ⚙️ Sistem Mesajı <span class="badge-count" data-count="{{ cat_counts.get('system', 0) }}">{{ cat_counts.get('system', 0) }}</span>
                     </a>
                     {# HOTFIX 1.99: SEO sıralama değişim bildirimleri sekmesi #}
-                    <a href="{{ url_for('notifications', cat='seo') }}" data-cat="seo"
+                    <a href="{{ url_for('notifications.notifications', cat='seo') }}" data-cat="seo"
                        class="notif-tab tab-seo {% if active_cat == 'seo' %}active{% endif %}">
                         🔍 SEO Takibi <span class="badge-count" data-count="{{ cat_counts.get('seo', 0) }}">{{ cat_counts.get('seo', 0) }}</span>
                     </a>
@@ -251,7 +251,7 @@
                     {% set _confirm_msg = 'Bu kategorideki tüm bildirimleri kalıcı olarak silmek istediğinize emin misiniz?' %}
                     {% set _btn_label = 'Kategoriyi' %}
                 {% endif %}
-                <form method="POST" action="{{ url_for('clear_notifications_category') }}"
+                <form method="POST" action="{{ url_for('notifications.clear_notifications_category') }}"
                       onsubmit="return confirm('{{ _confirm_msg }}');">
                     <input type="hidden" name="cat" value="{{ active_cat }}">
                     <button type="submit" class="btn" style="border-radius:10px; background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3);">
@@ -301,7 +301,7 @@
                             {% set _ext = n.link and n.link.startswith('http') %}
                             {# İç grafik butonu — internal_link varsa veya kategori bilinen tipte #}
                             {% if n.internal_link or n.category in ('price_down','price_up','threat','opportunity','seo','combined') %}
-                            <a href="{{ url_for('notification_open', notif_id=n.id) }}?to=internal"
+                            <a href="{{ url_for('notifications.notification_open', notif_id=n.id) }}?to=internal"
                                class="notif-action-btn notif-btn-internal"
                                title="Grafiği açar">
                                 {% if _is_seo %}🔍 SEO Grafiğini İncele{% elif n.category == 'combined' %}📊 Analiz Raporunu Aç{% else %}📊 Fiyat Grafiğini İncele{% endif %}
@@ -309,7 +309,7 @@
                             {% endif %}
                             {# Dış pazaryeri butonu — sadece n.link http* ise #}
                             {% if _ext %}
-                            <a href="{{ url_for('notification_open', notif_id=n.id) }}?to=external"
+                            <a href="{{ url_for('notifications.notification_open', notif_id=n.id) }}?to=external"
                                target="_blank" rel="noopener"
                                class="notif-action-btn notif-btn-external"
                                title="Pazaryeri sayfasını yeni sekmede açar">
@@ -329,7 +329,7 @@
                 </div>
                 {% if active_cat != 'all' %}
                 <div style="font-size:13px;">
-                    <a href="{{ url_for('notifications', cat='all') }}" style="color:var(--primary); text-decoration:none;">← Tüm bildirimlere dön</a>
+                    <a href="{{ url_for('notifications.notifications', cat='all') }}" style="color:var(--primary); text-decoration:none;">← Tüm bildirimlere dön</a>
                 </div>
                 {% endif %}
             </div>
@@ -339,12 +339,12 @@
         {# ── HOTFIX 1.54-C: Sayfalama (50/sayfa) ── #}
         {% if total_pages > 1 %}
         <div style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:20px;">
-            <a href="{{ url_for('notifications', cat=active_cat, page=page-1) }}"
+            <a href="{{ url_for('notifications.notifications', cat=active_cat, page=page-1) }}"
                class="pager-btn {% if page <= 1 %}disabled{% endif %}">← Önceki</a>
             <span style="color:var(--text-muted); font-size:13px; font-weight:600;">
                 Sayfa {{ page }} / {{ total_pages }}
             </span>
-            <a href="{{ url_for('notifications', cat=active_cat, page=page+1) }}"
+            <a href="{{ url_for('notifications.notifications', cat=active_cat, page=page+1) }}"
                class="pager-btn {% if page >= total_pages %}disabled{% endif %}">Sonraki →</a>
         </div>
         {% endif %}
@@ -361,7 +361,7 @@
     var tabs = document.querySelectorAll('#notifTabs .notif-tab');
     if (!tabs.length) return;
 
-    var endpoint = "{{ url_for('api_mark_category_read') }}";
+    var endpoint = "{{ url_for('notifications.api_mark_category_read') }}";
 
     function updateBadge(cat, count) {
         document.querySelectorAll('#notifTabs .notif-tab').forEach(function(tab) {
@@ -459,7 +459,7 @@
         var orig = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '⏳ İşaretleniyor...';
-        fetch("{{ url_for('read_all_notifications') }}", {
+        fetch("{{ url_for('notifications.read_all_notifications') }}", {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',

@@ -55,29 +55,29 @@
         <nav style="margin-top:20px;">
             <div class="nav-section">
                 <div class="nav-label" style="padding-left:24px;">Yönetim</div>
-                <a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
                     <i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Genel Bakış
                 </a>
-                <a href="{{ url_for('admin_customers') }}" class="nav-link {% if request.endpoint == 'admin_customers' %}active{% endif %}">
+                <a href="{{ url_for('admin.admin_customers') }}" class="nav-link {% if request.endpoint == 'admin_customers' %}active{% endif %}">
                     <i data-lucide="users" class="icon" width="20" height="20"></i> Müşteriler
                     {% if pending_customers is defined and pending_customers > 0 %}<span class="nav-badge">{{ pending_customers }}</span>{% endif %}
                 </a>
-                <a href="{{ url_for('admin_jobs') }}" class="nav-link {% if request.endpoint == 'admin_jobs' %}active{% endif %}">
+                <a href="{{ url_for('admin.admin_jobs') }}" class="nav-link {% if request.endpoint == 'admin_jobs' %}active{% endif %}">
                     <i data-lucide="cpu" class="icon" width="20" height="20"></i> Analizler
                 </a>
-                <a href="{{ url_for('admin_tracking') }}" class="nav-link {% if request.endpoint == 'admin_tracking' %}active{% endif %}">
+                <a href="{{ url_for('admin.admin_tracking') }}" class="nav-link {% if request.endpoint == 'admin_tracking' %}active{% endif %}">
                     <i data-lucide="radar" class="icon" width="20" height="20"></i> Fiyat Takibi
                 </a>
-                <a href="{{ url_for('admin_plans') }}" class="nav-link {% if request.endpoint == 'admin_plans' %}active{% endif %}">
+                <a href="{{ url_for('admin.admin_plans') }}" class="nav-link {% if request.endpoint == 'admin_plans' %}active{% endif %}">
                     <i data-lucide="package" class="icon" width="20" height="20"></i> Planlar
                 </a>
-                <a href="{{ url_for('ai_consultant') }}" class="nav-link {% if request.endpoint == 'ai_consultant' %}active{% endif %}">
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link {% if request.endpoint == 'ai_consultant' %}active{% endif %}">
                     <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
                 </a>
-                <a href="{{ url_for('notifications') }}" class="nav-link {% if request.endpoint == 'notifications' %}active{% endif %}">
+                <a href="{{ url_for('notifications.notifications') }}" class="nav-link {% if request.endpoint == 'notifications' %}active{% endif %}">
                     <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
                 </a>
-                <a href="{{ url_for('admin_settings') }}" class="nav-link {% if request.endpoint == 'admin_settings' %}active{% endif %}">
+                <a href="{{ url_for('admin.admin_settings') }}" class="nav-link {% if request.endpoint == 'admin_settings' %}active{% endif %}">
                     <i data-lucide="settings" class="icon" width="20" height="20"></i> Ayarlar
                 </a>
             </div>
@@ -102,9 +102,9 @@
             </div>
             
                         
-            <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
             
-            <a href="{{ url_for('logout') }}" class="nav-link" style="margin: 0 12px;">
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin: 0 12px;">
                 <i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap
             </a>
         </div>

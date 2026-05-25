@@ -95,19 +95,19 @@
         <nav>
             <div class="nav-section">
                 <div class="nav-label">Ana Menü</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
-                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
-                <a href="{{ url_for('tracked_products') }}" class="nav-link active"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
-                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
-                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
-                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('jobs.new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="nav-link active"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo.seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo.seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
                     <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
                 </a>
-                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+                <a href="{{ url_for('plans.user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
             </div>
             <div class="nav-section">
                 <div class="nav-label">Hesabım</div>
-                <a href="{{ url_for('notifications') }}" class="nav-link">
+                <a href="{{ url_for('notifications.notifications') }}" class="nav-link">
                     <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
                     {% if unread_notifications > 0 %}
                     <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
@@ -123,8 +123,8 @@
                     <div class="user-email">{{ current_user.email }}</div>
                 </div>
             </div>
-                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
-            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+                        <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
         </div>
     </aside>
 
@@ -139,10 +139,10 @@
                     Son Güncelleme: Yükleniyor...
                 </div>
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                    <a href="{{ url_for('export_tracked_pdf') }}" target="_blank" class="btn btn-outline btn-sm" style="border-radius: 8px; border-color: var(--border-dark); font-size:13px; text-decoration:none;">
+                    <a href="{{ url_for('tracked.export_tracked_pdf') }}" target="_blank" class="btn btn-outline btn-sm" style="border-radius: 8px; border-color: var(--border-dark); font-size:13px; text-decoration:none;">
                         <i data-lucide="file-text" width="16" height="16" color="#ef4444" style="margin-right:6px;"></i> PDF İndir
                     </a>
-                    <a href="{{ url_for('export_tracked_excel') }}" class="btn btn-outline btn-sm" style="border-radius: 8px; border-color: var(--border-dark); font-size:13px; text-decoration:none;">
+                    <a href="{{ url_for('tracked.export_tracked_excel') }}" class="btn btn-outline btn-sm" style="border-radius: 8px; border-color: var(--border-dark); font-size:13px; text-decoration:none;">
                         <i data-lucide="sheet" width="16" height="16" color="#10b981" style="margin-right:6px;"></i> Excel'e Aktar
                     </a>
                 </div>
@@ -211,7 +211,7 @@
                     <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                         {% if group_seo and group_seo.get(gid) %}
                         {# Bu grup için SEO takibi zaten var → grafiğe git #}
-                        <a href="{{ url_for('seo_graph') }}#group-{{ gid }}"
+                        <a href="{{ url_for('seo.seo_graph') }}#group-{{ gid }}"
                            class="btn btn-sm"
                            style="background:rgba(14,165,233,0.12); color:#0ea5e9; border:1px solid rgba(14,165,233,0.30); padding:6px 14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
                             <i data-lucide="line-chart" width="14" height="14"></i>
@@ -227,7 +227,7 @@
                             Grubu SEO Araması Yap
                         </button>
                         {% endif %}
-                        <form method="POST" action="{{ url_for('delete_tracked_group', group_id=gid) }}" onsubmit="return confirm('Bu grubu ve içindeki tüm ürünlerin takibini silmek istediğinize emin misiniz?');" style="margin:0;">
+                        <form method="POST" action="{{ url_for('tracked.delete_tracked_group', group_id=gid) }}" onsubmit="return confirm('Bu grubu ve içindeki tüm ürünlerin takibini silmek istediğinize emin misiniz?');" style="margin:0;">
                             <button type="submit" class="btn btn-sm" style="background:var(--danger); color:white; border:none; padding:6px 14px;">Grubu İptal Et</button>
                         </form>
                     </div>
@@ -320,7 +320,7 @@
                                 <div style="color: var(--text-muted); font-size: 13px; line-height:1.55; display:flex; align-items:center; gap:8px;">
                                     <i data-lucide="lock" width="15" height="15" color="var(--text-muted)"></i>
                                     Bu asistan Profesyonel ve Kurumsal planlara özeldir. Rakip fiyat hareketlerinize otomatik kâr-odaklı tavsiye üretir.
-                                    <a href="{{ url_for('user_plans') }}" style="color:#6366f1; font-weight:700; text-decoration:none; margin-left:4px;">Planı Yükselt →</a>
+                                    <a href="{{ url_for('plans.user_plans') }}" style="color:#6366f1; font-weight:700; text-decoration:none; margin-left:4px;">Planı Yükselt →</a>
                                 </div>
 
                             {% elif not has_cost %}
@@ -1089,7 +1089,7 @@
                                         </button>
                                         {% endif %}
                                         <a href="{{ p.url }}" target="_blank" class="btn btn-sm" style="background:rgba(59, 130, 246, 0.1); color:#3b82f6; border:none; text-decoration:none; display:flex; align-items:center; gap:4px;"><i data-lucide="external-link" width="14" height="14"></i> Git</a>
-                                        <form method="POST" action="{{ url_for('delete_tracked_product', id=p.id) }}" onsubmit="return confirm('Takibi silmek istediğinize emin misiniz?');" style="margin:0;">
+                                        <form method="POST" action="{{ url_for('tracked.delete_tracked_product', id=p.id) }}" onsubmit="return confirm('Takibi silmek istediğinize emin misiniz?');" style="margin:0;">
                                             <button class="btn btn-sm" style="background:rgba(239,68,68,0.1);color:#ef4444;border:none;">Kaldır</button>
                                         </form>
                                     </div>
@@ -1100,7 +1100,7 @@
                             <!-- Add New Product to this Group Row -->
                             <tr>
                                 <td colspan="6" style="padding: 12px 24px; background:rgba(255,255,255,0.02);">
-                                    <form method="POST" action="{{ url_for('add_to_tracked_group', group_id=gid) }}" style="display:flex; gap:10px; align-items:center;">
+                                    <form method="POST" action="{{ url_for('tracked.add_to_tracked_group', group_id=gid) }}" style="display:flex; gap:10px; align-items:center;">
                                         <input type="text" name="urls" placeholder="Bu gruba dahil etmek için bir veya daha fazla ürün linki yapıştırın (virgül veya boşlukla ayırın)..." required class="form-control" style="flex:1; border-radius:6px; background:var(--bg-primary); color:var(--text-primary); padding:8px 12px; font-size:13px; border:1px solid var(--border);">
                                         <button type="submit" class="btn btn-sm" style="background:rgba(52, 211, 153, 0.1); color:#34d399; border:none; padding:8px 16px; font-weight:bold;">+ Ürünü Gruba Ekle</button>
                                     </form>

@@ -181,7 +181,7 @@
 </div>
 
 <!-- Filter Bar -->
-<form method="get" action="{{ url_for('admin_tracking') }}" class="filter-bar">
+<form method="get" action="{{ url_for('admin.admin_tracking') }}" class="filter-bar">
     <span class="filter-label">Filtrele:</span>
     <select name="user" onchange="this.form.submit()">
         <option value="">Tüm Kullanıcılar</option>
@@ -195,7 +195,7 @@
         <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Pasif</option>
     </select>
     {% if user_filter or status_filter %}
-    <a href="{{ url_for('admin_tracking') }}" style="font-size:12px; color:var(--accent); font-weight:600; text-decoration:none;">✕ Temizle</a>
+    <a href="{{ url_for('admin.admin_tracking') }}" style="font-size:12px; color:var(--accent); font-weight:600; text-decoration:none;">✕ Temizle</a>
     {% endif %}
 </form>
 
@@ -282,17 +282,17 @@
     {% if products.pages > 1 %}
     <div class="pagination">
         {% if products.has_prev %}
-        <a href="{{ url_for('admin_tracking', page=products.prev_num, user=user_filter, status=status_filter) }}">← Önceki</a>
+        <a href="{{ url_for('admin.admin_tracking', page=products.prev_num, user=user_filter, status=status_filter) }}">← Önceki</a>
         {% endif %}
         {% for page_num in products.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
             {% if page_num %}
-                <a href="{{ url_for('admin_tracking', page=page_num, user=user_filter, status=status_filter) }}" class="{% if page_num == products.page %}active{% endif %}">{{ page_num }}</a>
+                <a href="{{ url_for('admin.admin_tracking', page=page_num, user=user_filter, status=status_filter) }}" class="{% if page_num == products.page %}active{% endif %}">{{ page_num }}</a>
             {% else %}
                 <span>…</span>
             {% endif %}
         {% endfor %}
         {% if products.has_next %}
-        <a href="{{ url_for('admin_tracking', page=products.next_num, user=user_filter, status=status_filter) }}">Sonraki →</a>
+        <a href="{{ url_for('admin.admin_tracking', page=products.next_num, user=user_filter, status=status_filter) }}">Sonraki →</a>
         {% endif %}
     </div>
     {% endif %}

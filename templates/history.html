@@ -18,21 +18,21 @@
         <nav>
             <div class="nav-section">
                 <div class="nav-label">Ana Menü</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
-                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
-                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
-                <a href="{{ url_for('seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
-                <a href="{{ url_for('seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
-                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('jobs.new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo.seo_graph') }}" class="nav-link{% if request.endpoint == 'seo_graph' %} active{% endif %}"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo.seo_tracker') }}" class="nav-link{% if request.endpoint == 'seo_tracker' %} active{% endif %}"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
                     <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
                 </a>
-                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+                <a href="{{ url_for('plans.user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
             </div>
         </nav>
         <div class="sidebar-footer">
             <div class="user-info"><div class="user-avatar">{{ current_user.full_name[0] }}</div><div><div class="user-name">{{ current_user.full_name }}</div><div class="user-email">{{ current_user.email }}</div></div></div>
-                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
-            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+                        <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
         </div>
     </aside>
 
@@ -70,7 +70,7 @@
                             <td>{{ job.duration_str }}</td>
                             <td style="text-align: right;">
                                 {# HOTFIX 1.63: target="_blank" kaldırıldı — aynı sekmede ilerle #}
-                                <a href="{{ url_for('job_status', job_id=job.id) }}" class="btn btn-outline btn-sm">
+                                <a href="{{ url_for('jobs.job_status', job_id=job.id) }}" class="btn btn-outline btn-sm">
                                     <i data-lucide="file-search" width="14" height="14" style="margin-right:4px;"></i> Detay Gör
                                 </a>
                             </td>
@@ -82,15 +82,15 @@
 
             {% if jobs.pages > 1 %}
             <div class="pagination">
-                {% if jobs.has_prev %}<a href="{{ url_for('history', page=jobs.prev_num) }}">← Önceki</a>{% endif %}
+                {% if jobs.has_prev %}<a href="{{ url_for('dashboard.history', page=jobs.prev_num) }}">← Önceki</a>{% endif %}
                 {% for page_num in jobs.iter_pages() %}
                     {% if page_num %}
-                        <a href="{{ url_for('history', page=page_num) }}" class="{% if page_num == jobs.page %}active{% endif %}">{{ page_num }}</a>
+                        <a href="{{ url_for('dashboard.history', page=page_num) }}" class="{% if page_num == jobs.page %}active{% endif %}">{{ page_num }}</a>
                     {% else %}
                         <span>…</span>
                     {% endif %}
                 {% endfor %}
-                {% if jobs.has_next %}<a href="{{ url_for('history', page=jobs.next_num) }}">Sonraki →</a>{% endif %}
+                {% if jobs.has_next %}<a href="{{ url_for('dashboard.history', page=jobs.next_num) }}">Sonraki →</a>{% endif %}
             </div>
             {% endif %}
         </div>

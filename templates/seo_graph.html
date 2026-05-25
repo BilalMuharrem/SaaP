@@ -69,19 +69,19 @@
         <nav>
             <div class="nav-section">
                 <div class="nav-label">Ana Menü</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
-                <a href="{{ url_for('new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
-                <a href="{{ url_for('tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
-                <a href="{{ url_for('seo_graph') }}" class="nav-link active"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
-                <a href="{{ url_for('seo_tracker') }}" class="nav-link"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
-                <a href="{{ url_for('ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
+                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('jobs.new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="nav-link"><i data-lucide="crosshair" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo.seo_graph') }}" class="nav-link active"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo.seo_tracker') }}" class="nav-link"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link{% if request.endpoint == 'ai_consultant' %} active{% endif %}">
                     <i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman
                 </a>
-                <a href="{{ url_for('user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+                <a href="{{ url_for('plans.user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
             </div>
             <div class="nav-section">
                 <div class="nav-label">Hesabım</div>
-                <a href="{{ url_for('notifications') }}" class="nav-link">
+                <a href="{{ url_for('notifications.notifications') }}" class="nav-link">
                     <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
                     {% if unread_notifications > 0 %}
                     <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
@@ -97,8 +97,8 @@
                     <div class="user-email">{{ current_user.email }}</div>
                 </div>
             </div>
-                        <a href="{{ url_for('index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
-            <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+                        <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
         </div>
     </aside>
 
@@ -159,7 +159,7 @@
                     {# HOTFIX 1.85: Grup Sil butonu — fiyat takibi grupları için
                        (gkey == '__solo__' ise tekil takipler birleşik şekildir; o blok için yok) #}
                     {% if gkey != '__solo__' %}
-                    <form method="POST" action="{{ url_for('seo_graph_delete_group', group_id=gkey) }}"
+                    <form method="POST" action="{{ url_for('seo.seo_graph_delete_group', group_id=gkey) }}"
                           onsubmit="return confirm('Bu grubun SEO takibini ve tüm tarihsel sıralama verilerini kalıcı olarak silmek istediğinize emin misiniz?');"
                           style="margin:0;">
                         <button type="submit" class="btn btn-sm"
@@ -184,7 +184,7 @@
                         <span style="font-size:11px; color:var(--text-muted);">bulunamadı</span>
                         {% endif %}
                         {# HOTFIX 1.85: Tekil tracker silme — ufak ✕ butonu #}
-                        <form method="POST" action="{{ url_for('seo_graph_delete_tracker', tracker_id=kt.id) }}"
+                        <form method="POST" action="{{ url_for('seo.seo_graph_delete_tracker', tracker_id=kt.id) }}"
                               onsubmit="return confirm('Bu URL\'nin SEO takibini silmek istediğinize emin misiniz?');"
                               style="margin:0 0 0 4px; display:inline-flex;">
                             <button type="submit"
@@ -214,7 +214,7 @@
             <p style="margin:0 0 18px 0;">
                 Fiyat Takibi sayfasından bir grubun "🔍 Grubu SEO Araması Yap" butonuna tıklayarak başlayın.
             </p>
-            <a href="{{ url_for('tracked_products') }}" class="btn btn-primary">
+            <a href="{{ url_for('tracked.tracked_products') }}" class="btn btn-primary">
                 <i data-lucide="crosshair" width="16" height="16" style="margin-right:6px;"></i>
                 Fiyat Takibi'ne Git
             </a>
@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p style="margin:2px 0 0 0; font-size:13px; color:var(--text-muted);">Anahtar kelime için ürün sıralamasını izlemeye al</p>
             </div>
         </div>
-        <form method="POST" action="{{ url_for('seo_tracker') }}" style="margin-top:18px; display:flex; flex-direction:column; gap:14px;">
+        <form method="POST" action="{{ url_for('seo.seo_tracker') }}" style="margin-top:18px; display:flex; flex-direction:column; gap:14px;">
             <input type="hidden" name="return_to" value="seo_graph">
 
             {# Platform #}
