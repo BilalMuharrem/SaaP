@@ -19,8 +19,12 @@ from flask_login import current_user
 from extensions import db, login_manager
 from models import User, Notification, init_db
 from config import Config
+from logging_config import setup_logging
 from utils.filters import register_filters
 from blueprints import register_blueprints
+
+# Logging'i import sırasında bir kez kur (idempotent)
+setup_logging(app_name='bmk-web')
 
 
 # ── Werkzeug log gürültüsünü sustur ───────────────────────────────────────

@@ -1,9 +1,13 @@
+import json
+import logging
+from datetime import datetime, timedelta
+
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
-import json
 
 from extensions import db
+
+log = logging.getLogger(__name__)
 
 
 def get_tr_now():
@@ -705,7 +709,7 @@ def init_db(app):
                 'ALTER TABLE tracked_products ADD COLUMN group_label VARCHAR(100)'
             ))
             db.session.commit()
-            print('[Migration] tracked_products.group_label KOLON EKLENDİ.')
+            log.info('[Migration] tracked_products.group_label KOLON EKLENDİ.')
         except Exception:
             db.session.rollback()
 
@@ -715,7 +719,7 @@ def init_db(app):
                 'ALTER TABLE notifications ADD COLUMN category VARCHAR(30)'
             ))
             db.session.commit()
-            print('[Migration] notifications.category KOLON EKLENDİ.')
+            log.info('[Migration] notifications.category KOLON EKLENDİ.')
         except Exception:
             db.session.rollback()
         # ── HOTFIX 1.99: Notification.internal_link kolon migration'ı ──────────
@@ -724,7 +728,7 @@ def init_db(app):
                 'ALTER TABLE notifications ADD COLUMN internal_link VARCHAR(500)'
             ))
             db.session.commit()
-            print('[Migration] notifications.internal_link KOLON EKLENDİ.')
+            log.info('[Migration] notifications.internal_link KOLON EKLENDİ.')
         except Exception:
             db.session.rollback()
         # Performans: kategori bazlı filtre sorgu sıklığı yüksek olduğu için index
@@ -754,7 +758,7 @@ def init_db(app):
             ))
             db.session.commit()
         except Exception as e:
-            print(f"[Migration] Multi-tracking backfill error: {e}")
+            log.info(f"[Migration] Multi-tracking backfill error: {e}")
             db.session.rollback()
 
         # Generate new tables if any
@@ -763,7 +767,7 @@ def init_db(app):
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            print(f"Error creating AiReport table: {e}")
+            log.info(f"Error creating AiReport table: {e}")
 
         # HOTFIX 1.45: AiReport — grup filtresi + özel prompt alanları
         for col_ddl in [
@@ -781,10 +785,10 @@ def init_db(app):
         try:
             KeywordTracker.__table__.create(db.engine, checkfirst=True)
             db.session.commit()
-            print("[Migration] keyword_trackers CREATE OK (SEO Takibi).")
+            log.info("[Migration] keyword_trackers CREATE OK (SEO Takibi).")
         except Exception as e:
             db.session.rollback()
-            print(f"Error creating KeywordTracker table: {e}")
+            log.info(f"Error creating KeywordTracker table: {e}")
 
         # ── HOTFIX 1.84: KeywordTracker.group_id kolonu (fiyat takip grubu köprüsü) ──
         try:
@@ -792,7 +796,7 @@ def init_db(app):
                 'ALTER TABLE keyword_trackers ADD COLUMN group_id VARCHAR(50)'
             ))
             db.session.commit()
-            print('[Migration] keyword_trackers.group_id KOLON EKLENDİ.')
+            log.info('[Migration] keyword_trackers.group_id KOLON EKLENDİ.')
         except Exception:
             db.session.rollback()
         try:
@@ -808,10 +812,10 @@ def init_db(app):
         try:
             SEOHistory.__table__.create(db.engine, checkfirst=True)
             db.session.commit()
-            print('[Migration] seo_history CREATE OK (tarihsel SEO).')
+            log.info('[Migration] seo_history CREATE OK (tarihsel SEO).')
         except Exception as e:
             db.session.rollback()
-            print(f'Error creating SEOHistory table: {e}')
+            log.info(f'Error creating SEOHistory table: {e}')
 
         # ═════════════════════════════════════════════════════════════════
         # HOTFIX 1.91: Global Ürün Havuzu — yeni tablolar + FK kolonları
@@ -819,18 +823,18 @@ def init_db(app):
         try:
             GlobalProduct.__table__.create(db.engine, checkfirst=True)
             db.session.commit()
-            print('[Migration] global_products CREATE OK.')
+            log.info('[Migration] global_products CREATE OK.')
         except Exception as e:
             db.session.rollback()
-            print(f'Error creating GlobalProduct table: {e}')
+            log.info(f'Error creating GlobalProduct table: {e}')
 
         try:
             KeywordPool.__table__.create(db.engine, checkfirst=True)
             db.session.commit()
-            print('[Migration] keyword_pools CREATE OK.')
+            log.info('[Migration] keyword_pools CREATE OK.')
         except Exception as e:
             db.session.rollback()
-            print(f'Error creating KeywordPool table: {e}')
+            log.info(f'Error creating KeywordPool table: {e}')
 
         # FK kolonları (mevcut tablolara)
         for col_ddl in [
@@ -901,10 +905,10 @@ def init_db(app):
                 backfilled += 1
             db.session.commit()
             if backfilled:
-                print(f'[Migration] GlobalProduct backfill OK: {backfilled} URL → GP eşleştirildi.')
+                log.info(f'[Migration] GlobalProduct backfill OK: {backfilled} URL → GP eşleştirildi.')
         except Exception as e:
             db.session.rollback()
-            print(f'[Migration] GP backfill error: {e}')
+            log.info(f'[Migration] GP backfill error: {e}')
 
         # ── Backfill: KeywordTracker → KeywordPool ──
         try:
@@ -952,10 +956,10 @@ def init_db(app):
                 backfilled += 1
             db.session.commit()
             if backfilled:
-                print(f'[Migration] KeywordPool backfill OK: {backfilled} combo → Pool eşleştirildi.')
+                log.info(f'[Migration] KeywordPool backfill OK: {backfilled} combo → Pool eşleştirildi.')
         except Exception as e:
             db.session.rollback()
-            print(f'[Migration] Pool backfill error: {e}')
+            log.info(f'[Migration] Pool backfill error: {e}')
 
         # ── FAZ 2.1 / HOTFIX 1.7: PriceAlert şeması GARANTİLİ ŞEKİLDE yenilenir ──
         # Sorun: Eski FAZ 2 deploy'ında tablo `target_price_threshold` ile yaratılmıştı.
@@ -978,10 +982,10 @@ def init_db(app):
                 has_above = 'price_above' in cols
                 if not has_below or not has_above:
                     rebuild_alerts = True
-                    print("[Migration] HOTFIX 1.7 — price_alerts ŞEMA UYUMSUZ (price_below/above yok). DROP+CREATE.")
+                    log.info("[Migration] HOTFIX 1.7 — price_alerts ŞEMA UYUMSUZ (price_below/above yok). DROP+CREATE.")
         except Exception as probe_err:
             db.session.rollback()
-            print(f"[Migration] price_alerts şema probe hatası: {probe_err}")
+            log.info(f"[Migration] price_alerts şema probe hatası: {probe_err}")
             # Probe başarısızsa güvenli tarafta kal: yine de drop+create dene
             rebuild_alerts = True
 
@@ -989,19 +993,19 @@ def init_db(app):
             try:
                 db.session.execute(text('DROP TABLE IF EXISTS price_alerts'))
                 db.session.commit()
-                print("[Migration] price_alerts düşürüldü.")
+                log.info("[Migration] price_alerts düşürüldü.")
             except Exception as e:
                 db.session.rollback()
-                print(f"[Migration] price_alerts DROP hatası: {e}")
+                log.info(f"[Migration] price_alerts DROP hatası: {e}")
 
         # Her durumda CREATE (checkfirst=True → varsa atlar)
         try:
             PriceAlert.__table__.create(db.engine, checkfirst=True)
             db.session.commit()
-            print("[Migration] price_alerts CREATE OK (price_below/price_above şeması).")
+            log.info("[Migration] price_alerts CREATE OK (price_below/price_above şeması).")
         except Exception as e:
             db.session.rollback()
-            print(f"Error creating PriceAlert table: {e}")
+            log.info(f"Error creating PriceAlert table: {e}")
 
         # Create or Update plans to match code definitions
         plans_data = [
@@ -1077,13 +1081,13 @@ def init_db(app):
                 TrackedProduct.is_price_tracked == False
             ).all()
             if orphans:
-                print(f"[DB Cleanup] {len(orphans)} hayalet kayıt bulundu — siliniyor...")
+                log.info(f"[DB Cleanup] {len(orphans)} hayalet kayıt bulundu — siliniyor...")
                 for orph in orphans:
                     db.session.delete(orph)
                 db.session.commit()
-                print("[DB Cleanup] Hayalet kayıtlar temizlendi.")
+                log.info("[DB Cleanup] Hayalet kayıtlar temizlendi.")
             else:
-                print("[DB Cleanup] Hayalet kayıt yok, veritabanı temiz.")
+                log.info("[DB Cleanup] Hayalet kayıt yok, veritabanı temiz.")
         except Exception as cleanup_err:
             db.session.rollback()
-            print(f"[DB Cleanup] Temizlik hatası (devam ediliyor): {cleanup_err}")
+            log.info(f"[DB Cleanup] Temizlik hatası (devam ediliyor): {cleanup_err}")

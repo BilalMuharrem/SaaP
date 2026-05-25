@@ -10,11 +10,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import time
 import json
+import logging
 import random
 import re as _re_hotfix
 import traceback
 import concurrent.futures
 import cloudscraper
+
+from logging_config import setup_logging
+setup_logging(app_name='bmk-worker')
+log = logging.getLogger(__name__)
 
 
 # ── HOTFIX 1.34: Asyncio loop kaçış sarmalayıcısı ─────────────────────────────
@@ -83,7 +88,7 @@ def _fetch_trendyol_seller_rating(merchant_id):
             name = name.strip() or None
         return score_val, name
     except Exception as e:
-        print(f"[SellerRating] {merchant_id} hata: {e}")
+        log.info(f"[SellerRating] {merchant_id} hata: {e}")
         return None, None
 
 
@@ -391,7 +396,7 @@ def _get_proxy_for_playwright():
             cfg["password"] = u.password
         return cfg
     except Exception as e:
-        print(f"[Proxy] PROXY_URL parse hatası: {e} → bağlanılmayacak.")
+        log.info(f"[Proxy] PROXY_URL parse hatası: {e} → bağlanılmayacak.")
         return None
 
 
@@ -539,7 +544,7 @@ def classify_notification_ai(message, api_key=None):
                 return cat
         return 'system'
     except Exception as e:
-        print(f"[NotificationClassifier] AI fallback hatası: {e}")
+        log.info(f"[NotificationClassifier] AI fallback hatası: {e}")
         return 'system'
 
 
@@ -580,10 +585,10 @@ def check_tracked_products_task():
             init_db(app)  # DB migration güvenliği — yeni sütunlar otomatik eklenir
             check_tracked_products(app)
     except SoftTimeLimitExceeded:
-        print("[Worker] ⏱️ Soft time limit aşıldı — görev temiz şekilde sonlandırılıyor.")
+        log.info("[Worker] ⏱️ Soft time limit aşıldı — görev temiz şekilde sonlandırılıyor.")
         return "soft_timeout"
     except Exception as e:
-        print(f"[Worker] check_tracked_products_task error: {type(e).__name__}: {e}")
+        log.info(f"[Worker] check_tracked_products_task error: {type(e).__name__}: {e}")
         return "error"
 
 @celery.task(
@@ -598,7 +603,7 @@ def process_job_task(job_id):
         with app.app_context():
             _process_job_by_id(job_id)
     except SoftTimeLimitExceeded:
-        print(f"[Worker] ⏱️ Job {job_id} soft time limit — sonlandırılıyor.")
+        log.info(f"[Worker] ⏱️ Job {job_id} soft time limit — sonlandırılıyor.")
         return "soft_timeout"
 
 @celery.task(
@@ -617,7 +622,7 @@ def check_single_product_task(product_id):
             if product and product.is_active:
                 check_tracked_products(app, product_ids=[product_id])
     except Exception as e:
-        print(f"[Worker] check_single_product_task crash: {e}")
+        log.info(f"[Worker] check_single_product_task crash: {e}")
         # HOTFIX 1.25: Sadece zaman damgası güncelle, "Hata" placeholder'ı yazma.
         # Eski veri korunur; sonraki turda yeniden denenecek.
         try:
@@ -647,14 +652,14 @@ try:
         """Worker hazır olur olmaz tracked-products taramasını ASINKRON tetikle.
         delay() = .apply_async() — task queue'ya yollanır, worker hemen alır."""
         try:
-            print("[Worker] 🟢 worker_ready — ilk catch-up taraması (asenkron) tetikleniyor...")
+            log.info("[Worker] 🟢 worker_ready — ilk catch-up taraması (asenkron) tetikleniyor...")
             check_tracked_products_task.apply_async(countdown=5)  # 5s gecikme: worker stabilize olsun
-            print("[Worker] ✅ Catch-up task kuyruğa alındı (5s gecikme).")
+            log.info("[Worker] ✅ Catch-up task kuyruğa alındı (5s gecikme).")
         except Exception as ready_err:
-            print(f"[Worker] ⚠️ worker_ready catch-up tetikleme hata: {ready_err}")
+            log.info(f"[Worker] ⚠️ worker_ready catch-up tetikleme hata: {ready_err}")
 except Exception as _signal_import_err:
     # Celery signals import edilemezse sessizce devam et — beat zaten saatlik tetikliyor
-    print(f"[Worker] ℹ️ worker_ready signal import edilemedi ({_signal_import_err}); "
+    log.info(f"[Worker] ℹ️ worker_ready signal import edilemedi ({_signal_import_err}); "
           f"saatlik beat schedule normal çalışmaya devam eder.")
 
 
@@ -714,22 +719,22 @@ def check_tracked_products(app, product_ids=None):
                 else:
                     normal.append(p)
         if urgent:
-            print(f"[Worker] 🚨 Catch-up: {len(urgent)} ürün 240dk+ gecikmiş — acil kuyruğa alındı.")
+            log.info(f"[Worker] 🚨 Catch-up: {len(urgent)} ürün 240dk+ gecikmiş — acil kuyruğa alındı.")
             for p in urgent[:5]:
                 if p.last_checked:
                     lag_min = int((now_ts - p.last_checked).total_seconds() / 60.0)
-                    print(f"[Worker]   • p{p.id} ({p.platform_name or '?'}) — {lag_min}dk gecikmiş")
+                    log.info(f"[Worker]   • p{p.id} ({p.platform_name or '?'}) — {lag_min}dk gecikmiş")
                 else:
-                    print(f"[Worker]   • p{p.id} ({p.platform_name or '?'}) — hiç taranmamış")
+                    log.info(f"[Worker]   • p{p.id} ({p.platform_name or '?'}) — hiç taranmamış")
             if len(urgent) > 5:
-                print(f"[Worker]   ... ve {len(urgent) - 5} ürün daha.")
+                log.info(f"[Worker]   ... ve {len(urgent) - 5} ürün daha.")
         # Aciller önce, normaller sonra — döngü sırası önemli (ilk taraması bitenler hızlı yanıt alır)
         products = urgent + normal
 
     if not products:
         return
 
-    print(f"[Worker] Checking prices & stock for {len(products)} tracked products...")
+    log.info(f"[Worker] Checking prices & stock for {len(products)} tracked products...")
     fiyati_temizle, standard_fiyat_formati, _, marka_adi_bul, _, _ = _import_bmk_utils()
     
     # ── FAZ 2.1: PLAYWRIGHT TEMİZLİĞİ ────────────────────────────────────────
@@ -766,9 +771,9 @@ def check_tracked_products(app, product_ids=None):
                                 yeni_rating = n11_data["rating"]
                             if n11_data.get("review_count") is not None:
                                 yeni_review_count = n11_data["review_count"]
-                            print(f"[Worker] N11 (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
+                            log.info(f"[Worker] N11 (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
                     except Exception as e:
-                        print(f"[Worker] N11 scrape failed for {product.id}: {e}")
+                        log.info(f"[Worker] N11 scrape failed for {product.id}: {e}")
 
                 # FAZ 3: Çiçeksepeti
                 elif is_ciceksepeti:
@@ -783,9 +788,9 @@ def check_tracked_products(app, product_ids=None):
                                 yeni_rating = cs_data["rating"]
                             if cs_data.get("review_count") is not None:
                                 yeni_review_count = cs_data["review_count"]
-                            print(f"[Worker] Çiçeksepeti (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
+                            log.info(f"[Worker] Çiçeksepeti (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
                     except Exception as e:
-                        print(f"[Worker] Çiçeksepeti scrape failed for {product.id}: {e}")
+                        log.info(f"[Worker] Çiçeksepeti scrape failed for {product.id}: {e}")
 
                 # FAZ 3: PttAVM
                 elif is_pttavm:
@@ -800,9 +805,9 @@ def check_tracked_products(app, product_ids=None):
                                 yeni_rating = ptt_data["rating"]
                             if ptt_data.get("review_count") is not None:
                                 yeni_review_count = ptt_data["review_count"]
-                            print(f"[Worker] PttAVM (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
+                            log.info(f"[Worker] PttAVM (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
                     except Exception as e:
-                        print(f"[Worker] PttAVM scrape failed for {product.id}: {e}")
+                        log.info(f"[Worker] PttAVM scrape failed for {product.id}: {e}")
 
                 elif is_hepsiburada:
                     # HB: Chrome TLS taklidi (curl_cffi) — browser açmaz, saf HTTP
@@ -818,9 +823,9 @@ def check_tracked_products(app, product_ids=None):
                                 yeni_rating = cffi_data["rating"]
                             if cffi_data.get("review_count") is not None:
                                 yeni_review_count = cffi_data["review_count"]
-                            print(f"[Worker] HB cffi (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
+                            log.info(f"[Worker] HB cffi (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
                     except Exception as cffi_e:
-                        print(f"[Worker] HB cffi failed for {product.id}: {cffi_e}")
+                        log.info(f"[Worker] HB cffi failed for {product.id}: {cffi_e}")
 
                     # HB API JSON fallback (hâlâ hafif, browser yok)
                     if not fiyat_str or fiyat_str == "Bulunamadı":
@@ -831,9 +836,9 @@ def check_tracked_products(app, product_ids=None):
                                     fiyat_str = str(hb_data["price"])
                                 if hb_data.get("name") and urun_ismi == "İsim Bulunamadı":
                                     urun_ismi = hb_data["name"]
-                                print(f"[Worker] HB API fallback p{product.id} — price: {fiyat_str}")
+                                log.info(f"[Worker] HB API fallback p{product.id} — price: {fiyat_str}")
                         except Exception as api_err:
-                            print(f"[Worker] HB API fallback failed for {product.id}: {api_err}")
+                            log.info(f"[Worker] HB API fallback failed for {product.id}: {api_err}")
                 else:
                     # Trendyol vd.: cloudscraper + BS4 — browser açmaz
                     # HOTFIX 1.25: rotating UA + 403/429/CAPTCHA tespiti.
@@ -847,7 +852,7 @@ def check_tracked_products(app, product_ids=None):
                         proxies_cfg = _get_proxy_for_requests()
                         if proxies_cfg:
                             scraper.proxies.update(proxies_cfg)
-                            print(f"[Worker] 🛡️ Proxy aktif (UA={cs_profile['ua'][:40]}…) p{product.id}")
+                            log.info(f"[Worker] 🛡️ Proxy aktif (UA={cs_profile['ua'][:40]}…) p{product.id}")
                         resp = scraper.get(
                             product.url,
                             timeout=25,
@@ -856,7 +861,7 @@ def check_tracked_products(app, product_ids=None):
                         # geriye uyum log etiketi için
                         ua_for_req = cs_profile["ua"]
                         if _is_blocked_response(resp):
-                            print(f"[Worker] ⛔ Bot/Limit (status={getattr(resp,'status_code','?')}) — p{product.id} URL bloklandı, eski veri korunuyor.")
+                            log.info(f"[Worker] ⛔ Bot/Limit (status={getattr(resp,'status_code','?')}) — p{product.id} URL bloklandı, eski veri korunuyor.")
                             # Bu turu atla — hiçbir şey yazma; outer except'e gitmeden continue.
                             product.last_checked = get_tr_now()
                             db.session.commit()
@@ -872,23 +877,23 @@ def check_tracked_products(app, product_ids=None):
                                 yeni_rating = data["rating"]
                             if data.get("review_count") is not None:
                                 yeni_review_count = data["review_count"]
-                            print(f"[Worker] Cloudscraper (lightweight) p{product.id} ua=[{ua_for_req[:30]}…] — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
+                            log.info(f"[Worker] Cloudscraper (lightweight) p{product.id} ua=[{ua_for_req[:30]}…] — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
                     except Exception as cs_err:
-                        print(f"[Worker] Cloudscraper failed for {product.id}: {cs_err}")
+                        log.info(f"[Worker] Cloudscraper failed for {product.id}: {cs_err}")
 
                 # FAZ 2.1 / HOTFIX 1.41: Hafif kazıma çuvallarsa ARTIK pes etmiyoruz.
                 # Playwright + stealth ağır fallback'i devreye giriyor (tek URL, ~5-8s).
                 if not fiyat_str or fiyat_str == "Bulunamadı" or not urun_ismi or urun_ismi == "İsim Bulunamadı":
-                    print(f"[Worker] 🪂 Hafif kazıma yetersiz p{product.id} — Playwright ağır fallback tetikleniyor...")
+                    log.info(f"[Worker] 🪂 Hafif kazıma yetersiz p{product.id} — Playwright ağır fallback tetikleniyor...")
                     try:
                         pw_data = _playwright_single_price(product.url)
                         if pw_data.get('price'):
                             fiyat_str = pw_data['price']
                         if pw_data.get('name') and (not urun_ismi or urun_ismi == "İsim Bulunamadı"):
                             urun_ismi = pw_data['name']
-                        print(f"[Worker] 🪂 Playwright fallback p{product.id} — price: {fiyat_str} | name: {(urun_ismi or '')[:40]}")
+                        log.info(f"[Worker] 🪂 Playwright fallback p{product.id} — price: {fiyat_str} | name: {(urun_ismi or '')[:40]}")
                     except Exception as pw_err:
-                        print(f"[Worker] Playwright fallback exception p{product.id}: {pw_err}")
+                        log.info(f"[Worker] Playwright fallback exception p{product.id}: {pw_err}")
 
                     # Hâlâ veri yoksa — eski davranış: sahte yazma, sadece geç.
                     # Ama bu sefer last_checked'i güncelliyoruz ki ürün ısrarla
@@ -941,7 +946,7 @@ def check_tracked_products(app, product_ids=None):
                                     category='opportunity'
                                 ))
                                 triggered = True
-                                print(f"[PriceAlert] 🚨 Alt limit — p{product.id}, eşik {alert.price_below}, yeni {yeni_fiyat}")
+                                log.info(f"[PriceAlert] 🚨 Alt limit — p{product.id}, eşik {alert.price_below}, yeni {yeni_fiyat}")
                             if alert.price_above is not None and yeni_fiyat >= alert.price_above:
                                 msg = (
                                     f"📈 Fiyat Artışı! {short_name} fiyatı "
@@ -955,11 +960,11 @@ def check_tracked_products(app, product_ids=None):
                                     category='threat'
                                 ))
                                 triggered = True
-                                print(f"[PriceAlert] 📈 Üst limit — p{product.id}, eşik {alert.price_above}, yeni {yeni_fiyat}")
+                                log.info(f"[PriceAlert] 📈 Üst limit — p{product.id}, eşik {alert.price_above}, yeni {yeni_fiyat}")
                             if triggered:
                                 alert.is_active = False
                     except Exception as e:
-                        print(f"[PriceAlert] ⚠️ Kontrol hatası (product {product.id}): {e}")
+                        log.info(f"[PriceAlert] ⚠️ Kontrol hatası (product {product.id}): {e}")
 
                     if eski_fiyat > 0:
                         fark = yeni_fiyat - eski_fiyat
@@ -1061,7 +1066,7 @@ def check_tracked_products(app, product_ids=None):
                             if name:
                                 product.seller_name = name[:100]
                 except Exception as sr_err:
-                    print(f"[Worker] seller_rating fetch hata p{product.id}: {sr_err}")
+                    log.info(f"[Worker] seller_rating fetch hata p{product.id}: {sr_err}")
 
                 # BİREBİR ÜRÜN BAZLI COMMIT (İzolasyon için kritik)
                 product.last_checked = get_tr_now()
@@ -1081,12 +1086,12 @@ def check_tracked_products(app, product_ids=None):
                             gp.last_checked = product.last_checked
                 except Exception as _gp_err:
                     # GP update başarısız olursa ana işlem bozulmasın
-                    print(f"[Worker] GP state update fail p{product.id}: {_gp_err}")
+                    log.info(f"[Worker] GP state update fail p{product.id}: {_gp_err}")
                 db.session.commit()
-                print(f"[Worker] Product {product.id} successfully updated (lightweight). rating={product.rating} reviews={product.review_count}")
+                log.info(f"[Worker] Product {product.id} successfully updated (lightweight). rating={product.rating} reviews={product.review_count}")
 
             except Exception as product_err:
-                print(f"[Worker] Error tracking product {product.id}: {product_err}")
+                log.info(f"[Worker] Error tracking product {product.id}: {product_err}")
                 # HOTFIX 1.25: Sadece Son Kontrol süresini güncelle — DB'ye "Hata" yazma.
                 # Eski isim/fiyat/marka korunur; tarih ileri alınır ki loop kısır döngüye girmesin.
                 # Yalnızca tablo HİÇ doldurulmamışsa nötr placeholder yazıyoruz (ilk başarısız taramada
@@ -1103,7 +1108,7 @@ def check_tracked_products(app, product_ids=None):
                 continue
 
     except Exception as glb_err:
-        print("[Worker] Global error in tracking products loop:", glb_err)
+        log.info("[Worker] Global error in tracking products loop:", glb_err)
 
 
 def _process_job_by_id(job_id):
@@ -1114,7 +1119,7 @@ def _process_job_by_id(job_id):
     if not job or job.status != 'pending':
         return
 
-    print(f"[Worker] Processing Job #{job.id} ({job.job_type}) for user #{job.user_id}")
+    log.info(f"[Worker] Processing Job #{job.id} ({job.job_type}) for user #{job.user_id}")
 
     global worker_state
     worker_state['is_active'] = True
@@ -1141,7 +1146,7 @@ def _process_job_by_id(job_id):
         job.result_html = result_html
         job.status = 'completed'
         job.completed_at = get_tr_now()
-        print(f"[Worker] Job #{job.id} completed successfully.")
+        log.info(f"[Worker] Job #{job.id} completed successfully.")
 
         try:
             from models import Notification
@@ -1152,13 +1157,13 @@ def _process_job_by_id(job_id):
             noti = Notification(user_id=job.user_id, message=msg, link=f"/job/{job.id}", category='combined')
             db.session.add(noti)
         except Exception as e:
-            print(f"Failed to create notification for job {job.id}: {str(e)}")
+            log.info(f"Failed to create notification for job {job.id}: {str(e)}")
 
     except Exception as e:
         job.status = 'failed'
         job.completed_at = get_tr_now()
         job.error_message = str(e)
-        print(f"[Worker] Job #{job.id} failed: {e}")
+        log.info(f"[Worker] Job #{job.id} failed: {e}")
         traceback.print_exc()
 
         try:
@@ -1380,7 +1385,7 @@ def _playwright_single_price(url, timeout_ms=40000):
                 except Exception:
                     pass
     except Exception as e:
-        print(f"[Worker] _playwright_single_price hata ({url[:60]}): {e}")
+        log.info(f"[Worker] _playwright_single_price hata ({url[:60]}): {e}")
     return result
 
 
@@ -1405,7 +1410,7 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
     try:
         from curl_cffi import requests as cffi_requests
     except ImportError:
-        print("[HB-CFFI] curl_cffi not available, skipping.")
+        log.info("[HB-CFFI] curl_cffi not available, skipping.")
         return None
 
     HEADERS = {
@@ -1532,7 +1537,7 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
                             except (TypeError, ValueError):
                                 pass
                     except Exception as rate_err:
-                        print(f"[HB-CFFI] rating parse skipped: {rate_err}")
+                        log.info(f"[HB-CFFI] rating parse skipped: {rate_err}")
 
                 # Stok hâlâ -1 ise tüm __NEXT_DATA__ ağacında derin arama
                 if _r["stock"] == -1:
@@ -1540,7 +1545,7 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
                     if deep is not None and deep >= 0:
                         _r["stock"] = 11 if deep > 10 else deep
             except Exception as e:
-                print("[HB-CFFI] __NEXT_DATA__ parse error:", e)
+                log.info("[HB-CFFI] __NEXT_DATA__ parse error:", e)
 
         # Son çare: sayfanın tüm HTML'inde JSON field regex taraması
         if _r["stock"] == -1:
@@ -1678,19 +1683,19 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
     # --- PRIMARY: Fetch product page ---
     try:
         resp = cffi_requests.get(url, headers=HEADERS, impersonate="chrome110", timeout=25)
-        print(f"[HB-CFFI] Product page status: {resp.status_code}")
+        log.info(f"[HB-CFFI] Product page status: {resp.status_code}")
         if resp.status_code == 200:
             parsed = _parse_hb_html(resp.text, url)
             result.update(parsed)
     except Exception as e:
-        print(f"[HB-CFFI] Product page fetch failed: {e}")
+        log.info(f"[HB-CFFI] Product page fetch failed: {e}")
 
     # --- REVIEWS: Fetch the reviews page if needed and not already found ---
     if fetch_reviews and len(result["reviews"]) < 3:
         try:
             review_url = url.split("?")[0].rstrip("/") + "-yorumlari"
             rev_resp = cffi_requests.get(review_url, headers=HEADERS, impersonate="chrome110", timeout=25)
-            print(f"[HB-CFFI] Reviews page status: {rev_resp.status_code}")
+            log.info(f"[HB-CFFI] Reviews page status: {rev_resp.status_code}")
             if rev_resp.status_code == 200:
                 rev_parsed = _parse_hb_html(rev_resp.text, review_url)
                 # Merge reviews
@@ -1703,7 +1708,7 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
                 if not result["name"] and rev_parsed["name"]:
                     result["name"] = rev_parsed["name"]
         except Exception as e:
-            print(f"[HB-CFFI] Reviews page fetch failed: {e}")
+            log.info(f"[HB-CFFI] Reviews page fetch failed: {e}")
 
         # --- REVIEWS: Try AJAX review API endpoints ---
         if len(result["reviews"]) < 3:
@@ -1734,12 +1739,12 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
                                 if len(body) > 15 and body not in result["reviews"]:
                                     result["reviews"].append(body)
                             if result["reviews"]:
-                                print(f"[HB-CFFI] Got {len(result['reviews'])} reviews from review API")
+                                log.info(f"[HB-CFFI] Got {len(result['reviews'])} reviews from review API")
                                 break
                     except Exception:
                         pass
 
-    print(f"[HB-CFFI] Final result — price: {result['price']}, name: {result['name']}, stock: {result['stock']}, reviews: {len(result['reviews'])}")
+    log.info(f"[HB-CFFI] Final result — price: {result['price']}, name: {result['name']}, stock: {result['stock']}, reviews: {len(result['reviews'])}")
     return result if (result["price"] or result["name"]) else None
 
 
@@ -1769,7 +1774,7 @@ def _safe_goto(page, url, timeout=20000, wait_until='domcontentloaded'):
         page.goto(url, timeout=timeout, wait_until=wait_until)
         return True
     except PWTimeoutError as te:
-        print(f"[SafeGoto] ⏱️ Timeout ({timeout}ms) — {url[:80]} — sessiz fallback'e geçiliyor.")
+        log.info(f"[SafeGoto] ⏱️ Timeout ({timeout}ms) — {url[:80]} — sessiz fallback'e geçiliyor.")
         try:
             # En azından o ana kadar yüklenmiş DOM'u kullanalım
             page.evaluate("window.stop && window.stop();")
@@ -1777,7 +1782,7 @@ def _safe_goto(page, url, timeout=20000, wait_until='domcontentloaded'):
             pass
         return False
     except Exception as e:
-        print(f"[SafeGoto] ❌ Navigation error: {type(e).__name__}: {str(e)[:120]}")
+        log.info(f"[SafeGoto] ❌ Navigation error: {type(e).__name__}: {str(e)[:120]}")
         return False
 
 
@@ -1841,7 +1846,7 @@ def _ldjson_extract(soup):
                             except (TypeError, ValueError):
                                 pass
     except Exception as e:
-        print(f"[Marketplace] ld+json parse skipped: {e}")
+        log.info(f"[Marketplace] ld+json parse skipped: {e}")
     return out
 
 
@@ -1858,7 +1863,7 @@ def _scrape_n11(url):
             "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
         })
         if resp.status_code != 200:
-            print(f"[N11] HTTP {resp.status_code} for {url}")
+            log.info(f"[N11] HTTP {resp.status_code} for {url}")
             return result
         html = resp.text
         soup = BeautifulSoup(html, "lxml")
@@ -1914,7 +1919,7 @@ def _scrape_n11(url):
                             except (TypeError, ValueError):
                                 pass
                 except Exception as e:
-                    print(f"[N11] __NEXT_DATA__ parse skipped: {e}")
+                    log.info(f"[N11] __NEXT_DATA__ parse skipped: {e}")
 
         # 3) DOM fallback — fiyat
         if not result["price"]:
@@ -1940,7 +1945,7 @@ def _scrape_n11(url):
 
         return result
     except Exception as e:
-        print(f"[N11] scrape failed for {url}: {e}")
+        log.info(f"[N11] scrape failed for {url}: {e}")
         return result
 
 
@@ -1956,7 +1961,7 @@ def _scrape_ciceksepeti(url):
             "Accept-Language": "tr-TR,tr;q=0.9",
         })
         if resp.status_code != 200:
-            print(f"[Çiçeksepeti] HTTP {resp.status_code} for {url}")
+            log.info(f"[Çiçeksepeti] HTTP {resp.status_code} for {url}")
             return result
         soup = BeautifulSoup(resp.text, "lxml")
 
@@ -1993,7 +1998,7 @@ def _scrape_ciceksepeti(url):
 
         return result
     except Exception as e:
-        print(f"[Çiçeksepeti] scrape failed for {url}: {e}")
+        log.info(f"[Çiçeksepeti] scrape failed for {url}: {e}")
         return result
 
 
@@ -2009,7 +2014,7 @@ def _scrape_pttavm(url):
             "Accept-Language": "tr-TR,tr;q=0.9",
         })
         if resp.status_code != 200:
-            print(f"[PttAVM] HTTP {resp.status_code} for {url}")
+            log.info(f"[PttAVM] HTTP {resp.status_code} for {url}")
             return result
         soup = BeautifulSoup(resp.text, "lxml")
 
@@ -2046,7 +2051,7 @@ def _scrape_pttavm(url):
 
         return result
     except Exception as e:
-        print(f"[PttAVM] scrape failed for {url}: {e}")
+        log.info(f"[PttAVM] scrape failed for {url}: {e}")
         return result
 
 
@@ -2077,7 +2082,7 @@ def _decode_response_body(resp):
                 try:
                     return _gzip.decompress(bytes(body)).decode("utf-8", errors="ignore")
                 except Exception as gz_err:
-                    print(f"[SEO _decode] gzip.decompress hata: {gz_err}")
+                    log.info(f"[SEO _decode] gzip.decompress hata: {gz_err}")
             # Düz bytes — UTF-8 decode
             try:
                 return bytes(body).decode("utf-8", errors="ignore")
@@ -2093,7 +2098,7 @@ def _decode_response_body(resp):
                 return txt
         return txt
     except Exception as e:
-        print(f"[SEO _decode] genel hata: {e}")
+        log.info(f"[SEO _decode] genel hata: {e}")
         try:
             return resp.text or ""
         except Exception:
@@ -2138,19 +2143,19 @@ def _seo_fetch_html(url, label="Generic"):
                 if resp.status_code == 200:
                     text = _decode_response_body(resp)
                     if text:
-                        print(f"[SEO {label}] curl_cffi ({profile}) → 200 OK ({len(text)} byte)")
+                        log.info(f"[SEO {label}] curl_cffi ({profile}) → 200 OK ({len(text)} byte)")
                         return (text, 200, f"curl_cffi:{profile}")
-                print(f"[SEO {label}] curl_cffi ({profile}) HTTP {resp.status_code}")
+                log.info(f"[SEO {label}] curl_cffi ({profile}) HTTP {resp.status_code}")
             except ValueError as ve:
-                print(f"[SEO {label}] curl_cffi profile '{profile}' desteklenmiyor: {ve}")
+                log.info(f"[SEO {label}] curl_cffi profile '{profile}' desteklenmiyor: {ve}")
                 continue
             except Exception as e:
-                print(f"[SEO {label}] curl_cffi ({profile}) hata: {e}")
+                log.info(f"[SEO {label}] curl_cffi ({profile}) hata: {e}")
                 continue
     except ImportError:
-        print(f"[SEO {label}] curl_cffi yüklü değil, cloudscraper'a düşülüyor.")
+        log.info(f"[SEO {label}] curl_cffi yüklü değil, cloudscraper'a düşülüyor.")
     except Exception as e:
-        print(f"[SEO {label}] curl_cffi global hata: {e}")
+        log.info(f"[SEO {label}] curl_cffi global hata: {e}")
 
     # 2) cloudscraper fallback
     try:
@@ -2160,12 +2165,12 @@ def _seo_fetch_html(url, label="Generic"):
         if resp.status_code == 200:
             text = _decode_response_body(resp)
             if text:
-                print(f"[SEO {label}] cloudscraper → 200 OK ({len(text)} byte)")
+                log.info(f"[SEO {label}] cloudscraper → 200 OK ({len(text)} byte)")
                 return (text, 200, "cloudscraper")
-        print(f"[SEO {label}] cloudscraper HTTP {resp.status_code}")
+        log.info(f"[SEO {label}] cloudscraper HTTP {resp.status_code}")
         return ("", resp.status_code, "cloudscraper-fail")
     except Exception as e:
-        print(f"[SEO {label}] cloudscraper hata: {e}")
+        log.info(f"[SEO {label}] cloudscraper hata: {e}")
         return ("", 0, "fail")
 
 
@@ -2214,7 +2219,7 @@ def _seo_launch_browser(p):
         elif hasattr(playwright_stealth, 'Stealth'):
             playwright_stealth.Stealth().apply_stealth_sync(page)
     except Exception as e:
-        print(f"[SEO] Stealth uygulanamadı (devam ediliyor): {e}")
+        log.info(f"[SEO] Stealth uygulanamadı (devam ediliyor): {e}")
     return browser, context, page
 
 
@@ -2235,7 +2240,7 @@ def _track_keyword_trendyol(keyword, target_url, max_pages=5):
 
     target_id = _extract_trendyol_product_id(target_url)
     if not target_id:
-        print(f"[SEO Trendyol] Hedef URL'de ürün ID'si bulunamadı: {target_url}")
+        log.info(f"[SEO Trendyol] Hedef URL'de ürün ID'si bulunamadı: {target_url}")
         return (0, 0)
     target_id_str = str(target_id).strip()
 
@@ -2244,7 +2249,7 @@ def _track_keyword_trendyol(keyword, target_url, max_pages=5):
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        print("[SEO Trendyol] Playwright yüklü değil — modül kullanılamaz.")
+        log.info("[SEO Trendyol] Playwright yüklü değil — modül kullanılamaz.")
         return (0, 0)
 
     browser = None
@@ -2273,14 +2278,14 @@ def _track_keyword_trendyol(keyword, target_url, max_pages=5):
                         page.wait_for_timeout(600)
                     page.wait_for_timeout(1000)
                 except Exception as nav_err:
-                    print(f"[SEO Trendyol] Sayfa {page_no} navigasyon hatası: {nav_err}")
+                    log.info(f"[SEO Trendyol] Sayfa {page_no} navigasyon hatası: {nav_err}")
                     break
 
                 # Bot koruması / captcha tespiti — zarif çıkış
                 try:
                     title = page.title() or ""
                     if any(sig in title.lower() for sig in ("güvenlik", "captcha", "robot", "doğrula", "access denied", "forbidden")):
-                        print(f"[SEO Trendyol] ⚠️ Bot koruması algılandı ({title!r}), döngüden çıkılıyor.")
+                        log.info(f"[SEO Trendyol] ⚠️ Bot koruması algılandı ({title!r}), döngüden çıkılıyor.")
                         break
                 except Exception:
                     pass
@@ -2308,14 +2313,14 @@ def _track_keyword_trendyol(keyword, target_url, max_pages=5):
                         return out;
                     }""") or []
                 except Exception as dom_err:
-                    print(f"[SEO Trendyol] DOM link tarama hatası: {dom_err}")
+                    log.info(f"[SEO Trendyol] DOM link tarama hatası: {dom_err}")
                     ordered_ids = []
 
-                print(f"[SEO Trendyol] '{keyword}' Sayfa {page_no} — Eşsiz ürün ID: {len(ordered_ids)}")
+                log.info(f"[SEO Trendyol] '{keyword}' Sayfa {page_no} — Eşsiz ürün ID: {len(ordered_ids)}")
 
                 if ordered_ids and target_id_str in ordered_ids:
                     rank = ordered_ids.index(target_id_str) + 1
-                    print(f"[SEO Trendyol] '{keyword}' → ✅ EŞLEŞME: sayfa {page_no}, sıra {rank} (id={target_id_str})")
+                    log.info(f"[SEO Trendyol] '{keyword}' → ✅ EŞLEŞME: sayfa {page_no}, sıra {rank} (id={target_id_str})")
                     return (page_no, rank)
 
                 # ── HTML regex fallback (DOM querySelector beklenmedik biçimde başarısızsa) ──
@@ -2331,30 +2336,30 @@ def _track_keyword_trendyol(keyword, target_url, max_pages=5):
                                 seen_r.add(_id)
                                 regex_ids.append(_id)
                         if regex_ids:
-                            print(f"[SEO Trendyol] Sayfa {page_no} — HTML regex ID: {len(regex_ids)} (DOM boştu)")
+                            log.info(f"[SEO Trendyol] Sayfa {page_no} — HTML regex ID: {len(regex_ids)} (DOM boştu)")
                             if target_id_str in regex_ids:
                                 rank = regex_ids.index(target_id_str) + 1
-                                print(f"[SEO Trendyol] '{keyword}' → ✅ EŞLEŞME (HTML regex): sayfa {page_no}, sıra {rank}")
+                                log.info(f"[SEO Trendyol] '{keyword}' → ✅ EŞLEŞME (HTML regex): sayfa {page_no}, sıra {rank}")
                                 return (page_no, rank)
                             ordered_ids = regex_ids  # döngü bitiş kararı için say
                     except Exception as rex_err:
-                        print(f"[SEO Trendyol] HTML regex hatası: {rex_err}")
+                        log.info(f"[SEO Trendyol] HTML regex hatası: {rex_err}")
 
                 # Sonsuz döngü koruması: 2 sayfa üst üste boşsa bitir
                 if not ordered_ids:
                     empty_streak += 1
-                    print(f"[SEO Trendyol] Sayfa {page_no} — boş (streak={empty_streak}).")
+                    log.info(f"[SEO Trendyol] Sayfa {page_no} — boş (streak={empty_streak}).")
                     if empty_streak >= 2:
-                        print(f"[SEO Trendyol] Arda arda {empty_streak} boş sayfa → güvenli çıkış.")
+                        log.info(f"[SEO Trendyol] Arda arda {empty_streak} boş sayfa → güvenli çıkış.")
                         break
                 else:
                     empty_streak = 0
 
-            print(f"[SEO Trendyol] '{keyword}' → ilk {max_pages} sayfada bulunamadı (target_id={target_id}).")
+            log.info(f"[SEO Trendyol] '{keyword}' → ilk {max_pages} sayfada bulunamadı (target_id={target_id}).")
             return (0, 0)
 
     except Exception as e:
-        print(f"[SEO Trendyol] global hata: {e}")
+        log.info(f"[SEO Trendyol] global hata: {e}")
         return (0, 0)
     finally:
         try:
@@ -2392,7 +2397,7 @@ def _track_keyword_hepsiburada(keyword, target_url, max_pages=5):
 
     Trendyol odaklı ana ürün stratejimiz tam kapasite çalışır durumda.
     """
-    print(f"[SEO Hepsiburada] '{keyword}' — modül geçici olarak bakımda (HOTFIX 1.23 stratejik karar). Atlanıyor.")
+    log.info(f"[SEO Hepsiburada] '{keyword}' — modül geçici olarak bakımda (HOTFIX 1.23 stratejik karar). Atlanıyor.")
     # Sentinel: (-1, -1) → "Bakımda / Yakında"
     return (-1, -1)
 
@@ -2442,7 +2447,7 @@ def check_keyword_trackers(app, tracker_ids=None):
 
     if not rows:
         return
-    print(f"[SEO] {len(rows)} keyword tracker kontrol ediliyor...")
+    log.info(f"[SEO] {len(rows)} keyword tracker kontrol ediliyor...")
 
     for kt in rows:
         try:
@@ -2454,7 +2459,7 @@ def check_keyword_trackers(app, tracker_ids=None):
             elif platform == 'hepsiburada':
                 page, rank = _track_keyword_hepsiburada(kt.keyword, kt.target_url, max_pages=5)
             else:
-                print(f"[SEO] tracker {kt.id} — desteklenmeyen platform: {kt.platform}")
+                log.info(f"[SEO] tracker {kt.id} — desteklenmeyen platform: {kt.platform}")
                 continue
 
             # HOTFIX 1.23: Sentinel (-1,-1) "Bakımda" → previous değerleri KORU,
@@ -2542,7 +2547,7 @@ def check_keyword_trackers(app, tracker_ids=None):
                         ))
             except Exception as _seo_notif_e:
                 # SEO bildirim üretimi başarısızsa ana akış bozulmasın
-                print(f"[SEO Notif] tracker {kt.id} bildirim hatası: {_seo_notif_e}")
+                log.info(f"[SEO Notif] tracker {kt.id} bildirim hatası: {_seo_notif_e}")
             # HOTFIX 1.91: Bağlı KeywordPool'a da yaz (paylaşımlı state)
             if kt.pool_id:
                 try:
@@ -2565,10 +2570,10 @@ def check_keyword_trackers(app, tracker_ids=None):
                 ))
             except Exception as _hist_e:
                 # Tarihsel kayıt başarısız olursa ana güncelleme bozulmasın
-                print(f"[SEO] history yazma hatası tracker {kt.id}: {_hist_e}")
+                log.info(f"[SEO] history yazma hatası tracker {kt.id}: {_hist_e}")
             db.session.commit()
         except Exception as e:
-            print(f"[SEO] tracker {kt.id} hata: {e}")
+            log.info(f"[SEO] tracker {kt.id} hata: {e}")
             try:
                 kt.last_checked = get_tr_now()
                 db.session.commit()
@@ -2784,7 +2789,7 @@ def extract_seller_name(page):
         if json_result and len(json_result) > 1:
             return json_result.strip()
     except Exception as e:
-        print(f"[extract_seller_name] error: {e}")
+        log.info(f"[extract_seller_name] error: {e}")
 
     # ── HOTFIX 1.34: Son katman — page.content() ile robust HTML extractor ──
     # Playwright DOM tarafı skeleton/lazy-load yüzünden boş kalsa bile sayfanın
@@ -2821,10 +2826,10 @@ def extract_seller_name(page):
                 )
 
             if _valid_seller(seller):
-                print(f"[extract_seller_name] 🛟 HTML extractor kurtardı: seller='{seller}'")
+                log.info(f"[extract_seller_name] 🛟 HTML extractor kurtardı: seller='{seller}'")
                 return seller.strip()
             if _valid_seller(brand):
-                print(f"[extract_seller_name] 🛟 HTML extractor brand fallback: brand='{brand}'")
+                log.info(f"[extract_seller_name] 🛟 HTML extractor brand fallback: brand='{brand}'")
                 return f"Marka: {brand.strip()}"
 
         # HOTFIX 1.35: URL'deki merchantId param'ını son çare olarak göster.
@@ -2836,21 +2841,21 @@ def extract_seller_name(page):
             mid_list = qs.get("merchantId") or qs.get("merchantid") or []
             if mid_list and str(mid_list[0]).isdigit():
                 mid = str(mid_list[0])
-                print(f"[extract_seller_name] ℹ️ URL merchantId fallback: {mid}")
+                log.info(f"[extract_seller_name] ℹ️ URL merchantId fallback: {mid}")
                 return f"Mağaza #{mid}"
         except Exception:
             pass
     except Exception as html_fb_err:
-        print(f"[extract_seller_name] HTML fallback hata: {html_fb_err}")
+        log.info(f"[extract_seller_name] HTML fallback hata: {html_fb_err}")
 
     # HOTFIX 1.29: Olay Yeri İncelemesi — Playwright satıcıyı bulamazsa o anki
     # sayfanın görüntüsünü kaydet. Sayfa gerçekten ürün sayfası mı, yoksa
     # Cloudflare/DataDome/CAPTCHA ekranı mı, gözle ayırt edebilelim.
     try:
         page.screenshot(path="debug_trendyol_error.png", full_page=True)
-        print("[extract_seller_name] 📸 Satıcı bulunamadı — debug_trendyol_error.png kaydedildi")
+        log.info("[extract_seller_name] 📸 Satıcı bulunamadı — debug_trendyol_error.png kaydedildi")
     except Exception as ss_err:
-        print(f"[extract_seller_name] screenshot atlandı: {ss_err}")
+        log.info(f"[extract_seller_name] screenshot atlandı: {ss_err}")
     return "Marka Bulunamadı"
 
 
@@ -3101,7 +3106,7 @@ def extract_data_from_html(html_content, url):
                     if isinstance(nm, str) and len(nm.strip()) > 3:
                         data["name"] = nm.strip()[:200]
     except Exception as proactive_err:
-        print(f"[Worker] proaktif JSON state extraction skipped: {proactive_err}")
+        log.info(f"[Worker] proaktif JSON state extraction skipped: {proactive_err}")
 
     def _safe_float(x):
         try:
@@ -3172,7 +3177,7 @@ def extract_data_from_html(html_content, url):
                                 elif _ok(b_obj):
                                     data["brand"] = b_obj.strip()
                             except Exception as ms_err:
-                                print(f"[Worker] TY merchant/brand parse skipped: {ms_err}")
+                                log.info(f"[Worker] TY merchant/brand parse skipped: {ms_err}")
 
                             # FAZ 4: Trendyol — ratingScore.averageRating + commentCount/totalRatingCount
                             try:
@@ -3194,7 +3199,7 @@ def extract_data_from_html(html_content, url):
                                       or rs.get('totalRatingCount'))
                                 data["review_count"] = _safe_int(rc) if rc is not None else 0
                             except Exception as ty_rev_err:
-                                print(f"[Worker] TY rating parse skipped: {ty_rev_err}")
+                                log.info(f"[Worker] TY rating parse skipped: {ty_rev_err}")
 
                             # [DEVRE DIŞI] Stok çıkarımı uyku modunda — data["stock"] = -1 sabit.
                             data["stock"] = -1
@@ -3224,7 +3229,7 @@ def extract_data_from_html(html_content, url):
                                   or (prod.get('rating', {}).get('count') if isinstance(prod.get('rating'), dict) else None))
                             data["review_count"] = _safe_int(rc) if rc is not None else 0
                         except Exception as hb_rev_err:
-                            print(f"[Worker] HB rating parse skipped: {hb_rev_err}")
+                            log.info(f"[Worker] HB rating parse skipped: {hb_rev_err}")
                     break
 
         # ── FAZ 4: ld+json structured data (genel fallback — her iki platform için) ──
@@ -3258,7 +3263,7 @@ def extract_data_from_html(html_content, url):
                 pass
 
     except Exception as e:
-        print(f"[Worker] Error extracting data from HTML: {e}")
+        log.info(f"[Worker] Error extracting data from HTML: {e}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # HOTFIX 1.26: BS4 PRICE FALLBACK ZİNCİRİ
@@ -3331,7 +3336,7 @@ def extract_data_from_html(html_content, url):
                 if data.get("price") and data["price"] != "Bulunamadı":
                     break
     except Exception as price_fb_err:
-        print(f"[Worker] price fallback skipped: {price_fb_err}")
+        log.info(f"[Worker] price fallback skipped: {price_fb_err}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # HOTFIX 1.26: BS4 NAME / TITLE FALLBACK ZİNCİRİ
@@ -3380,7 +3385,7 @@ def extract_data_from_html(html_content, url):
                 if data.get("name") and data["name"] != "İsim Bulunamadı":
                     break
     except Exception as name_fb_err:
-        print(f"[Worker] name fallback skipped: {name_fb_err}")
+        log.info(f"[Worker] name fallback skipped: {name_fb_err}")
 
     # HOTFIX 1.25: Son çare — review_count hâlâ 0 ise raw HTML üzerinde regex denemesi.
     # Trendyol bazen JSON'u page-render ile ayırıyor; "X Değerlendirme" / "X Yorum" gibi
@@ -3474,7 +3479,7 @@ def extract_data_from_html(html_content, url):
                                         data["price"] = str(v['value'])
                                         break
     except Exception as hard_re_err:
-        print(f"[Worker] hard __INITIAL_STATE__ regex skipped: {hard_re_err}")
+        log.info(f"[Worker] hard __INITIAL_STATE__ regex skipped: {hard_re_err}")
 
     # Çift güvenlik: JSON-LD'de Product.brand.name son fallback
     try:
@@ -3607,7 +3612,7 @@ def extract_data_from_html(html_content, url):
                         if b:
                             data["brand"] = b
         except Exception as dyn_err:
-            print(f"[Worker] dinamik script tarayıcı hata: {dyn_err}")
+            log.info(f"[Worker] dinamik script tarayıcı hata: {dyn_err}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # HOTFIX 1.28: ZIRH DELİCİ #2 — "Satıcı:" metin-komşu mantığı (class-bağımsız)
@@ -3680,7 +3685,7 @@ def extract_data_from_html(html_content, url):
                             data["seller"] = cand
                             break
         except Exception as txt_err:
-            print(f"[Worker] 'Satıcı:' metin-komşu fallback hata: {txt_err}")
+            log.info(f"[Worker] 'Satıcı:' metin-komşu fallback hata: {txt_err}")
 
     return data
 
@@ -4047,7 +4052,7 @@ def attach_stock_network_interceptor(page):
             if hit and hit > 0:
                 try:
                     page._bmk_stock_hits.append(int(hit))
-                    print(f"[Worker] 🌐 Network stock intercept: {hit} ({url[:80]})")
+                    log.info(f"[Worker] 🌐 Network stock intercept: {hit} ({url[:80]})")
                 except:
                     pass
         except Exception:
@@ -4103,7 +4108,7 @@ def extract_stock_active_trendyol(page):
     # yakalanan stok ipuçlarını ilk önce kontrol ederiz.
     early_hit = get_intercepted_stock(page)
     if early_hit is not None and early_hit > 0:
-        print(f"[Worker] ⚡ Trendyol: page-load network hit → {early_hit} adet")
+        log.info(f"[Worker] ⚡ Trendyol: page-load network hit → {early_hit} adet")
         return 11 if early_hit > 10 else early_hit
 
     try:
@@ -4142,7 +4147,7 @@ def extract_stock_active_trendyol(page):
                     loc.scroll_into_view_if_needed(timeout=1500)
                     loc.click(force=True, timeout=3000)
                     add_clicked = True
-                    print(f"[Worker] 🛒 Sepete Ekle tıklandı: {sel}")
+                    log.info(f"[Worker] 🛒 Sepete Ekle tıklandı: {sel}")
                     break
             except:
                 continue
@@ -4155,7 +4160,7 @@ def extract_stock_active_trendyol(page):
                     if loc.count() > 0:
                         loc.click(force=True, timeout=3000)
                         add_clicked = True
-                        print(f"[Worker] 🛒 Sepete Ekle (text) tıklandı")
+                        log.info(f"[Worker] 🛒 Sepete Ekle (text) tıklandı")
                         break
             except:
                 pass
@@ -4182,7 +4187,7 @@ def extract_stock_active_trendyol(page):
                 try:
                     page.wait_for_selector(cps, state='visible', timeout=3000)
                     panel_appeared = True
-                    print(f"[Worker] 🎯 Sepet paneli tespit edildi: {cps}")
+                    log.info(f"[Worker] 🎯 Sepet paneli tespit edildi: {cps}")
                     break
                 except:
                     continue
@@ -4238,10 +4243,10 @@ def extract_stock_active_trendyol(page):
                 sel_loc = page.locator('select[data-bmk-dropdown="1"]')
                 if sel_loc.count() > 0:
                     sel_loc.select_option(value=dropdown_info['value'], timeout=2000)
-                    print(f"[Worker] 🔽 Dropdown'dan '{dropdown_info['value']}' seçildi")
+                    log.info(f"[Worker] 🔽 Dropdown'dan '{dropdown_info['value']}' seçildi")
                     page.wait_for_timeout(1500)  # React re-render bekle
         except Exception as e:
-            print(f"[Worker] Dropdown tespit/seçim hata: {e}")
+            log.info(f"[Worker] Dropdown tespit/seçim hata: {e}")
 
         # ── D2) Input'u bul — Playwright locator zinciri ──
         cart_qty_selectors = [
@@ -4266,7 +4271,7 @@ def extract_stock_active_trendyol(page):
                 loc = page.locator(sel).first
                 if loc.count() > 0 and loc.is_visible(timeout=300):
                     cart_qty = loc
-                    print(f"[Worker] 📦 Sepet input bulundu: {sel}")
+                    log.info(f"[Worker] 📦 Sepet input bulundu: {sel}")
                     break
             except:
                 continue
@@ -4295,13 +4300,13 @@ def extract_stock_active_trendyol(page):
                     loc = page.locator('[data-bmk-cart-qty="1"]').first
                     if loc.count() > 0:
                         cart_qty = loc
-                        print("[Worker] 📦 Geniş fallback ile input bulundu")
+                        log.info("[Worker] 📦 Geniş fallback ile input bulundu")
             except:
                 pass
 
         # ── D3) NATIVE PLAYWRIGHT — Input stabil → click → temizle → "10" → Enter ──
         if cart_qty:
-            print("[Worker] ⌨️ Native Playwright: stabil bekleme → force click → temizle → '10' → Enter")
+            log.info("[Worker] ⌨️ Native Playwright: stabil bekleme → force click → temizle → '10' → Enter")
             try:
                 # 0) Input animasyon bitişini garantile — ekstra 500ms bekleme
                 #    (Dropdown→input dönüşümü de aynı slide-in gecikmesine tabi)
@@ -4328,10 +4333,10 @@ def extract_stock_active_trendyol(page):
 
                 # 4) Enter → React form submit / sepet miktar güncellemesi
                 page.keyboard.press('Enter')
-                print("[Worker] ✅ '10' yazıldı + Enter gönderildi")
+                log.info("[Worker] ✅ '10' yazıldı + Enter gönderildi")
 
             except Exception as e:
-                print(f"[Worker] ⚠ Native keyboard hata: {e} — Tab fallback deneniyor")
+                log.info(f"[Worker] ⚠ Native keyboard hata: {e} — Tab fallback deneniyor")
                 try:
                     page.keyboard.press('Tab')
                 except:
@@ -4342,7 +4347,7 @@ def extract_stock_active_trendyol(page):
             page.wait_for_timeout(4000)
 
         else:
-            print("[Worker] ⚠ Sepet panelinde input bulunamadı — toast/network'e geçiliyor")
+            log.info("[Worker] ⚠ Sepet panelinde input bulunamadı — toast/network'e geçiliyor")
 
         # ───────── G) DOM toast'ından stok — ÖNCE BU (F'den önce!) ─────────
         # KRİTİK SIRALAMA: Toast ÖNCE okunmalı. Sepet API yanıtı (Section F/network)
@@ -4406,7 +4411,7 @@ def extract_stock_active_trendyol(page):
 
         if real_stock and isinstance(real_stock, (int, float)) and real_stock > 0:
             rs = int(real_stock)
-            print(f"[Worker] ✅ Sepet toast'ından stok: {rs}")
+            log.info(f"[Worker] ✅ Sepet toast'ından stok: {rs}")
             _cleanup_cart(page)
             return 11 if rs > 10 else rs
 
@@ -4417,12 +4422,12 @@ def extract_stock_active_trendyol(page):
         net_hit = get_intercepted_stock(page)
         _cleanup_cart(page)
         if net_hit is not None and net_hit > 0 and net_hit != 5:
-            print(f"[Worker] 🌐 Network'ten stok yakalandı: {net_hit}")
+            log.info(f"[Worker] 🌐 Network'ten stok yakalandı: {net_hit}")
             return 11 if net_hit > 10 else net_hit
 
         return None
     except Exception as e:
-        print(f"[Worker] Active stock scraping failed: {e}")
+        log.info(f"[Worker] Active stock scraping failed: {e}")
         try:
             _cleanup_cart(page)
         except:
@@ -4477,7 +4482,7 @@ def extract_stock_active_hepsiburada(page):
     # A) İlk önce page-level interceptor'ı kontrol et
     early_hit = get_intercepted_stock(page)
     if early_hit is not None and early_hit > 0:
-        print(f"[Worker] ⚡ HB: page-load network hit → {early_hit} adet")
+        log.info(f"[Worker] ⚡ HB: page-load network hit → {early_hit} adet")
         return 11 if early_hit > 10 else early_hit
 
     # Cookie banner / overlay'leri kapat
@@ -4535,7 +4540,7 @@ def extract_stock_active_hepsiburada(page):
             } catch(e) { return null; }
         }""")
         if js_stock is not None and js_stock >= 0:
-            print(f"[Worker] ✅ HB __NEXT_DATA__ derin arama: {js_stock}")
+            log.info(f"[Worker] ✅ HB __NEXT_DATA__ derin arama: {js_stock}")
             return 11 if js_stock > 10 else int(js_stock)
 
         # B2) HB ürün sayfasında "Adet" input veya artı(+) butonu ara
@@ -4592,7 +4597,7 @@ def extract_stock_active_hepsiburada(page):
                     loc.scroll_into_view_if_needed(timeout=1500)
                     loc.click(force=True, timeout=3000)
                     add_clicked = True
-                    print(f"[Worker] 🛒 HB Sepete Ekle: {sel}")
+                    log.info(f"[Worker] 🛒 HB Sepete Ekle: {sel}")
                     break
             except:
                 continue
@@ -4605,7 +4610,7 @@ def extract_stock_active_hepsiburada(page):
                     if loc.count() > 0:
                         loc.click(force=True, timeout=3000)
                         add_clicked = True
-                        print(f"[Worker] 🛒 HB Sepete Ekle (text): {txt}")
+                        log.info(f"[Worker] 🛒 HB Sepete Ekle (text): {txt}")
                         break
             except:
                 pass
@@ -4616,7 +4621,7 @@ def extract_stock_active_hepsiburada(page):
         # Yakalanmış mı?
         mid_hit = get_intercepted_stock(page)
         if mid_hit is not None and mid_hit > 0:
-            print(f"[Worker] 🌐 HB add-to-cart sonrası network hit: {mid_hit}")
+            log.info(f"[Worker] 🌐 HB add-to-cart sonrası network hit: {mid_hit}")
             _cleanup_hb_cart(page)
             return 11 if mid_hit > 10 else mid_hit
 
@@ -4642,7 +4647,7 @@ def extract_stock_active_hepsiburada(page):
                 loc = page.locator(sel).first
                 if loc.count() > 0 and loc.is_visible(timeout=300):
                     cart_qty = loc
-                    print(f"[Worker] 📦 HB sepet input: {sel}")
+                    log.info(f"[Worker] 📦 HB sepet input: {sel}")
                     break
             except:
                 continue
@@ -4658,9 +4663,9 @@ def extract_stock_active_hepsiburada(page):
                 page.keyboard.type('99', delay=50)
                 page.wait_for_timeout(200)
                 page.keyboard.press('Enter')
-                print("[Worker] ⌨️ HB: '99' yazıldı + Enter")
+                log.info("[Worker] ⌨️ HB: '99' yazıldı + Enter")
             except Exception as e:
-                print(f"[Worker] HB keyboard hata: {e}")
+                log.info(f"[Worker] HB keyboard hata: {e}")
                 try:
                     page.keyboard.press('Tab')
                 except:
@@ -4696,7 +4701,7 @@ def extract_stock_active_hepsiburada(page):
                     return clickCount;
                 }""")
                 if plus_stock and plus_stock > 0:
-                    print(f"[Worker] ➕ HB plus butonu {plus_stock} kez tıklandı")
+                    log.info(f"[Worker] ➕ HB plus butonu {plus_stock} kez tıklandı")
                     page.wait_for_timeout(2000)
             except:
                 pass
@@ -4704,7 +4709,7 @@ def extract_stock_active_hepsiburada(page):
         # E) Network hit kontrolü
         late_net = get_intercepted_stock(page)
         if late_net is not None and late_net > 0:
-            print(f"[Worker] 🌐 HB network hit (post-injection): {late_net}")
+            log.info(f"[Worker] 🌐 HB network hit (post-injection): {late_net}")
             _cleanup_hb_cart(page)
             return 11 if late_net > 10 else late_net
 
@@ -4762,7 +4767,7 @@ def extract_stock_active_hepsiburada(page):
 
         if toast_stock and isinstance(toast_stock, (int, float)) and toast_stock > 0:
             rs = int(toast_stock)
-            print(f"[Worker] ✅ HB sepet toast: {rs}")
+            log.info(f"[Worker] ✅ HB sepet toast: {rs}")
             return 11 if rs > 10 else rs
 
         # Son şans: network
@@ -4809,7 +4814,7 @@ def extract_stock_active_hepsiburada(page):
             }""")
             if dom_stock is not None and isinstance(dom_stock, (int, float)) and dom_stock >= 0:
                 rs = int(dom_stock)
-                print(f"[Worker] ✅ HB DOM stok ipucu: {rs}")
+                log.info(f"[Worker] ✅ HB DOM stok ipucu: {rs}")
                 return 11 if rs > 10 else rs
         except:
             pass
@@ -4834,7 +4839,7 @@ def extract_stock_active_hepsiburada(page):
 
         return None
     except Exception as e:
-        print(f"[Worker] HB active scraping failed: {e}")
+        log.info(f"[Worker] HB active scraping failed: {e}")
         try:
             _cleanup_hb_cart(page)
         except:
@@ -4877,7 +4882,7 @@ def extract_stock(page):
     try:
         early_net = get_intercepted_stock(page)
         if early_net is not None and early_net >= 0:
-            print(f"[Worker] ⚡ Early network stock hit: {early_net} adet")
+            log.info(f"[Worker] ⚡ Early network stock hit: {early_net} adet")
             return int(early_net) if early_net <= 10 else 11
     except:
         pass
@@ -4888,15 +4893,15 @@ def extract_stock(page):
         if 'trendyol.com' in current_url:
             active_result = extract_stock_active_trendyol(page)
             if active_result is not None and active_result >= 0:
-                print(f"[Worker] ✅ Trendyol aktif kazıma: {active_result} adet")
+                log.info(f"[Worker] ✅ Trendyol aktif kazıma: {active_result} adet")
                 return int(active_result)
         elif 'hepsiburada.com' in current_url:
             active_result = extract_stock_active_hepsiburada(page)
             if active_result is not None and active_result >= 0:
-                print(f"[Worker] ✅ HepsiBurada aktif kazıma: {active_result} adet")
+                log.info(f"[Worker] ✅ HepsiBurada aktif kazıma: {active_result} adet")
                 return int(active_result)
     except Exception as e:
-        print(f"[Worker] Active scraping skipped: {e}")
+        log.info(f"[Worker] Active scraping skipped: {e}")
 
     try:
         result = page.evaluate("""() => {
@@ -5274,7 +5279,7 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
 
     product_id = _extract_trendyol_product_id(url)
     if not product_id:
-        print(f"[TY-Reviews] productId çıkarılamadı: {url}")
+        log.info(f"[TY-Reviews] productId çıkarılamadı: {url}")
         return []
 
     headers = {
@@ -5393,7 +5398,7 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                 # Hata olduğu gibi loglanır, template'in kalan sayfaları yine
                 # denenir. DNS gerçekten dead'se aynı hata tekrarlanır ama veri
                 # akışını engelleyen kısıtlama yok artık.
-                print(f"[TY-Reviews] API hata p{p}: {api_e}")
+                log.info(f"[TY-Reviews] API hata p{p}: {api_e}")
                 continue
         if api_ok and collected:
             break  # Bu template iş gördü, diğerlerini atla
@@ -5426,10 +5431,10 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                     if len(collected) >= target_count:
                         break
                 except Exception as html_e:
-                    print(f"[TY-Reviews] HTML pi={p} hata: {html_e}")
+                    log.info(f"[TY-Reviews] HTML pi={p} hata: {html_e}")
                     continue
         except Exception as html_glb:
-            print(f"[TY-Reviews] HTML pagination global: {html_glb}")
+            log.info(f"[TY-Reviews] HTML pagination global: {html_glb}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # HOTFIX 1.27: HARD REGEX FALLBACK
@@ -5502,9 +5507,9 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                                                 if len(collected) >= target_count:
                                                     return
                                     _walk(state, 0)
-                                    print(f"[TY-Reviews] HARD __INITIAL_STATE__ → {len(collected)} yorum")
+                                    log.info(f"[TY-Reviews] HARD __INITIAL_STATE__ → {len(collected)} yorum")
                         except Exception as state_re_err:
-                            print(f"[TY-Reviews] __INITIAL_STATE__ regex hata: {state_re_err}")
+                            log.info(f"[TY-Reviews] __INITIAL_STATE__ regex hata: {state_re_err}")
 
                         # DOM regex: <div class="review-text">...<p>...</p>... gibi
                         if len(collected) < 10:
@@ -5532,17 +5537,17 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                                                 break
                                     if len(collected) >= target_count:
                                         break
-                                print(f"[TY-Reviews] HARD DOM regex → {len(collected)} yorum (toplam)")
+                                log.info(f"[TY-Reviews] HARD DOM regex → {len(collected)} yorum (toplam)")
                             except Exception as dom_re_err:
-                                print(f"[TY-Reviews] DOM regex hata: {dom_re_err}")
+                                log.info(f"[TY-Reviews] DOM regex hata: {dom_re_err}")
 
                         if len(collected) >= 10:
                             break
                 except Exception as fetch_e:
-                    print(f"[TY-Reviews] HARD fetch hata ({try_url}): {fetch_e}")
+                    log.info(f"[TY-Reviews] HARD fetch hata ({try_url}): {fetch_e}")
                     continue
         except Exception as hard_glb:
-            print(f"[TY-Reviews] HARD fallback global: {hard_glb}")
+            log.info(f"[TY-Reviews] HARD fallback global: {hard_glb}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # HOTFIX 1.28: ZIRH DELİCİ #2 — Playwright DOM-tabanlı agresif fallback
@@ -5585,7 +5590,7 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                 # HOTFIX 1.32: Residential proxy (varsa) launch level'da bağlanır.
                 pw_proxy_cfg = _get_proxy_for_playwright()
                 if pw_proxy_cfg:
-                    print(f"[TY-Reviews] 🛡️ Playwright proxy aktif: {pw_proxy_cfg.get('server')}")
+                    log.info(f"[TY-Reviews] 🛡️ Playwright proxy aktif: {pw_proxy_cfg.get('server')}")
 
                 _launch_kwargs = {
                     "headless": _ty_headless,
@@ -5647,7 +5652,7 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                         }
                     """)
                 except Exception as init_err:
-                    print(f"[TY-Reviews] PW init script eklenemedi: {init_err}")
+                    log.info(f"[TY-Reviews] PW init script eklenemedi: {init_err}")
 
                 page = context.new_page()
                 # Eğer paket yüklü ise stealth_sync uygula (ek katman)
@@ -5655,7 +5660,7 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                     try:
                         _ty_stealth_sync(page)
                     except Exception as st_err:
-                        print(f"[TY-Reviews] stealth_sync uygulanamadı: {st_err}")
+                        log.info(f"[TY-Reviews] stealth_sync uygulanamadı: {st_err}")
 
                 # ── HOTFIX 1.31: X-RAY OPERASYONU — Network Response Interception ──
                 # DataDome shadow-ban senaryosunda DOM hiçbir zaman güncellenmese bile
@@ -5724,7 +5729,7 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                         # Shadow-ban telemetrisi
                         if rstatus in (403, 429) and any(kw in rurl for kw in ("trendyol", "review", "merchant")):
                             xray_state["blocked_403_429"] += 1
-                            print(f"[X-Ray] ⛔ {rstatus} blok: {resp.url[:140]}")
+                            log.info(f"[X-Ray] ⛔ {rstatus} blok: {resp.url[:140]}")
                             return
                         if rstatus != 200:
                             return
@@ -5750,20 +5755,20 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                             return
                         xray_state["intercepted"] += 1
                         _xray_walk(body, 0)
-                        print(f"[X-Ray] 🔬 Yakalandı (#{xray_state['intercepted']}): {resp.url[:120]}  "
+                        log.info(f"[X-Ray] 🔬 Yakalandı (#{xray_state['intercepted']}): {resp.url[:120]}  "
                               f"→ revs={len(xray_state['reviews'])} seller={xray_state['seller']!r}")
                     except Exception as on_err:
                         # Listener içi hata page lifecycle'ını bozmasın
                         try:
-                            print(f"[X-Ray] handler hata: {on_err}")
+                            log.info(f"[X-Ray] handler hata: {on_err}")
                         except Exception:
                             pass
 
                 try:
                     page.on("response", _on_response)
-                    print("[X-Ray] response listener bağlandı.")
+                    log.info("[X-Ray] response listener bağlandı.")
                 except Exception as listen_err:
-                    print(f"[X-Ray] listener bağlanamadı: {listen_err}")
+                    log.info(f"[X-Ray] listener bağlanamadı: {listen_err}")
 
                 try:
                     # ── HOTFIX 1.30: Sabırlı Sayfa Yükleme Stratejisi ──
@@ -5788,9 +5793,9 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                         if any(sig in title_ck or sig in body_ck for sig in captcha_signals):
                             try:
                                 page.screenshot(path="debug_trendyol_error.png", full_page=True)
-                                print("[TY-Reviews] ⛔ CAPTCHA/CF tespit edildi — debug_trendyol_error.png kaydedildi")
+                                log.info("[TY-Reviews] ⛔ CAPTCHA/CF tespit edildi — debug_trendyol_error.png kaydedildi")
                             except Exception as ss_err:
-                                print(f"[TY-Reviews] screenshot hata: {ss_err}")
+                                log.info(f"[TY-Reviews] screenshot hata: {ss_err}")
                     except Exception:
                         pass
 
@@ -5824,12 +5829,12 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                         try:
                             page.wait_for_selector(sel, timeout=8000, state="attached")
                             anchor_found = True
-                            print(f"[TY-Reviews] DOM hazır: '{sel}' selector'ı belirdi.")
+                            log.info(f"[TY-Reviews] DOM hazır: '{sel}' selector'ı belirdi.")
                             break
                         except Exception:
                             continue
                     if not anchor_found:
-                        print("[TY-Reviews] DOM'da yorum elementi henüz görünmedi — yine de scroll loop'una geçiliyor.")
+                        log.info("[TY-Reviews] DOM'da yorum elementi henüz görünmedi — yine de scroll loop'una geçiliyor.")
 
                     # ── HOTFIX 1.30: İnsan-Benzeri Kademeli Scroll ──
                     # `scrollBy(0, document.body.scrollHeight)` tek hamlede dibe iniyordu;
@@ -5907,7 +5912,7 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                                 for t in new_texts:
                                     _add(t)
                         except Exception as ext_err:
-                            print(f"[TY-Reviews] PW extract hata: {ext_err}")
+                            log.info(f"[TY-Reviews] PW extract hata: {ext_err}")
 
                         if len(collected) >= target_count:
                             break
@@ -5924,13 +5929,13 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                         for t in xray_state["reviews"]:
                             _add(t)
                         gained = len(collected) - before
-                        print(f"[X-Ray] 🔄 DOM ↔ network birleştirme: +{gained} yorum "
+                        log.info(f"[X-Ray] 🔄 DOM ↔ network birleştirme: +{gained} yorum "
                               f"(toplam yakalanan paket: {xray_state['intercepted']}, "
                               f"403/429 blok: {xray_state['blocked_403_429']})")
                     # Satıcı/marka da yakalandıysa logla — caller bu bilgiyi kullanmasa bile
                     # debug için görünür olsun (ileride seller/brand'i return ederiz).
                     if xray_state["seller"] or xray_state["brand"]:
-                        print(f"[X-Ray] 🎯 Yan ürün: seller={xray_state['seller']!r} brand={xray_state['brand']!r}")
+                        log.info(f"[X-Ray] 🎯 Yan ürün: seller={xray_state['seller']!r} brand={xray_state['brand']!r}")
 
                     # HOTFIX 1.29: Olay Yeri İncelemesi — döngü bittiğinde hâlâ
                     # 0 yorum yakalandıysa sayfanın o anki halini ekran görüntüsü
@@ -5938,17 +5943,17 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                     if len(collected) == 0:
                         try:
                             page.screenshot(path="debug_trendyol_error.png", full_page=True)
-                            print(f"[TY-Reviews] 📸 0 yorum — debug_trendyol_error.png kaydedildi "
+                            log.info(f"[TY-Reviews] 📸 0 yorum — debug_trendyol_error.png kaydedildi "
                                   f"(intercept: {xray_state['intercepted']}, blocked: {xray_state['blocked_403_429']})")
                         except Exception as ss_err:
-                            print(f"[TY-Reviews] son screenshot hata: {ss_err}")
+                            log.info(f"[TY-Reviews] son screenshot hata: {ss_err}")
                 except Exception as pw_inner:
                     # HOTFIX 1.29: Beklenmedik hata olursa bile screenshot dene
                     try:
                         page.screenshot(path="debug_trendyol_error.png", full_page=True)
-                        print(f"[TY-Reviews] PW navigation hata + screenshot alındı: {pw_inner}")
+                        log.info(f"[TY-Reviews] PW navigation hata + screenshot alındı: {pw_inner}")
                     except Exception:
-                        print(f"[TY-Reviews] PW navigation hata (screenshot başarısız): {pw_inner}")
+                        log.info(f"[TY-Reviews] PW navigation hata (screenshot başarısız): {pw_inner}")
                 finally:
                     try:
                         context.close()
@@ -5958,20 +5963,20 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                         browser.close()
                     except Exception:
                         pass
-            print(f"[TY-Reviews] PW agresif → {len(collected)} yorum (toplam)")
+            log.info(f"[TY-Reviews] PW agresif → {len(collected)} yorum (toplam)")
         except ImportError:
-            print("[TY-Reviews] Playwright yüklü değil, agresif fallback atlandı.")
+            log.info("[TY-Reviews] Playwright yüklü değil, agresif fallback atlandı.")
         except Exception as pw_err:
-            print(f"[TY-Reviews] PW agresif fallback hata: {pw_err}")
+            log.info(f"[TY-Reviews] PW agresif fallback hata: {pw_err}")
 
     # ── HOTFIX 1.34: izole thread'de Playwright çalıştır ──
     if len(collected) < 10:
         try:
             _run_in_isolated_thread(_pw_aggressive_inner)
         except Exception as thread_err:
-            print(f"[TY-Reviews] PW thread sarmalayıcı hata: {thread_err}")
+            log.info(f"[TY-Reviews] PW thread sarmalayıcı hata: {thread_err}")
 
-    print(f"[TY-Reviews] {url} → {len(collected)} yorum toplandı (target {target_count}).")
+    log.info(f"[TY-Reviews] {url} → {len(collected)} yorum toplandı (target {target_count}).")
     return collected[:target_count]
 
 
@@ -6037,7 +6042,7 @@ def _scrape_reviews_omnichannel(url, html_content):
                 if len(t) > 10:
                     reviews.append(t)
     except Exception as e:
-        print(f"[Omnichannel] Review parse error for {url}: {e}")
+        log.info(f"[Omnichannel] Review parse error for {url}: {e}")
 
     # Tekrarları çıkar, en güncel 30 yorumu döndür
     seen, unique = set(), []
@@ -6076,23 +6081,23 @@ def _fetch_reviews_html_lightweight(url):
                 from curl_cffi import requests as cffi_requests
                 resp = cffi_requests.get(url, headers=headers, impersonate="chrome110", timeout=20)
                 if resp.status_code == 200:
-                    print(f"[Amazon-CFFI] Reviews HTML alındı ({len(resp.text)} bytes)")
+                    log.info(f"[Amazon-CFFI] Reviews HTML alındı ({len(resp.text)} bytes)")
                     return resp.text
-                print(f"[Amazon-CFFI] HTTP {resp.status_code}")
+                log.info(f"[Amazon-CFFI] HTTP {resp.status_code}")
             except ImportError:
-                print("[Amazon] curl_cffi yok — cloudscraper'a düşülüyor.")
+                log.info("[Amazon] curl_cffi yok — cloudscraper'a düşülüyor.")
             except Exception as cffi_e:
-                print(f"[Amazon-CFFI] hata: {cffi_e}")
+                log.info(f"[Amazon-CFFI] hata: {cffi_e}")
         # Diğerleri (veya Amazon cffi başarısız olursa) → cloudscraper
         import cloudscraper
         scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'mobile': False, 'platform': 'windows'})
         resp = scraper.get(url, headers=headers, timeout=20)
         if resp.status_code == 200:
             return resp.text
-        print(f"[Lightweight Reviews] HTTP {resp.status_code} for {url}")
+        log.info(f"[Lightweight Reviews] HTTP {resp.status_code} for {url}")
         return None
     except Exception as e:
-        print(f"[Lightweight Reviews] hata: {e}")
+        log.info(f"[Lightweight Reviews] hata: {e}")
         return None
 
 
@@ -6126,10 +6131,10 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
             if html:
                 revs = _scrape_reviews_omnichannel(url, html)
                 if revs:
-                    print(f"[Omnichannel] {url} → {len(revs)} yorum (hafif yol)")
+                    log.info(f"[Omnichannel] {url} → {len(revs)} yorum (hafif yol)")
                     return revs
         except Exception as e:
-            print(f"[Omnichannel] hata: {e}")
+            log.info(f"[Omnichannel] hata: {e}")
         # Boş döndüyse, hata mesajı yerine sessizce boş liste — analyze_reviews_with_ai
         # zaten "İşe yarar yorum bulunamadı" yolunu yönetiyor.
         return []
@@ -6212,7 +6217,7 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
                 }
                 return false;
             }""")
-            print(f"[Worker] HB 'Değerlendirmeler' tab clicked: {tab_clicked}")
+            log.info(f"[Worker] HB 'Değerlendirmeler' tab clicked: {tab_clicked}")
 
             # 4) Review card'ların render olmasını bekle (max 6s)
             try:
@@ -6229,7 +6234,7 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
                 page.evaluate("window.scrollBy(0, 1200);")
                 page.wait_for_timeout(900)
         except Exception as e:
-            print(f"[Worker] HB Review Navigation Error: {e}")
+            log.info(f"[Worker] HB Review Navigation Error: {e}")
 
     # Login trap escape
     if "giris" in page.url.lower() or "login" in page.url.lower():
@@ -6394,12 +6399,12 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
         try:
             ty_api_revs = _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60)
             if ty_api_revs:
-                print(f"[Trendyol] Playwright 0 → API güvenlik ağı: {len(ty_api_revs)} yorum")
+                log.info(f"[Trendyol] Playwright 0 → API güvenlik ağı: {len(ty_api_revs)} yorum")
                 for t in ty_api_revs:
                     if t and t not in raw_data_set:
                         raw_data_set.add(t)
         except Exception as ty_safety_err:
-            print(f"[Trendyol] API güvenlik ağı hatası: {ty_safety_err}")
+            log.info(f"[Trendyol] API güvenlik ağı hatası: {ty_safety_err}")
 
     return list(raw_data_set)
 
@@ -6621,7 +6626,7 @@ def analyze_reviews_with_ai(reviews, api_key, url=None):
                 try:
                     parsed = json.loads(candidate)
                 except Exception as e2:
-                    print(f"[Worker] AI JSON repair failed: {e2}")
+                    log.info(f"[Worker] AI JSON repair failed: {e2}")
                     parsed = None
 
         if not isinstance(parsed, dict):
@@ -6634,7 +6639,7 @@ def analyze_reviews_with_ai(reviews, api_key, url=None):
             "genel":    _stringify_ai_field(parsed.get("genel")),
         }
     except Exception as e:
-        print(f"[Worker] AI analysis error: {e}")
+        log.info(f"[Worker] AI analysis error: {e}")
         return {"error": f"Yapay Zeka Hatası: {str(e)}"}
 
 
@@ -6701,9 +6706,9 @@ def run_price_headless(urls, api_key):
                 playwright_stealth.stealth(page) # Legacy structure
                 _stealth_applied = "stealth (legacy)"
         except Exception as stealth_e:
-            print(f"⚠️ [Worker/Price] Stealth uygulanamadı, normal devam ediliyor: {stealth_e}")
+            log.info(f"⚠️ [Worker/Price] Stealth uygulanamadı, normal devam ediliyor: {stealth_e}")
         if _stealth_applied:
-            print(f"🥷 [Worker/Price] Stealth aktif: {_stealth_applied}")
+            log.info(f"🥷 [Worker/Price] Stealth aktif: {_stealth_applied}")
 
         for idx, url in enumerate(urls):
             url = url.strip()
@@ -6797,7 +6802,7 @@ def run_price_headless(urls, api_key):
                                 urun_ismi = extract_product_name(page)
                                 fiyat = extract_price(page)
                         except Exception as json_e:
-                            print("JS Extraction failed:", json_e)
+                            log.info("JS Extraction failed:", json_e)
                             urun_ismi = extract_product_name(page)
                             fiyat = extract_price(page)
                     else:
@@ -6830,9 +6835,9 @@ def run_price_headless(urls, api_key):
                                 urun_ismi = cffi_data["name"]
                             if cffi_data.get("stock", -1) != -1:
                                 pass  # stock is not tracked in price analysis
-                            print(f"[Worker] HB cffi success — price: {fiyat}")
+                            log.info(f"[Worker] HB cffi success — price: {fiyat}")
                     except Exception as cffi_e:
-                        print(f"[Worker] HB cffi failed in price analysis: {cffi_e}")
+                        log.info(f"[Worker] HB cffi failed in price analysis: {cffi_e}")
 
                 # Fallback #2: Legacy HepsiBurada direct API
                 if "hepsiburada.com" in url and (fiyat == "Bulunamadı" or not fiyat or durum != "OK"):
@@ -6844,9 +6849,9 @@ def run_price_headless(urls, api_key):
                                 durum = "OK"
                             if hb_data.get("name") and urun_ismi == "İsim Bulunamadı":
                                 urun_ismi = hb_data["name"]
-                            print(f"[Worker] HB API fallback success in price analysis: {fiyat}")
+                            log.info(f"[Worker] HB API fallback success in price analysis: {fiyat}")
                     except Exception as hb_e:
-                        print(f"[Worker] HB API fallback failed in price analysis: {hb_e}")
+                        log.info(f"[Worker] HB API fallback failed in price analysis: {hb_e}")
 
 
                 sonuclar.append({
@@ -6858,7 +6863,7 @@ def run_price_headless(urls, api_key):
                     "Durum": durum
                 })
             except Exception as e:
-                print(f"[Worker] Exception in run_price_headless for {url}: {e}")
+                log.info(f"[Worker] Exception in run_price_headless for {url}: {e}")
                 import traceback
                 traceback.print_exc()
                 sonuclar.append({
@@ -7043,7 +7048,7 @@ def run_price_headless(urls, api_key):
 
 
         except Exception as e:
-            print(f"[Worker] Error calculating buybox: {e}")
+            log.info(f"[Worker] Error calculating buybox: {e}")
 
     if ai_ozet:
         import re
@@ -7117,9 +7122,9 @@ def run_review_headless(urls, api_key):
                 playwright_stealth.stealth(page) # Legacy structure
                 _stealth_applied = "stealth (legacy)"
         except Exception as stealth_e:
-            print(f"⚠️ [Worker/Review] Stealth uygulanamadı, normal devam ediliyor: {stealth_e}")
+            log.info(f"⚠️ [Worker/Review] Stealth uygulanamadı, normal devam ediliyor: {stealth_e}")
         if _stealth_applied:
-            print(f"🥷 [Worker/Review] Stealth aktif: {_stealth_applied}")
+            log.info(f"🥷 [Worker/Review] Stealth aktif: {_stealth_applied}")
 
         for idx, url in enumerate(urls):
             url = url.strip()
@@ -7252,15 +7257,15 @@ def run_review_headless(urls, api_key):
                                     return
                                 xray_state["intercepted"] += 1
                                 _xray_walk(body, 0)
-                                print(f"[X-Ray] 🔬 #{xray_state['intercepted']}: {resp.url[:120]} → revs={len(xray_state['reviews'])}")
+                                log.info(f"[X-Ray] 🔬 #{xray_state['intercepted']}: {resp.url[:120]} → revs={len(xray_state['reviews'])}")
                             except Exception:
                                 pass
 
                         try:
                             page.on("response", _xray_handler)
-                            print("[X-Ray] response listener mevcut page'e bağlandı.")
+                            log.info("[X-Ray] response listener mevcut page'e bağlandı.")
                         except Exception as listen_err:
-                            print(f"[X-Ray] listener bağlanamadı: {listen_err}")
+                            log.info(f"[X-Ray] listener bağlanamadı: {listen_err}")
 
                         # ─── HOTFIX 1.36: Trendyol Yorum Agresif Loop ───────────────
                         # Eski tek-pass scroll (5×1500px) Trendyol'un lazy-loader'ı için
@@ -7284,7 +7289,7 @@ def run_review_headless(urls, api_key):
                             try:
                                 page.goto(yor_url, timeout=35000, wait_until="domcontentloaded")
                             except Exception as nav_err:
-                                print(f"[Worker] /yorumlar navigation hata, link click'e düşülüyor: {nav_err}")
+                                log.info(f"[Worker] /yorumlar navigation hata, link click'e düşülüyor: {nav_err}")
                                 page.evaluate("""() => { var a = document.querySelector('a[href*="/yorumlar"]'); if (a) a.click(); }""")
                             try:
                                 page.wait_for_load_state("networkidle", timeout=10000)
@@ -7314,7 +7319,7 @@ def run_review_headless(urls, api_key):
                                     return m ? parseInt(m[1]) : 0;
                                 }""") or 0
                                 if expected_total:
-                                    print(f"[Worker] Trendyol beklenen yorum: {expected_total}")
+                                    log.info(f"[Worker] Trendyol beklenen yorum: {expected_total}")
                             except Exception:
                                 pass
 
@@ -7477,19 +7482,19 @@ def run_review_headless(urls, api_key):
                                 if len(raw_data_set) == last_count:
                                     stable_turns += 1
                                     if stable_turns >= 5:
-                                        print(f"[Worker] Trendyol plato (tur {turn+1}, {len(raw_data_set)} yorum) — döngü sonlandırıldı.")
+                                        log.info(f"[Worker] Trendyol plato (tur {turn+1}, {len(raw_data_set)} yorum) — döngü sonlandırıldı.")
                                         break
                                 else:
                                     stable_turns = 0
                                 last_count = len(raw_data_set)
 
                                 if len(raw_data_set) >= target_count:
-                                    print(f"[Worker] Trendyol hedefe ulaşıldı: {len(raw_data_set)} ≥ {target_count}")
+                                    log.info(f"[Worker] Trendyol hedefe ulaşıldı: {len(raw_data_set)} ≥ {target_count}")
                                     break
 
-                            print(f"[Worker] Trendyol DOM yorum (agresif): {len(raw_data_set)} (beklenen ≈ {expected_total or '?'})")
+                            log.info(f"[Worker] Trendyol DOM yorum (agresif): {len(raw_data_set)} (beklenen ≈ {expected_total or '?'})")
                         except Exception as ty_dom_err:
-                            print(f"[Worker] Trendyol DOM yorum hata: {ty_dom_err}")
+                            log.info(f"[Worker] Trendyol DOM yorum hata: {ty_dom_err}")
 
                         # ── HOTFIX 1.38: X-Ray network sonuçlarını birleştir ──
                         try:
@@ -7501,14 +7506,14 @@ def run_review_headless(urls, api_key):
                             for r in xray_state["reviews"]:
                                 if r and r.strip():
                                     raw_data_set.add(r.strip())
-                            print(f"[X-Ray] 🔄 DOM ↔ network: +{len(raw_data_set) - before} yorum "
+                            log.info(f"[X-Ray] 🔄 DOM ↔ network: +{len(raw_data_set) - before} yorum "
                                   f"(intercept: {xray_state['intercepted']}, blocked: {xray_state['blocked']})")
                         if xray_state.get("seller") and (satici in (None, "Bulunamadı", "Marka Bulunamadı") or "Marka:" in str(satici)):
                             satici = xray_state["seller"]
-                            print(f"[X-Ray] 🎯 seller: {satici}")
+                            log.info(f"[X-Ray] 🎯 seller: {satici}")
                         elif xray_state.get("brand") and satici in (None, "Bulunamadı", "Marka Bulunamadı"):
                             satici = f"Marka: {xray_state['brand']}"
-                            print(f"[X-Ray] 🎯 brand fallback: {satici}")
+                            log.info(f"[X-Ray] 🎯 brand fallback: {satici}")
 
                         # API güvenlik ağı: DOM hâlâ tamamen sıfırsa (DNS de patladığı için
                         # genelde işe yaramaz ama iz bırakmaması için sessiz dene)
@@ -7519,9 +7524,9 @@ def run_review_headless(urls, api_key):
                                     for r in api_revs:
                                         if r and r.strip():
                                             raw_data_set.add(r.strip())
-                                    print(f"[Worker] Trendyol API güvenlik ağı: {len(raw_data_set)}")
+                                    log.info(f"[Worker] Trendyol API güvenlik ağı: {len(raw_data_set)}")
                             except Exception as api_e:
-                                print(f"[Worker] Trendyol API güvenlik ağı hata: {api_e}")
+                                log.info(f"[Worker] Trendyol API güvenlik ağı hata: {api_e}")
                         
                 else:
                     raw_data_set = set()  # Reset if blocked
@@ -7536,9 +7541,9 @@ def run_review_headless(urls, api_key):
                                 durum = "OK"
                             for rev_text in cffi_data.get("reviews", []):
                                 raw_data_set.add(rev_text)
-                            print(f"[Worker] HB cffi reviews — got {len(cffi_data.get('reviews', []))} reviews")
+                            log.info(f"[Worker] HB cffi reviews — got {len(cffi_data.get('reviews', []))} reviews")
                     except Exception as cffi_e:
-                        print(f"[Worker] HB cffi failed in review analysis: {cffi_e}")
+                        log.info(f"[Worker] HB cffi failed in review analysis: {cffi_e}")
 
                 # Fallback to Cloudscraper — get name AND attempt to extract reviews from HTML
                 if durum != "OK" or urun_ismi == "İsim Bulunamadı":
@@ -7583,7 +7588,7 @@ def run_review_headless(urls, api_key):
                                 urun_ismi = hb_api['name']
                                 durum = "OK"
                     except Exception as cs_e:
-                        print(f"[Worker] Cloudscraper fallback failed in review analysis: {cs_e}")
+                        log.info(f"[Worker] Cloudscraper fallback failed in review analysis: {cs_e}")
 
                 # Rebuild raw_data from raw_data_set AFTER all fallbacks
                 raw_data = list(raw_data_set)
@@ -7649,7 +7654,7 @@ def run_review_headless(urls, api_key):
                             if name and (not satici or satici in ("Bulunamadı", "Marka Bulunamadı")):
                                 satici = name
                     except Exception as sr_e:
-                        print(f"[Worker] seller_rating fetch hata: {sr_e}")
+                        log.info(f"[Worker] seller_rating fetch hata: {sr_e}")
 
                 logo_url = f"https://icon.horse/icon/{domain}" if domain else ""
                 sonuclar.append({
