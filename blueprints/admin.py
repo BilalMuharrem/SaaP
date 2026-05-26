@@ -16,7 +16,7 @@ Rotalar:
 from datetime import timedelta
 
 from flask import (
-    Blueprint, render_template, request, redirect, url_for, flash,
+    Blueprint, render_template, request, redirect, url_for, flash, jsonify,
 )
 from flask_login import login_required
 from sqlalchemy import func
@@ -28,6 +28,15 @@ from models import (
 from utils.decorators import admin_required
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+
+@bp.route('/api/pending-count')
+@login_required
+@admin_required
+def api_pending_count():
+    """FAZ 6B: Tab title polling için bekleyen onay sayısı."""
+    count = User.query.filter_by(is_admin=False, is_approved=False).count()
+    return jsonify({'pending_count': count})
 
 
 @bp.route('')

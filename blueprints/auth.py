@@ -36,7 +36,7 @@ def login():
 
         if user and user.check_password(password):
             if not user.is_approved and not user.is_admin:
-                flash('Hesabınız henüz onaylanmadı. Lütfen yönetici onayını bekleyin.', 'warning')
+                flash('Hesabınız incelemede. En geç 24 saat içinde onaylanır — kayıt sırasında verdiğiniz e-postaya bildirim göndereceğiz.', 'warning')
                 return render_template('login.html')
             if not user.is_active and not user.is_admin:
                 flash('Hesabınız devre dışı bırakılmış. Lütfen yöneticiyle iletişime geçin.', 'error')
@@ -115,7 +115,7 @@ def register():
         if auto_approve:
             flash('Kayıt başarılı! Giriş yapabilirsiniz.', 'success')
         else:
-            flash('Kayıt başarılı! Hesabınız yönetici onayı bekliyor.', 'info')
+            flash('Kaydınız alındı ✓ — Ekibimiz hesabınızı en geç 24 saat içinde inceleyip aktif edecek. Onay sonrası bildirim alacaksınız.', 'info')
 
         return redirect(url_for('auth.login'))
 

@@ -60,7 +60,8 @@
                 </a>
                 <a href="{{ url_for('admin.admin_customers') }}" class="nav-link {% if request.endpoint == 'admin_customers' %}active{% endif %}">
                     <i data-lucide="users" class="icon" width="20" height="20"></i> Müşteriler
-                    {% if pending_customers is defined and pending_customers > 0 %}<span class="nav-badge">{{ pending_customers }}</span>{% endif %}
+                    {# FAZ 6A: pending_count global context_processor'dan gelir — her sayfada güncel #}
+                    {% if pending_count > 0 %}<span class="nav-badge" id="sidebar-pending-badge">{{ pending_count }}</span>{% endif %}
                 </a>
                 <a href="{{ url_for('admin.admin_jobs') }}" class="nav-link {% if request.endpoint == 'admin_jobs' %}active{% endif %}">
                     <i data-lucide="cpu" class="icon" width="20" height="20"></i> Analizler
@@ -114,4 +115,39 @@
         {% block admin_content %}{% endblock %}
     </main>
 </div>
+
+{# FAZ 6B: Tab title + sidebar badge senkronizasyonu — 30 saniyede bir #}
+<script>
+(function() {
+    var BASE_TITLE = document.title.replace(/^\(\d+\)\s*/, '');
+    function updatePending() {
+        fetch('/admin/api/pending-count?_t=' + Date.now())
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var c = data.pending_count || 0;
+                // Tab title prefix
+                document.title = c > 0 ? '(' + c + ') ' + BASE_TITLE : BASE_TITLE;
+                // Sidebar badge (varsa güncelle, yoksa ekle)
+                var badge = document.getElementById('sidebar-pending-badge');
+                var link = document.querySelector('a[href$="/admin/customers"]');
+                if (c > 0) {
+                    if (badge) {
+                        badge.textContent = c;
+                    } else if (link) {
+                        badge = document.createElement('span');
+                        badge.id = 'sidebar-pending-badge';
+                        badge.className = 'nav-badge';
+                        badge.textContent = c;
+                        link.appendChild(badge);
+                    }
+                } else if (badge) {
+                    badge.remove();
+                }
+            })
+            .catch(function() { /* sessiz başarısız */ });
+    }
+    updatePending();
+    setInterval(updatePending, 30000);  // 30 sn'de bir
+})();
+</script>
 {% endblock %}

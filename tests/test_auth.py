@@ -49,7 +49,9 @@ def test_login_pending_user_blocked(client, app, pending_user):
 
     r = client.post('/login', data={'email': email, 'password': 'testpass123'})
     assert r.status_code == 200
-    assert 'onaylanmadı' in r.data.decode('utf-8', errors='ignore')
+    # FAZ 6C: mesaj "Hesabınız incelemede. En geç 24 saat içinde..." olarak değişti
+    body = r.data.decode('utf-8', errors='ignore')
+    assert 'incelemede' in body or '24 saat' in body
 
 
 def test_login_authenticated_redirects(auth_client):

@@ -69,13 +69,23 @@ def load_user(user_id):
 
 
 def _inject_global_data():
-    """Layout template'lerinde kullanılabilen genel context."""
+    """Layout template'lerinde kullanılabilen genel context.
+
+    Sağlananlar:
+        unread_notifications  — kullanıcının okunmamış bildirim sayısı
+        pending_count         — (sadece admin için) bekleyen onay sayısı
+    """
+    data = {'unread_notifications': 0, 'pending_count': 0}
     if current_user.is_authenticated:
-        unread = Notification.query.filter_by(
+        data['unread_notifications'] = Notification.query.filter_by(
             user_id=current_user.id, is_read=False
         ).count()
-        return dict(unread_notifications=unread)
-    return dict(unread_notifications=0)
+        # FAZ 6A: Admin her sayfadayken bekleyen onay sayısını görür
+        if current_user.is_admin:
+            data['pending_count'] = User.query.filter_by(
+                is_admin=False, is_approved=False
+            ).count()
+    return data
 
 
 def _forbidden(e):
