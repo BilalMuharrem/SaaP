@@ -68,17 +68,21 @@ createdb bmk_dev
 # 6. Şemayı kur (init_db ALTER TABLE'ları da uygular)
 ./.venv/bin/python -c "from app import app; from models import init_db; init_db(app)"
 
-# 7. Çalıştır — 3 ayrı terminal
-# Terminal 1: Web sunucu (geliştirme)
-./.venv/bin/python app.py
+# 7. Çalıştır — tek komut, arka planda
+./scripts/start.sh
 # → http://localhost:5005
+# Web + Celery worker + Celery beat hepsi arka planda
+# Loglar: logs/{web,worker,beat}.out
 
-# Terminal 2: Celery worker
-./.venv/bin/python -m celery -A extensions.celery worker --pool=solo --loglevel=info
-
-# Terminal 3: Celery beat (periyodik tarama)
-./.venv/bin/python -m celery -A extensions.celery beat --loglevel=info
+# Durum kontrol / yeniden başlat / durdur
+./scripts/start.sh status
+./scripts/start.sh restart
+./scripts/stop.sh
 ```
+
+**Schedule** (Europe/Istanbul, otomatik):
+- Fiyat taraması: **03:15, 09:15, 15:15, 21:15**
+- SEO taraması: **03:45, 09:45, 15:45, 21:45** (fiyat'tan 30 dk sonra, bot çakışmasını önler)
 
 ### macOS Özel
 

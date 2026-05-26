@@ -72,3 +72,4 @@ debug_*.html
 *.tmp
 *.bak
 scratch/
+.pids/
