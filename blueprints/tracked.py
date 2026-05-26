@@ -21,7 +21,7 @@ import uuid
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    flash, abort, Response, current_app,
+    flash, abort, Response,
 )
 from flask_login import login_required, current_user
 

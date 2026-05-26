@@ -14,7 +14,6 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from datetime import timedelta
 from celery import Celery
 from celery.schedules import crontab  # kept for backward-compat / ad-hoc usage
 from flask_sqlalchemy import SQLAlchemy

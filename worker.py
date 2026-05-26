@@ -864,10 +864,15 @@ from urllib.parse import urlparse
 
 
 def _import_bmk_utils():
-    """Lazy import of bmk_suite utilities to avoid triggering undetected_chromedriver at module load."""
-    from bmk_suite import (
+    """Scraper paylaşımlı utility'ler.
+
+    Faz: temizlik — eskiden bmk_suite (tkinter desktop) import edilirdi.
+    Şu an services.scraping.parsers'tan geliyor. İsim _import_bmk_utils
+    geriye uyumluluk için aynı (worker'da 5+ noktada çağrılıyor).
+    """
+    from services.scraping.parsers import (
         fiyati_temizle, standard_fiyat_formati, urun_ismi_temizle,
-        marka_adi_bul, get_domain, BANNED_UI_PHRASES
+        marka_adi_bul, get_domain, BANNED_UI_PHRASES,
     )
     return fiyati_temizle, standard_fiyat_formati, urun_ismi_temizle, marka_adi_bul, get_domain, BANNED_UI_PHRASES
 

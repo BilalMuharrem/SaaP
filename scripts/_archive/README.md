@@ -20,6 +20,7 @@ Bu klasör, proje kökünde birikmiş tek kullanımlık migration/patch script'l
 
 ### Kullanılmayan modüller
 - `database_manager.py` — bağımsız PostgreSQL helper. Kod tabanında hiçbir yerden import edilmiyor; muhtemelen erken prototip kalıntısı.
+- `bmk_suite.py` — Eski tkinter desktop sürümü. 110KB. Aktif olarak kullanılan 5 fonksiyon + BANNED_UI_PHRASES sabit'i `services/scraping/parsers.py`'ye taşındı. Geri kalan (GUI kodu, run_price_radar, vb.) ölü.
 
 ## Silinmeyi neden bekliyorlar?
 
