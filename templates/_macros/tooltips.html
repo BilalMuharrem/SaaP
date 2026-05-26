@@ -1,0 +1,25 @@
+{#
+  templates/_macros/tooltips.html — Yeniden kullanılabilir tooltip macro'su.
+
+  KULLANIM:
+    {% from '_macros/tooltips.html' import tooltip %}
+
+    <label>Birim Maliyet {{ tooltip('Ürünün size mal oluş fiyatı...') }}</label>
+    <h3>Kârlı Fırsat {{ tooltip('Rakip min fiyatın maliyetinden yüksek olan ürün sayısı.', pos='right') }}</h3>
+
+  PARAMETRELER:
+    text  — tooltip içeriği (zorunlu)
+    pos   — 'center' (default) veya 'right' (sağ kenara taşmasın diye)
+
+  ERIŞILEBİLİRLİK:
+    • tabindex="0" → klavye ile odaklanabilir
+    • role="button" + aria-label → ekran okuyucu için
+    • CSS hover + focus ile aynı davranış (mobil tap = focus)
+#}
+{% macro tooltip(text, pos='center') -%}
+<span class="help-tip{% if pos == 'right' %} tip-right{% endif %}"
+      role="button"
+      tabindex="0"
+      aria-label="Bilgi: {{ text }}"
+      data-tip="{{ text }}">?</span>
+{%- endmacro %}

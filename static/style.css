@@ -1334,3 +1334,100 @@ details[open] .accordion-chevron {
     color: #ff9900;
     background: rgba(255, 153, 0, 0.10);
 }
+
+
+/* ============================================================
+   FAZ 7E — Tooltip Help Sistemi (CSS-only, erişilebilir)
+   ============================================================
+   Kullanım: {{ tooltip('Açıklama metni') }} — _macros/tooltips.html
+   Davranış: hover + focus (klavye + mobil tap)
+   ============================================================ */
+
+.help-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.10);
+    color: var(--accent, #4f46e5);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: help;
+    border: 1px solid rgba(99, 102, 241, 0.30);
+    position: relative;
+    vertical-align: middle;
+    user-select: none;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.help-tip:hover,
+.help-tip:focus {
+    background: rgba(99, 102, 241, 0.20);
+    border-color: var(--accent, #4f46e5);
+    outline: none;
+}
+
+.help-tip::before {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 220px;
+    max-width: 320px;
+    padding: 10px 12px;
+    background: #0f172a;
+    color: #f1f5f9;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease-out;
+    z-index: 9999;
+}
+
+.help-tip::after {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #0f172a;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease-out;
+    z-index: 9999;
+}
+
+.help-tip:hover::before,
+.help-tip:hover::after,
+.help-tip:focus::before,
+.help-tip:focus::after {
+    opacity: 1;
+}
+
+/* Sağ kenara taşmayı önlemek için modifier */
+.help-tip.tip-right::before { left: auto; right: 0; transform: translateX(0); }
+.help-tip.tip-right::after  { left: auto; right: 6px; transform: translateX(0); }
+
+[data-theme="light"] .help-tip {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.25);
+}
+[data-theme="light"] .help-tip::before { background: #1e293b; color: #f8fafc; }
+[data-theme="light"] .help-tip::after  { border-top-color: #1e293b; }
+
+@media (max-width: 640px) {
+    .help-tip::before { min-width: 180px; max-width: 260px; font-size: 11.5px; }
+}

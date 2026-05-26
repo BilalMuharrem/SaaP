@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_macros/tooltips.html' import tooltip %}
 {% block title %}Yeni Analiz{% endblock %}
 {% block body %}
 <div class="app-layout">
@@ -86,13 +87,13 @@
         <form method="POST" class="card">
             <!-- TYPE SELECTOR -->
             <div class="form-group">
-                <label class="form-label">Analiz Türü</label>
+                <label class="form-label">Analiz Türü {{ tooltip('Tek seferlik (Fiyat/Yorum/Kombine) ya da sürekli (Fiyat Takibi/SEO) analiz seç. Tek seferlik analizler hak harcar; sürekli takipler arka planda otomatik çalışır.') }}</label>
                 <div class="type-selector">
                     <label class="type-option">
                         <input type="radio" name="job_type" value="price">
                         <div class="type-card">
                             <div class="icon" style="color:var(--accent); margin-bottom:12px;"><i data-lucide="coins" width="32" height="32" stroke-width="1.5"></i></div>
-                            <div class="label">Fiyat Analizi</div>
+                            <div class="label">Fiyat Analizi {{ tooltip('Sadece anlık fiyat karşılaştırması yapar. URL\'leri taradıktan sonra rapor verir, takibe almaz.') }}</div>
                             <div class="desc">Rakip fiyat karşılaştırma</div>
                         </div>
                     </label>
@@ -100,7 +101,7 @@
                         <input type="radio" name="job_type" value="review">
                         <div class="type-card">
                             <div class="icon">🗣️</div>
-                            <div class="label">Yorum Analizi</div>
+                            <div class="label">Yorum Analizi {{ tooltip('Müşteri yorumlarını sentiment analizine sokar. Başarılı yönler, kritik şikayetler ve genel kanı çıkarılır.') }}</div>
                             <div class="desc">Müşteri görüşleri analizi</div>
                         </div>
                     </label>
@@ -108,7 +109,7 @@
                         <input type="radio" name="job_type" value="combined" checked>
                         <div class="type-card">
                             <div class="icon" style="color:var(--accent); margin-bottom:12px;"><i data-lucide="refresh-cw" width="32" height="32" stroke-width="1.5"></i></div>
-                            <div class="label">Kombine Analiz</div>
+                            <div class="label">Kombine Analiz {{ tooltip('Fiyat ve yorum analizini tek raporda birleştirir. En kapsamlı analiz — YZ Danışman bu raporun verisini de kullanır.') }}</div>
                             <div class="desc">Fiyat + Yorum birlikte</div>
                         </div>
                     </label>
@@ -116,7 +117,7 @@
                         <input type="radio" name="job_type" value="track">
                         <div class="type-card">
                             <div class="icon">🎯</div>
-                            <div class="label">Fiyat Takibi</div>
+                            <div class="label">Fiyat Takibi {{ tooltip('Ürünleri sürekli takibe alır. Günde 4 stratejik tarama (03:15/09:15/15:15/21:15). Hak harcamaz, sınırsız çalışır.') }}</div>
                             <div class="desc">Sürekli fiyat izleme</div>
                         </div>
                     </label>

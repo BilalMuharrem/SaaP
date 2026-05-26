@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_macros/tooltips.html' import tooltip %}
 {% block title %}YZ Danışmanı{% endblock %}
 
 {% block body %}
@@ -127,6 +128,7 @@
                     <label class="form-label ctrl-label">
                         <i data-lucide="message-square" width="13" height="13"></i>
                         Özel Soru / Odak <span style="color:var(--text-muted); font-weight:500;">(opsiyonel)</span>
+                        {{ tooltip('YZ Danışman raporun belirli bir konuya odaklanmasını istiyorsan buraya yaz. Boş bırakırsan genel strateji raporu üretilir. Örn: "kampanya dönemi", "yeni rakip girişine karşı", "stoklarımı bitirmek istiyorum".') }}
                     </label>
                     <input type="text" name="custom_prompt" class="form-control ctrl-input"
                            placeholder="Örn: Rakibim fiyatımın altına indi, ne yapmalıyım? Kampanya dönemi için strateji öner."
