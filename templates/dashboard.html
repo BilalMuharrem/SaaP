@@ -190,8 +190,37 @@
             {% endif %}
         </div>
 
+        {# FAZ 7C: Sadece demo ürünleri olan kullanıcı — kendi ürününü eklemeye yönlendir.
+           Renk farklı: turkuaz/yeşil yerine sarı/turuncu ki "bu örnek, gerçek değil" hissini taşısın. #}
+        {% if has_only_demo %}
+        <div style="margin: 20px 0; padding: 24px 28px; border-radius: 16px;
+                    background: linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(245,158,11,0.04) 100%);
+                    border: 1px solid rgba(245,158,11,0.28); position: relative; overflow: hidden;">
+            <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+                <div style="width:56px; height:56px; border-radius:50%; background:rgba(245,158,11,0.18); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i data-lucide="sparkles" width="28" height="28" style="color:#f59e0b;"></i>
+                </div>
+                <div style="flex:1; min-width:240px;">
+                    <h3 style="margin:0 0 4px; font-size:17px; font-weight:800; color:var(--text-primary);">
+                        Sistem nasıl çalışır görebilirsin
+                    </h3>
+                    <p style="margin:0; color:var(--text-secondary); font-size:13.5px; line-height:1.55;">
+                        Aşağıdaki "<strong>Örnek Ürünler</strong>" sana göstermek için eklendi —
+                        canlı taranıyor, fiyat/yorum/SEO verisi gerçek. <strong>Kendi ürününü eklediğinde</strong>
+                        bu örnekleri silebilirsin.
+                    </p>
+                </div>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="btn btn-primary" style="font-weight:700; white-space:nowrap;">
+                    <i data-lucide="plus-circle" width="16" height="16" style="margin-right:6px;"></i>
+                    Kendi Ürününü Ekle
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
         {# FAZ 5B: Tamamen boş kullanıcı için karşılama banner'ı — onboarding'i atlamış
-           veya tamamlamış ama henüz hiç aktivitesi olmayan kullanıcıya yönlendirme. #}
+           veya tamamlamış ama henüz hiç aktivitesi olmayan kullanıcıya yönlendirme.
+           Demo seed başarısız olursa (örn. URL geçersiz, Celery erişilemez) bu fallback devreye girer. #}
         {% if is_first_time_user %}
         <div style="margin: 20px 0; padding: 28px 32px; border-radius: 16px;
                     background: linear-gradient(135deg, rgba(37,99,235,0.10) 0%, rgba(16,185,129,0.08) 100%);

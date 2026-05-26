@@ -112,6 +112,16 @@ def register():
         db.session.add(user)
         db.session.commit()
 
+        # FAZ 7C: Demo ürün seed — kullanıcı onay sonrası login olduğunda
+        # paneli boş değil, çalışan örnek verilerle dolu görür.
+        try:
+            from services.demo_data import seed_demo_products
+            seed_demo_products(user.id)
+        except Exception:
+            # Demo seed başarısız olursa kayıt akışını bozma — log'a düşer.
+            import logging as _logging
+            _logging.getLogger(__name__).exception("[Register] demo seed başarısız")
+
         if auto_approve:
             flash('Kayıt başarılı! Giriş yapabilirsiniz.', 'success')
         else:

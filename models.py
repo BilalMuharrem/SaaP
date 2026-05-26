@@ -300,6 +300,9 @@ class TrackedProduct(db.Model):
     is_price_tracked = db.Column(db.Boolean, default=True)
     is_radar_tracked = db.Column(db.Boolean, default=False)
     is_base_product = db.Column(db.Boolean, default=False)
+    # FAZ 7C: Sistem tarafından kayıt sırasında otomatik eklenen örnek ürün mü?
+    # True ise UI'da "ÖRNEK" badge'i gösterilir, dashboard banner farklı renderlanır.
+    is_demo = db.Column(db.Boolean, default=False, nullable=False)
     last_checked = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=get_tr_now)
     # HOTFIX 1.87: Kullanıcının grup için verdiği özel ad ("Yaz Kampanyası" gibi).
@@ -751,6 +754,16 @@ def init_db(app):
             ))
             db.session.commit()
             log.info('[Migration] users.onboarding_completed KOLON EKLENDİ.')
+        except Exception:
+            db.session.rollback()
+
+        # FAZ 7C: TrackedProduct.is_demo kolonu — örnek/demo ürünleri ayırt etmek için
+        try:
+            db.session.execute(text(
+                'ALTER TABLE tracked_products ADD COLUMN is_demo BOOLEAN DEFAULT FALSE'
+            ))
+            db.session.commit()
+            log.info('[Migration] tracked_products.is_demo KOLON EKLENDİ.')
         except Exception:
             db.session.rollback()
 

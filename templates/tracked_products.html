@@ -196,6 +196,13 @@
                                     or 'İsimsiz Grup' %}
                     <h3 class="card-title" style="font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px;">
                         📦 <span class="grp-name-text">{{ _label }}</span>
+                        {# FAZ 7C: Demo ürün grubu badge'i #}
+                        {% if _base.is_demo %}
+                        <span title="Bu ürünler sistemi nasıl çalıştığını göstermek için otomatik eklendi. İstediğin zaman silebilirsin."
+                              style="background:rgba(245,158,11,0.15); color:#d97706; padding:2px 8px; border-radius:99px; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; cursor:help;">
+                            ✨ Örnek
+                        </span>
+                        {% endif %}
                         {# HOTFIX 1.88: Grup adı düzenleme butonu — modal açar #}
                         <button type="button" class="open-rename-modal"
                                 data-group-id="{{ gid }}"

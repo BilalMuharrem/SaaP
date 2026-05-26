@@ -26,11 +26,16 @@ def dashboard():
                    .order_by(Job.created_at.desc()).limit(50).all())
     total_jobs = Job.query.filter_by(user_id=current_user.id).count()
     completed_jobs = Job.query.filter_by(user_id=current_user.id, status='completed').count()
-    # FAZ 5B: "Tamamen boş kullanıcı" tespiti — onboarding banner için
+    # FAZ 5B + 7C: "Tamamen boş" vs "sadece demo" durumlarını ayır
     tracked_count = TrackedProduct.query.filter_by(
         user_id=current_user.id, is_price_tracked=True
     ).count()
+    own_tracked_count = TrackedProduct.query.filter_by(
+        user_id=current_user.id, is_price_tracked=True, is_demo=False
+    ).count()
     is_first_time_user = (total_jobs == 0 and tracked_count == 0)
+    # FAZ 7C: Demo var ama kendi ürünü yok → farklı banner ("Bunlar örnek, kendininkini ekle")
+    has_only_demo = (total_jobs == 0 and own_tracked_count == 0 and tracked_count > 0)
 
     # ── FAZ 3.1: Finansal Komuta Merkezi metrikleri ────────────────────────
     # Tüm base ürünleri çek → her base'in grubundaki rakip min fiyatı bul →
@@ -87,7 +92,9 @@ def dashboard():
         total_jobs=total_jobs,
         completed_jobs=completed_jobs,
         tracked_count=tracked_count,
+        own_tracked_count=own_tracked_count,
         is_first_time_user=is_first_time_user,
+        has_only_demo=has_only_demo,
         profitable_count=profitable_count,
         risk_count=risk_count,
         active_alerts_count=active_alerts_count,
