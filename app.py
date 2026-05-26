@@ -28,10 +28,14 @@ setup_logging(app_name='bmk-web')
 
 
 # ── Werkzeug log gürültüsünü sustur ───────────────────────────────────────
-# /api/system-status 5 saniyede bir poll ediliyor; logu kirletir.
+# /api/system-status 5 saniyede bir poll ediliyor; /healthz UptimeRobot tarafından.
+# İkisi de logu kirletir.
+_NOISY_ENDPOINTS = ('/api/system-status', '/healthz')
+
 class _EndpointFilter(logging.Filter):
     def filter(self, record):
-        return '/api/system-status' not in record.getMessage()
+        msg = record.getMessage()
+        return not any(ep in msg for ep in _NOISY_ENDPOINTS)
 
 logging.getLogger('werkzeug').addFilter(_EndpointFilter())
 

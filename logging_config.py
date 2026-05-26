@@ -1,9 +1,10 @@
 """
-logging_config.py — Merkezi loglama yapılandırması.
+logging_config.py — Merkezi loglama + observability yapılandırması.
 
 İki hedef:
   • Konsol (geliştirme — renkli, kısa format)
-  • Rotating file: logs/app.log (üretim — JSON benzeri, 10MB max, 5 yedek)
+  • Rotating file: logs/app.log (üretim — 10MB max, 5 yedek)
+  • Sentry (opsiyonel — SENTRY_DSN env varsa otomatik aktif)
 
 Kullanım:
     from logging_config import setup_logging
@@ -21,6 +22,7 @@ import os
 import sys
 
 _CONFIGURED = False
+_SENTRY_CONFIGURED = False
 
 
 def setup_logging(level=None, log_file=None, app_name='bmk'):
@@ -79,3 +81,61 @@ def setup_logging(level=None, log_file=None, app_name='bmk'):
 
     logging.getLogger(__name__).info("Logging hazır — seviye=%s, dosya=%s",
                                      logging.getLevelName(level), log_file)
+
+    # Sentry'yi opsiyonel olarak başlat — DSN env varsa
+    setup_sentry()
+
+
+def setup_sentry(dsn=None, environment=None, release=None):
+    """Sentry SDK'sını başlat — Flask + Celery + logging entegrasyonları.
+
+    SENTRY_DSN env yoksa sessizce no-op olur (geliştirmede gürültü yapmaz).
+    İdempotent — birden fazla çağrı güvenli.
+
+    Args:
+        dsn:          opsiyonel; verilmezse SENTRY_DSN env okunur
+        environment:  'production' | 'staging' | 'development' (default 'development')
+        release:      git SHA veya sürüm etiketi (default 'unknown')
+    """
+    global _SENTRY_CONFIGURED
+    if _SENTRY_CONFIGURED:
+        return
+
+    dsn = dsn or os.environ.get('SENTRY_DSN', '').strip()
+    if not dsn:
+        return  # Sentry aktif değil — sessiz çık
+
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.celery import CeleryIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+    except ImportError:
+        logging.getLogger(__name__).warning(
+            "[Sentry] sentry-sdk yüklü değil — atlanıyor. "
+            "Yüklemek için: pip install 'sentry-sdk[flask]'"
+        )
+        return
+
+    environment = environment or os.environ.get('FLASK_ENV') or os.environ.get('SENTRY_ENVIRONMENT', 'development')
+    release = release or os.environ.get('SENTRY_RELEASE') or os.environ.get('GIT_SHA', 'unknown')
+
+    # Logging integration: WARNING+ → Sentry breadcrumb; ERROR+ → event
+    logging_int = LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+
+    try:
+        sentry_sdk.init(
+            dsn=dsn,
+            integrations=[FlaskIntegration(), CeleryIntegration(), logging_int],
+            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_RATE', '0.1')),  # 10%
+            send_default_pii=False,  # KVKK — kişisel veri otomatik gönderilmez
+            environment=environment,
+            release=release,
+            attach_stacktrace=True,
+        )
+        _SENTRY_CONFIGURED = True
+        logging.getLogger(__name__).info(
+            "[Sentry] aktif — environment=%s, release=%s", environment, release
+        )
+    except Exception:
+        logging.getLogger(__name__).exception("[Sentry] init başarısız")
