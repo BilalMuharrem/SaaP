@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo — BMK Rekabet İstihbaratı</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <meta name="description" content="BMK'nın 4 ana modülünü kayıt olmadan canlı görün: fiyat takibi, SEO sıralama, YZ strateji raporu, bildirim merkezi.">
+    <meta name="robots" content="index, follow">
+
+    <script>
+        // FOUC önleyici tema
+        (function() {
+            var saved = localStorage.getItem('bmk-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root[data-theme="light"] {
+            --bg: #f8fafc; --bg-2: #ffffff; --card: #ffffff;
+            --text: #0f172a; --muted: #64748b;
+            --border: rgba(15,23,42,0.08); --border-strong: rgba(15,23,42,0.18);
+            --accent: #2563eb; --accent-hover: #1d4ed8;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --shadow: 0 8px 32px -8px rgba(15,23,42,0.12);
+        }
+        :root[data-theme="dark"] {
+            --bg: #0f172a; --bg-2: #1e293b; --card: #1e293b;
+            --text: #f1f5f9; --muted: #94a3b8;
+            --border: rgba(255,255,255,0.06); --border-strong: rgba(255,255,255,0.15);
+            --accent: #3b82f6; --accent-hover: #60a5fa;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --shadow: 0 16px 40px -8px rgba(0,0,0,0.4);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg); color: var(--text);
+            line-height: 1.55;
+        }
+        .demo-banner {
+            position: sticky; top: 0; z-index: 100;
+            background: linear-gradient(90deg, rgba(245,158,11,0.95), rgba(217,119,6,0.95));
+            color: #fff;
+            padding: 12px 24px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px -4px rgba(0,0,0,0.15);
+        }
+        .demo-banner a {
+            color: #fff; text-decoration: underline; font-weight: 800;
+            margin-left: 8px;
+        }
+        .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+        .hero { padding: 56px 0 32px; text-align: center; }
+        h1 {
+            font-size: 38px; font-weight: 800; letter-spacing: -0.02em;
+            margin: 0 0 14px;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .lead { font-size: 17px; color: var(--muted); max-width: 720px; margin: 0 auto; }
+        .nav-tabs {
+            display: flex; gap: 6px; justify-content: center; margin: 32px 0 12px;
+            flex-wrap: wrap;
+        }
+        .nav-tabs a {
+            padding: 10px 18px; border-radius: 99px;
+            background: var(--bg-2); color: var(--muted);
+            text-decoration: none; font-size: 13.5px; font-weight: 600;
+            border: 1px solid var(--border);
+            transition: all 0.15s;
+        }
+        .nav-tabs a:hover { color: var(--text); border-color: var(--accent); }
+
+        .module {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 18px; padding: 32px;
+            margin: 32px 0;
+            box-shadow: var(--shadow);
+        }
+        .module h2 {
+            font-size: 22px; font-weight: 800; margin: 0 0 6px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .module .module-sub {
+            color: var(--muted); margin: 0 0 24px;
+            font-size: 14px;
+        }
+        .module-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 99px;
+            background: rgba(37,99,235,0.10); color: var(--accent);
+            font-size: 11px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.5px; margin-left: 8px;
+        }
+
+        /* ── 1. Fiyat takibi ───────────────────────────────────────── */
+        .price-chart-box {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; margin-bottom: 20px;
+        }
+        .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12.5px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-swatch { width: 12px; height: 3px; border-radius: 2px; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+        .product-card {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 16px;
+        }
+        .product-card .pname { font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
+        .product-card .pplat { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+        .product-card .pprice { font-size: 22px; font-weight: 800; }
+        .product-card .pchange { font-size: 12px; font-weight: 700; margin-top: 4px; }
+        .pchange.up { color: var(--danger); }
+        .pchange.down { color: var(--success); }
+        .profit-row {
+            margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);
+            display: flex; justify-content: space-between; font-size: 12px;
+        }
+        .profit-row .lbl { color: var(--muted); }
+        .profit-row .val { font-weight: 700; color: var(--success); }
+
+        /* ── 2. SEO sıralama ───────────────────────────────────────── */
+        .seo-stat {
+            display: flex; gap: 32px; align-items: center; flex-wrap: wrap;
+            padding: 24px; background: var(--bg);
+            border-radius: 12px; border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+        .seo-rank-now {
+            font-size: 56px; font-weight: 900; color: var(--accent);
+            line-height: 1;
+        }
+        .seo-rank-now small { font-size: 18px; color: var(--muted); font-weight: 600; }
+        .seo-meta { flex: 1; min-width: 220px; }
+        .seo-meta .kw { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .seo-meta .delta {
+            display: inline-block; padding: 4px 10px; border-radius: 99px;
+            background: rgba(16,185,129,0.10); color: var(--success);
+            font-size: 13px; font-weight: 700;
+        }
+
+        /* ── 3. YZ Raporu ──────────────────────────────────────────── */
+        .ai-report-card {
+            background: var(--bg); border-radius: 12px;
+            border: 1px solid var(--border); padding: 24px;
+        }
+        .ai-section { padding: 14px 0; border-bottom: 1px solid var(--border); }
+        .ai-section:last-child { border-bottom: none; }
+        .ai-section h3 {
+            font-size: 15px; font-weight: 800; margin: 0 0 8px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .ai-section p { margin: 0; font-size: 14px; color: var(--text); }
+        .ai-section strong { color: var(--accent); }
+        .ai-section em { color: var(--success); font-style: normal; font-weight: 600; }
+
+        /* ── 4. Bildirim merkezi ───────────────────────────────────── */
+        .notif-list { display: flex; flex-direction: column; gap: 8px; }
+        .notif-item {
+            display: flex; gap: 14px; align-items: flex-start;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 10px; padding: 14px 16px;
+        }
+        .notif-icon { font-size: 22px; flex-shrink: 0; }
+        .notif-text { flex: 1; }
+        .notif-msg { font-size: 13.5px; font-weight: 500; color: var(--text); }
+        .notif-time { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+        /* ── CTA ───────────────────────────────────────────────────── */
+        .cta-section {
+            text-align: center; padding: 64px 24px;
+            background: linear-gradient(135deg, rgba(37,99,235,0.05), rgba(16,185,129,0.05));
+            border-radius: 18px; margin: 40px 0;
+        }
+        .cta-section h2 { font-size: 32px; font-weight: 800; margin: 0 0 12px; }
+        .cta-section p { color: var(--muted); margin: 0 0 28px; font-size: 16px; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 14px 28px; font-size: 16px; font-weight: 700;
+            border-radius: 12px; text-decoration: none;
+            transition: all 0.15s;
+        }
+        .btn-primary {
+            background: var(--accent); color: #fff;
+            box-shadow: 0 8px 24px -8px rgba(37,99,235,0.5);
+        }
+        .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn-secondary {
+            background: transparent; color: var(--text);
+            border: 1.5px solid var(--border-strong);
+        }
+        .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ── Footer ────────────────────────────────────────────────── */
+        footer {
+            padding: 32px 24px; text-align: center;
+            color: var(--muted); font-size: 13px;
+            border-top: 1px solid var(--border); margin-top: 40px;
+        }
+        footer a { color: var(--accent); text-decoration: none; }
+
+        @media (max-width: 640px) {
+            h1 { font-size: 28px; }
+            .module { padding: 20px; }
+            .seo-rank-now { font-size: 42px; }
+            .cta-section { padding: 40px 20px; }
+        }
+    </style>
+</head>
+<body>
+    {# ── ÜST BANNER — Demo modu uyarısı ── #}
+    <div class="demo-banner">
+        🎬 DEMO MODU — Buradaki tüm veriler örnek amaçlıdır.
+        <a href="{{ url_for('auth.register') }}">Gerçek panele Beta'ya katılarak ulaş →</a>
+    </div>
+
+    {# ── HERO ── #}
+    <section class="hero">
+        <div class="container">
+            <h1>BMK'yı 60 saniyede tanı</h1>
+            <p class="lead">
+                4 ana modül — fiyat takibi, SEO sıralama, YZ strateji raporu, bildirim merkezi.
+                Aşağıdaki örnekler gerçek pazaryeri verisinden ilham aldı; senin paneline kayıt sonrası
+                kendi rakiplerinin canlı verisi gelir.
+            </p>
+            <nav class="nav-tabs" aria-label="Demo bölümleri">
+                <a href="#fiyat">💰 Fiyat Takibi</a>
+                <a href="#seo">🔍 SEO Sıralama</a>
+                <a href="#yz">🧠 YZ Stratejisi</a>
+                <a href="#bildirim">🔔 Bildirimler</a>
+            </nav>
+        </div>
+    </section>
+
+    <main class="container">
+
+        {# ── 1) FİYAT TAKİBİ ── #}
+        <section id="fiyat" class="module">
+            <h2>💰 Fiyat Takibi <span class="module-badge">Canlı tarama</span></h2>
+            <p class="module-sub">
+                Rakip fiyatları günde 4 stratejik saatte otomatik taranır. Her değişim grafikte birikir,
+                kritik kırılmalar bildirimle gelir.
+            </p>
+
+            <div class="price-chart-box">
+                <div class="legend">
+                    {% for p in price_group.products %}
+                    {% set color = '#3b82f6' if loop.index == 1 else ('#ef4444' if loop.index == 2 else '#f59e0b') %}
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:{{ color }};"></span>
+                        <span>{{ p.name }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {# SVG line chart — 7 günlük seriler #}
+                <svg viewBox="0 0 700 260" preserveAspectRatio="none" style="width:100%;height:240px;">
+                    {# Grid #}
+                    {% for y in range(0, 5) %}
+                    <line x1="0" y1="{{ 30 + y * 50 }}" x2="700" y2="{{ 30 + y * 50 }}"
+                          stroke="var(--border)" stroke-width="1" stroke-dasharray="2,4"/>
+                    {% endfor %}
+                    {# Y axis price labels (approx 400-500 ₺ range) #}
+                    {% for i in range(0, 5) %}
+                    {% set price = 500 - i * 20 %}
+                    <text x="6" y="{{ 34 + i * 50 }}" font-size="10" fill="var(--muted)">{{ price }} ₺</text>
+                    {% endfor %}
+                    {# X axis day labels #}
+                    {% for d in price_group.days %}
+                    <text x="{{ 50 + loop.index0 * 100 }}" y="252" font-size="10" fill="var(--muted)" text-anchor="middle">{{ d }}</text>
+                    {% endfor %}
+
+                    {# Polylines: prices 400-500 → y 230-30. y = 230 - (price - 400) * 2 #}
+                    {% for p in price_group.products %}
+                    {% set color = '#3b82f6' if loop.index == 1 else ('#ef4444' if loop.index == 2 else '#f59e0b') %}
+                    <polyline
+                        fill="none" stroke="{{ color }}" stroke-width="2.5" stroke-linecap="round"
+                        points="{% for v in p.series %}{{ 50 + loop.index0 * 100 }},{{ 230 - ((v - 400) * 2) }}{% if not loop.last %} {% endif %}{% endfor %}"
+                    />
+                    {% for v in p.series %}
+                    <circle cx="{{ 50 + loop.index0 * 100 }}" cy="{{ 230 - ((v - 400) * 2) }}" r="3" fill="{{ color }}"/>
+                    {% endfor %}
+                    {% endfor %}
+                </svg>
+            </div>
+
+            <div class="product-grid">
+                {% for p in price_group.products %}
+                <div class="product-card">
+                    <div class="pname">{{ p.name }}</div>
+                    <div class="pplat">{{ p.platform }}</div>
+                    <div class="pprice">{{ '%.2f'|format(p.current) }} ₺</div>
+                    <div class="pchange {{ 'up' if p.change_pct > 0 else 'down' }}">
+                        {{ '▲' if p.change_pct > 0 else '▼' }} {{ '%+.1f'|format(p.change_pct) }}%
+                        <span style="color:var(--muted); font-weight:500;">(önce {{ '%.0f'|format(p.previous) }} ₺)</span>
+                    </div>
+                    {% if p.cost %}
+                    <div class="profit-row">
+                        <span class="lbl">Maliyet → Net kâr</span>
+                        <span class="val">+{{ '%.0f'|format(p.profit) }} ₺ / adet</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        {# ── 2) SEO SIRALAMA ── #}
+        <section id="seo" class="module">
+            <h2>🔍 SEO Sıralama Takibi <span class="module-badge">Trendyol arama</span></h2>
+            <p class="module-sub">
+                Belirlediğin anahtar kelimede ürününün hangi sırada olduğunu günde 4 kez izleriz.
+                Sıran düşerse anında bildirim, YZ ipuçlarıyla yükselişte yardımcı oluruz.
+            </p>
+
+            <div class="seo-stat">
+                <div>
+                    <div class="seo-rank-now">#{{ seo.current_rank }}<small> / sıra</small></div>
+                </div>
+                <div class="seo-meta">
+                    <div class="kw">🔑 "{{ seo.keyword }}"</div>
+                    <div class="delta">▲ +{{ seo.previous_rank - seo.current_rank }} sıra (7 günde)</div>
+                    <div style="color:var(--muted); font-size:13px; margin-top:8px;">
+                        2 hafta önce 2. sayfadaydın — şimdi 1. sayfanın ilk 10'undasın.
+                    </div>
+                </div>
+            </div>
+
+            {# 7-day SEO rank trend chart — rank küçük = iyi → SVG invert #}
+            <div class="price-chart-box">
+                <svg viewBox="0 0 700 180" preserveAspectRatio="none" style="width:100%;height:160px;">
+                    {% for y in range(0, 4) %}
+                    <line x1="0" y1="{{ 20 + y * 40 }}" x2="700" y2="{{ 20 + y * 40 }}"
+                          stroke="var(--border)" stroke-width="1" stroke-dasharray="2,4"/>
+                    {% endfor %}
+                    {% for i in range(0, 4) %}
+                    {% set rank = (i * 10) + 1 %}
+                    <text x="6" y="{{ 24 + i * 40 }}" font-size="10" fill="var(--muted)">#{{ rank }}</text>
+                    {% endfor %}
+                    {# Rank 1-30 → y 20-140; y = 20 + (rank-1) * 4 #}
+                    <polyline
+                        fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round"
+                        points="{% for v in seo.history %}{{ 50 + loop.index0 * 100 }},{{ 20 + (v - 1) * 4 }}{% if not loop.last %} {% endif %}{% endfor %}"
+                    />
+                    {% for v in seo.history %}
+                    <circle cx="{{ 50 + loop.index0 * 100 }}" cy="{{ 20 + (v - 1) * 4 }}" r="4" fill="#10b981"/>
+                    {% endfor %}
+                </svg>
+            </div>
+        </section>
+
+        {# ── 3) YZ STRATEJİ ── #}
+        <section id="yz" class="module">
+            <h2>🧠 YZ Strateji Danışmanı <span class="module-badge">Kurumsal plan</span></h2>
+            <p class="module-sub">
+                Tüm verini (fiyat + yorum + SEO) Llama-3.3-70b modeline geçirir, 5 bölümlü stratejik rapor üretiriz.
+                "Görünmezlik tuzağı" gibi e-ticaret kuralları yerleşik; körü körüne fiyat kırma önerisi YOK.
+            </p>
+
+            <div class="ai-report-card">
+                <div style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+                    📅 {{ ai_report.created_at }}  ·  🏷️ Sektör: <strong style="color:var(--text);">{{ ai_report.sector }}</strong>
+                </div>
+                {% for s in ai_report.sections %}
+                <div class="ai-section">
+                    <h3>{{ s.icon }} {{ s.title }}</h3>
+                    <p>{{ s.body | safe }}</p>
+                </div>
+                {% endfor %}
+                <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border);
+                            text-align: center; font-size: 13px; color: var(--muted);">
+                    Gerçek raporda 2× daha uzun analiz + PDF dışa aktarma var.
+                </div>
+            </div>
+        </section>
+
+        {# ── 4) BİLDİRİMLER ── #}
+        <section id="bildirim" class="module">
+            <h2>🔔 Bildirim Merkezi <span class="module-badge">Anlık</span></h2>
+            <p class="module-sub">
+                Önemli değişiklikler anında. Kategorize edilmiş: fiyat düştü/yükseldi, fırsat, tehdit,
+                SEO, sistem. İstemediklerini sustur, önemli olanları takip et.
+            </p>
+
+            <div class="notif-list">
+                {% for n in notifications %}
+                <div class="notif-item">
+                    <div class="notif-icon">{{ n.icon }}</div>
+                    <div class="notif-text">
+                        <div class="notif-msg">{{ n.message }}</div>
+                        <div class="notif-time">{{ n.time }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        {# ── ALT CTA ── #}
+        <section class="cta-section">
+            <h2>İlk 100 kullanıcıya 3 ay ücretsiz</h2>
+            <p>
+                Şu an Beta'dayız. Erken katılırsan: tam erişim, 3 ay ücret yok,
+                ve ürünü doğrudan şekillendirme şansı.
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
+                    Beta'ya katıl — Hesap aç
+                </a>
+                <a href="{{ url_for('auth.index') }}" class="btn btn-secondary">
+                    Ana sayfa
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>
+            BMK Rekabet İstihbaratı — Demo verileri örnek amaçlıdır.
+            <a href="{{ url_for('auth.index') }}">Ana sayfaya dön →</a>
+        </p>
+    </footer>
+</body>
+</html>
