@@ -629,6 +629,71 @@ def detach_keyword_tracker_from_pool(kt):
         pool.is_dormant = True
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# HOTFIX 10.1: Global Fiyat Geçmişi (Shared History)
+# ───────────────────────────────────────────────────────────────────────────
+# Sorun: Aynı URL'i takip eden farklı kullanıcılar, kendi TP'lerine ayrı ayrı
+# PriceHistory satırı yazdırır (worker her TP'yi ayrı tarar — bkz. HOTFIX 1.91
+# Global Pool, sadece dormant filtreleme yapar, yazımı birleştirmez). Sonuç:
+# yeni katılan kullanıcı X eski "B" kullanıcısının 7 günlük geçmişini göremez.
+#
+# Çözüm (sıfır migration): okuma tarafında aynı GlobalProduct'a bağlı TÜM
+# TP'lerin PriceHistory satırlarını birleştir, (timestamp, price) çiftinde
+# dedupe et, timestamp'e göre sırala. Worker tarafı dokunulmaz, mevcut veri
+# kaybı yok.
+# ═══════════════════════════════════════════════════════════════════════════
+def get_global_price_history(tracked_product):
+    """Verilen TP için 'global' fiyat geçmişini döndür.
+
+    Davranış:
+      • tp.global_product_id varsa → aynı GP'ye bağlı TÜM TP'lerin
+        PriceHistory satırlarını birleştir, (timestamp, price) çiftinde
+        dedupe et, timestamp'e göre artan sırala.
+      • global_product_id yoksa (eski/yetim kayıt) → sadece bu TP'nin
+        kendi history'sini döndür (geriye dönük uyumluluk).
+
+    Returns:
+        list of PriceHistory — timestamp ASC. Boşsa boş liste.
+
+    Not: Liste ORM nesnesi DEĞİL — `(timestamp, price)` tuple'larını taşıyan
+    hafif bir namedtuple döner. Grafik için `h.timestamp` ve `h.price`
+    erişimi yeterli; aynı API'yi koruduğu için template/route değişmez.
+    """
+    from collections import namedtuple
+    _Point = namedtuple('PriceHistoryPoint', ['timestamp', 'price'])
+
+    if not tracked_product:
+        return []
+
+    gp_id = getattr(tracked_product, 'global_product_id', None)
+    if gp_id:
+        # Aynı GP'ye bağlı tüm TP id'lerini topla, tek sorguda PH satırlarını çek
+        tp_ids = [row[0] for row in db.session.query(TrackedProduct.id)
+                  .filter(TrackedProduct.global_product_id == gp_id).all()]
+        if not tp_ids:
+            return []
+        rows = (PriceHistory.query
+                .filter(PriceHistory.product_id.in_(tp_ids))
+                .order_by(PriceHistory.timestamp.asc()).all())
+    else:
+        # Eski kayıt — sadece kendi history'si
+        rows = (PriceHistory.query
+                .filter_by(product_id=tracked_product.id)
+                .order_by(PriceHistory.timestamp.asc()).all())
+
+    # Dedupe: (timestamp, price) çiftinde. Aynı saniyede iki kullanıcı için
+    # aynı fiyat yazılırsa grafik düz çizgi olur — tek satıra indir.
+    seen = set()
+    deduped = []
+    for r in rows:
+        key = (r.timestamp, r.price)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(_Point(r.timestamp, r.price))
+    return deduped
+
+
 class AiReport(db.Model):
     __tablename__ = 'ai_reports'
     id = db.Column(db.Integer, primary_key=True)

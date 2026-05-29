@@ -29,6 +29,7 @@ from extensions import db
 from models import (
     TrackedProduct, PriceHistory, PriceAlert, KeywordTracker, KeywordPool,
     get_tr_now, attach_tracked_product_to_global, detach_tracked_product_from_global,
+    get_global_price_history,
 )
 
 log = logging.getLogger(__name__)
@@ -143,8 +144,12 @@ def tracked_products():
 
         series = []
         for gp in gp_list:
-            history = (PriceHistory.query.filter_by(product_id=gp.id)
-                       .order_by(PriceHistory.timestamp.asc()).all())
+            # ── HOTFIX 10.1: Global Shared History ─────────────────────────
+            # Aynı URL'i (= aynı GlobalProduct) takip eden tüm kullanıcıların
+            # PriceHistory satırlarını birleştirip getir. Böylece yeni katılan
+            # bir kullanıcı, ürünün havuzdaki tüm tarihsel geçmişini ANINDA
+            # grafikte görür (eskiden sadece kendi katıldığı andan sonrası).
+            history = get_global_price_history(gp)
             data_points = [[int(h.timestamp.timestamp() * 1000), h.price] for h in history]
 
             if not data_points and gp.current_price and gp.current_price > 0:
