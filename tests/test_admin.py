@@ -98,10 +98,10 @@ def test_admin_edit_plan(admin_client, app):
 
 
 def test_admin_settings_update(admin_client, app):
+    """Faz 10A: groq_api_key form'dan kaldırıldı — sadece approval_mode + free_trial_days."""
     from models import Setting
     r = admin_client.post('/admin/settings', data={
         'approval_mode': 'auto',
-        'groq_api_key': 'gsk_test_dummy_key_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
         'free_trial_days': '7',
     }, follow_redirects=False)
     assert r.status_code == 302
@@ -109,3 +109,27 @@ def test_admin_settings_update(admin_client, app):
     with app.app_context():
         assert Setting.get('approval_mode') == 'auto'
         assert Setting.get('free_trial_days') == '7'
+
+
+def test_admin_settings_does_not_store_groq_key(admin_client, app):
+    """Faz 10A: POST'a groq_api_key gönderilse bile DB'ye yazılmaz."""
+    from models import Setting
+    admin_client.post('/admin/settings', data={
+        'approval_mode': 'manual',
+        'groq_api_key': 'gsk_should_not_be_saved_xxxxxxxxxxxxxx',  # ignore edilmeli
+        'free_trial_days': '14',
+    })
+    with app.app_context():
+        # Setting tablosunda groq_api_key SATIRI OLMAMALI (veya boş)
+        stored = Setting.get('groq_api_key', None)
+        assert not stored, "GROQ key DB'de saklandı — Faz 10A güvenlik kuralı ihlali"
+
+
+def test_admin_settings_page_shows_groq_status_readonly(admin_client):
+    """GROQ key admin panelde sadece status (✓/✗) gösterir, input field YOK."""
+    r = admin_client.get('/admin/settings')
+    assert r.status_code == 200
+    # Input field olmamalı
+    assert b'name="groq_api_key"' not in r.data
+    # Ya "Yapılandırıldı" ya "Eksik" görünmeli
+    assert (b'Yap\xc4\xb1land\xc4\xb1r\xc4\xb1ld\xc4\xb1' in r.data) or (b'Eksik' in r.data)

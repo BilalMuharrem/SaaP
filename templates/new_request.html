@@ -85,6 +85,7 @@
         </style>
 
         <form method="POST" class="card">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- TYPE SELECTOR -->
             <div class="form-group">
                 <label class="form-label">Analiz Türü {{ tooltip('Tek seferlik (Fiyat/Yorum/Kombine) ya da sürekli (Fiyat Takibi/SEO) analiz seç. Tek seferlik analizler hak harcar; sürekli takipler arka planda otomatik çalışır.') }}</label>

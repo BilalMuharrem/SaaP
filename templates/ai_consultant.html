@@ -108,6 +108,7 @@
             <form action="{{ url_for('ai_consultant.generate_ai_consultant') }}" method="POST" id="generate-form"
                   onsubmit="handleGenerate(this)"
                   class="ctrl-grid">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <!-- Grup seçimi -->
                 <div class="ctrl-cell">

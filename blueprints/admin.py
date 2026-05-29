@@ -253,16 +253,19 @@ def admin_edit_plan(plan_id):
 @login_required
 @admin_required
 def admin_settings():
+    # FAZ 10A: groq_api_key DB'den kaldırıldı (güvenlik). Artık sadece
+    # .env üzerinden okunur (Config.GROQ_API_KEY). Burada güncelleme yok.
     if request.method == 'POST':
         Setting.set('approval_mode', request.form.get('approval_mode', 'manual'))
-        Setting.set('groq_api_key', request.form.get('groq_api_key', ''))
         Setting.set('free_trial_days', request.form.get('free_trial_days', '14'))
         flash('Ayarlar kaydedildi.', 'success')
         return redirect(url_for('admin.admin_settings'))
 
+    # GROQ key durumunu read-only göster (sadece "set/unset" bilgisi, gerçek key DEĞİL)
+    from config import Config
     settings = {
         'approval_mode': Setting.get('approval_mode', 'manual'),
-        'groq_api_key': Setting.get('groq_api_key', ''),
         'free_trial_days': Setting.get('free_trial_days', '14'),
+        'groq_api_key_configured': bool((Config.GROQ_API_KEY or '').strip()),
     }
     return render_template('admin/settings.html', settings=settings)

@@ -69,8 +69,9 @@ def new_request():
                 )
                 return render_template('new_request.html')
 
-        # Faz 2D: API key form'dan kaldırıldı; admin Settings veya .env'den
-        api_key = Setting.get('groq_api_key', '') or os.environ.get('GROQ_API_KEY', '')
+        # Faz 10A: API key artık SADECE .env'den (DB'den okuma kaldırıldı).
+        from services.ai.groq import resolve_groq_key
+        api_key = resolve_groq_key()
 
         # Faz 3A: 'radar' job_type kaldırıldı (Zafiyet Radarı silindi).
         # Eski client'lardan gelirse Fiyat Takibi'ne yönlendir.

@@ -987,48 +987,23 @@ def init_db(app):
             db.session.rollback()
             log.info(f'[Migration] Pool backfill error: {e}')
 
-        # ── FAZ 2.1 / HOTFIX 1.7: PriceAlert şeması GARANTİLİ ŞEKİLDE yenilenir ──
-        # Sorun: Eski FAZ 2 deploy'ında tablo `target_price_threshold` ile yaratılmıştı.
-        # ORM artık `price_below` / `price_above` sorguluyor → SQLite "no such column" hatası.
-        # Çözüm: Tablonun GERÇEKTEN yeni şemada olup olmadığını sentinel sütun ile doğrula.
-        #   • Tablo varsa AMA `price_below` SÜTUNU YOKSA → DROP + CREATE.
-        #   • Hiç yoksa → CREATE.
-        # NOT: PriceAlert tablosu Faz 2'de doğmuş olduğu için drop kabul edilebilir
-        # (kullanıcılar alarmlarını yeniden kuracak — toplam kayıp birkaç satır).
-        # HOTFIX 1.26: SQLite-spesifik sqlite_master / pragma_table_info sorguları
-        # PostgreSQL'de "relation sqlite_master does not exist" hatası veriyordu.
-        # Şema probe artık SQLAlchemy `inspect()` ile dialect-bağımsız yapılıyor.
-        rebuild_alerts = False
-        try:
-            from sqlalchemy import inspect as _sa_inspect
-            insp = _sa_inspect(db.engine)
-            if insp.has_table('price_alerts'):
-                cols = {c['name'] for c in insp.get_columns('price_alerts')}
-                has_below = 'price_below' in cols
-                has_above = 'price_above' in cols
-                if not has_below or not has_above:
-                    rebuild_alerts = True
-                    log.info("[Migration] HOTFIX 1.7 — price_alerts ŞEMA UYUMSUZ (price_below/above yok). DROP+CREATE.")
-        except Exception as probe_err:
-            db.session.rollback()
-            log.info(f"[Migration] price_alerts şema probe hatası: {probe_err}")
-            # Probe başarısızsa güvenli tarafta kal: yine de drop+create dene
-            rebuild_alerts = True
-
-        if rebuild_alerts:
-            try:
-                db.session.execute(text('DROP TABLE IF EXISTS price_alerts'))
-                db.session.commit()
-                log.info("[Migration] price_alerts düşürüldü.")
-            except Exception as e:
-                db.session.rollback()
-                log.info(f"[Migration] price_alerts DROP hatası: {e}")
-
-        # Her durumda CREATE (checkfirst=True → varsa atlar)
+        # ── FAZ 10A: Yıkıcı PriceAlert DROP+CREATE kaldırıldı ──────────────
+        # Eski davranış (Faz 2.1 / HOTFIX 1.7):
+        #   price_below/above kolonu eksikse DROP TABLE + CREATE.
+        #   Probe hatası → "güvenli tarafta kal" diye yine DROP. Bu yanlış —
+        #   probe geçici bağlantı sorunuyla başarısız olabilir ve TÜM
+        #   kullanıcıların alarm verisi silinir.
+        #
+        # Yeni davranış: SADECE tablo hiç yoksa CREATE. Şema uyumsuzluğu
+        # olursa Alembic migration ile (Faz 10B) düzeltilir, otomatik silme YOK.
+        #
+        # Üretim DB'sinde eski şemada price_alerts varsa manuel migration:
+        #   ALTER TABLE price_alerts ADD COLUMN price_below FLOAT;
+        #   ALTER TABLE price_alerts ADD COLUMN price_above FLOAT;
+        #   ALTER TABLE price_alerts DROP COLUMN target_price_threshold;
         try:
             PriceAlert.__table__.create(db.engine, checkfirst=True)
             db.session.commit()
-            log.info("[Migration] price_alerts CREATE OK (price_below/price_above şeması).")
         except Exception as e:
             db.session.rollback()
             log.info(f"Error creating PriceAlert table: {e}")
@@ -1077,23 +1052,44 @@ def init_db(app):
                 new_plan = Plan(**p_data)
                 db.session.add(new_plan)
 
-        # Create default admin if none exist
+        # ── FAZ 10A: Default admin SADECE env'den oluşturulur ──────────────
+        # Eski davranış: hard-coded admin@bmk.com / bmk2024admin → güvenlik açığı,
+        # production'a deploy edilirse internetteki herkes admin paneline girer.
+        #
+        # Yeni davranış:
+        #   • Hiç admin yoksa VE ADMIN_EMAIL + ADMIN_PASSWORD env varsa → admin yarat
+        #   • Hiç admin yoksa VE env eksikse → log uyarısı (uygulama çalışmaya devam)
+        #     Admin yaratmak için: python scripts/create_admin.py
+        #
+        # KURAL: Mevcut hard-coded admin@bmk.com hesabını MANUEL silmeyi unutma:
+        #   psql $DATABASE_URL -c "DELETE FROM users WHERE email='admin@bmk.com';"
+        import os as _os
         if User.query.filter_by(is_admin=True).count() == 0:
-            admin = User(
-                email='admin@bmk.com',
-                full_name='BMK Admin',
-                company='BMK Danışmanlık',
-                is_admin=True,
-                is_active=True,
-                is_approved=True
-            )
-            admin.set_password('bmk2024admin')
-            db.session.add(admin)
+            admin_email = (_os.environ.get('ADMIN_EMAIL') or '').strip().lower()
+            admin_password = _os.environ.get('ADMIN_PASSWORD') or ''
+            if admin_email and admin_password:
+                admin = User(
+                    email=admin_email,
+                    full_name=_os.environ.get('ADMIN_FULL_NAME', 'BMK Admin'),
+                    company=_os.environ.get('ADMIN_COMPANY', 'BMK'),
+                    is_admin=True,
+                    is_active=True,
+                    is_approved=True,
+                )
+                admin.set_password(admin_password)
+                db.session.add(admin)
+                log.info("[init_db] Admin hesabı env'den oluşturuldu: %s", admin_email)
+            else:
+                log.warning(
+                    "[init_db] Hiç admin kullanıcı yok ve ADMIN_EMAIL/ADMIN_PASSWORD "
+                    "env değişkenleri tanımlı değil. Admin oluşturmak için: "
+                    "1) .env'e ADMIN_EMAIL ve ADMIN_PASSWORD ekleyin, "
+                    "2) python scripts/create_admin.py çalıştırın."
+                )
 
-        # Default settings
+        # Default settings (Faz 10A: groq_api_key kaldırıldı — sadece .env'den okunur)
         if Setting.query.count() == 0:
             Setting.set('approval_mode', 'manual')
-            Setting.set('groq_api_key', '')
             Setting.set('free_trial_days', '14')
 
         db.session.commit()

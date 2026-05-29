@@ -16,7 +16,7 @@ import os
 from flask import render_template
 from flask_login import current_user
 
-from extensions import db, login_manager, limiter
+from extensions import db, login_manager, limiter, csrf
 from models import User, Notification, init_db
 from config import Config
 from logging_config import setup_logging
@@ -53,6 +53,7 @@ def create_app(config_object=Config):
     db.init_app(flask_app)
     login_manager.init_app(flask_app)
     limiter.init_app(flask_app)
+    csrf.init_app(flask_app)
 
     # Jinja filtreleri + blueprint'ler
     register_filters(flask_app)

@@ -367,6 +367,7 @@
                                 <td style="text-align: right;">
                                     {% if job.status in ['pending', 'running'] %}
                                     <form action="{{ url_for('jobs.cancel_job', job_id=job.id) }}" method="POST" style="display:inline; margin-right:8px;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-sm" style="background:var(--danger);color:white;border:none;" onclick="return confirm('Bu analizi iptal etmek istediğinize emin misiniz?');">İptal</button>
                                     </form>
                                     {% endif %}

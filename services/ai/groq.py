@@ -1,14 +1,18 @@
 """
 services/ai/groq.py — Groq API key fallback chain.
 
-HOTFIX 1.25: Öncelik sırası
-  1) User/Job'ın kendi anahtarı (parametre)
-  2) Setting tablosundaki sistem ayarı (admin panel: groq_api_key)
-  3) Config.GROQ_API_KEY (.env)
-  4) Direkt os.environ.get('GROQ_API_KEY')
+FAZ 10A güncellemesi: GROQ key artık DB'de saklanmaz (güvenlik).
+Sadece env tabanlı. Eski Setting tablosu okuması kaldırıldı.
 
-Yeni kayıt olan kullanıcılar kendi key'ini girene kadar admin'inkini kullanır →
-"API Anahtarı eksik" hatası fırlamaz.
+Öncelik sırası:
+  1) User/Job'ın kendi anahtarı (parametre — bireysel kullanıcı kendi key'ini
+     girerse o kullanılır; özellik şu an UI'da kapalı, ileri kullanım için)
+  2) Config.GROQ_API_KEY (.env'den okunur)
+  3) Doğrudan os.environ.get('GROQ_API_KEY') — Config çoktan import edilmişse
+     env değişikliği yansımaz, bu nedenle son çare olarak doğrudan okuma
+
+NOT: Setting tablosundan okuma kaldırıldı (Faz 10A). DB dump sızarsa key'in de
+sızmaması için. Tek doğru kaynak .env veya production'da systemd env.
 """
 import os
 
@@ -18,17 +22,9 @@ def _ok(k):
 
 
 def resolve_groq_key(user_key=None):
-    """User → Setting → Config → env fallback chain. Yoksa '' döner."""
+    """User → Config → env fallback chain. Yoksa '' döner."""
     if _ok(user_key):
         return str(user_key).strip()
-
-    try:
-        from models import Setting
-        sk = Setting.get('groq_api_key', '') or ''
-        if _ok(sk):
-            return sk.strip()
-    except Exception:
-        pass
 
     try:
         from config import Config

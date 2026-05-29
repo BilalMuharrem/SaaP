@@ -139,6 +139,7 @@
                     <td>{{ user.created_at|timeago }}</td>
                     <td>
                         <form method="POST" action="{{ url_for('admin.admin_approve_customer', user_id=user.id) }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-success btn-sm">✅ Onayla</button>
                         </form>
                     </td>

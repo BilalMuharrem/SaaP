@@ -337,8 +337,9 @@ def generate_ai_consultant():
             f'Bu ürünlere maliyet eklerseniz bir sonraki raporda analiz edilirler.', 'info'
         )
 
-    # ── 2) API anahtar kontrolü ─────────────────────────────────────────────
-    api_key = Setting.get('groq_api_key', '') or os.environ.get('GROQ_API_KEY', '')
+    # ── 2) API anahtar kontrolü (Faz 10A: sadece env'den) ──────────────────
+    from services.ai.groq import resolve_groq_key
+    api_key = resolve_groq_key()
     if not api_key:
         flash('Sistemde GROQ API anahtarı tanımlı değil. Lütfen yöneticiyle iletişime geçin.', 'error')
         return redirect(url_for('ai_consultant.ai_consultant'))

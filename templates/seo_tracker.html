@@ -74,6 +74,7 @@
         <!-- Ekleme formu (HOTFIX 1.15: Trendyol + Hepsiburada platform seçici) -->
         <div class="card" style="padding: 24px; margin-bottom: 24px;">
             <form method="POST" action="{{ url_for('seo.seo_tracker') }}" style="display:grid; grid-template-columns: 180px 1fr 1.3fr auto; gap:14px; align-items:end;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <!-- Platform Seçici -->
                 <div>
                     <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.4px; opacity:0.8;">
@@ -254,12 +255,14 @@
                             </td>
                             <td style="text-align:right;">
                                 <form action="{{ url_for('seo.seo_tracker_refresh', tracker_id=kt.id) }}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-outline btn-sm" title="Şimdi yeniden kontrol et" style="margin-right:4px;">
                                         <i data-lucide="refresh-cw" width="14" height="14"></i>
                                     </button>
                                 </form>
                                 <form action="{{ url_for('seo.seo_tracker_delete', tracker_id=kt.id) }}" method="POST" style="display:inline;"
                                       onsubmit="return confirm('Bu takibi silmek istediğinize emin misiniz?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm" style="background:rgba(239,68,68,0.12); color:#ef4444; border:1px solid rgba(239,68,68,0.30);" title="Sil">
                                         <i data-lucide="trash-2" width="14" height="14"></i>
                                     </button>
@@ -709,7 +712,10 @@
 
         fetch('/api/generate-seo-tips/' + trackerId, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+            },
             credentials: 'same-origin',
         })
         .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, body: j }; }); })

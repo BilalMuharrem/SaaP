@@ -140,3 +140,45 @@ gzip logs/bmk-web.log.*
 2. Mevcut DB'yi yedekle (hatalı bile olsa): `pg_dump > corrupted.sql`
 3. Son sağlam backup'tan restore et.
 4. Kayıp veri penceresini hesapla ve etkilenen kullanıcılara haber ver.
+
+---
+
+## 6. Admin Kullanıcı Yönetimi (Faz 10A)
+
+**ESKİ DAVRANIŞ (kaldırıldı):** `init_db` hard-coded `admin@bmk.com / bmk2024admin`
+yaratıyordu. Production'a deploy edip unutursanız, internetteki herkes admin
+paneline girebilirdi. Bu davranış Faz 10A'da kaldırıldı.
+
+**YENİ DAVRANIŞ:** Admin sadece şu iki yoldan biriyle oluşturulur.
+
+### A) İlk deploy — env üzerinden tek seferlik
+
+`.env` dosyasına ekleyin:
+```
+ADMIN_EMAIL=siz@firmaniz.com
+ADMIN_PASSWORD=<güçlü-32-karakter-rastgele>
+ADMIN_FULL_NAME=Adınız Soyadınız
+ADMIN_COMPANY=Firma Adı
+```
+
+Uygulama açıldığında `init_db` bu env'leri okuyup admin yaratır.
+**Sonra**: bu satırları `.env`'den **silin** (admin hesabı DB'de saklanır,
+env'e gerek yok).
+
+### B) İnteraktif script
+
+Sunucuda terminal varsa:
+```bash
+./.venv/bin/python scripts/create_admin.py
+```
+
+Şifreyi gizli (getpass) sorar, bash history'sine yazılmaz. Mevcut bir
+kullanıcıyı admin'e terfi etmek için de aynı script çalışır.
+
+### Mevcut admin@bmk.com hesabını silme (Faz 10A geçişi)
+
+Eğer production DB'nizde eski hard-coded admin varsa:
+```bash
+psql $DATABASE_URL -c "DELETE FROM users WHERE email='admin@bmk.com';"
+```
+Önce yeni admin yarattığınızdan emin olun — yoksa hiç admin kalmaz.

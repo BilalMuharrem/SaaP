@@ -253,6 +253,7 @@
                 {% endif %}
                 <form method="POST" action="{{ url_for('notifications.clear_notifications_category') }}"
                       onsubmit="return confirm('{{ _confirm_msg }}');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="cat" value="{{ active_cat }}">
                     <button type="submit" class="btn" style="border-radius:10px; background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3);">
                         🗑️ {{ _btn_label }} Temizle
@@ -431,7 +432,10 @@
             // AJAX: server-side de aynı işlemi yapsın (kalıcı DB güncellemesi)
             fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                },
                 body: JSON.stringify({ cat: cat })
             })
             .then(function(r) { return r.ok ? r.json() : null; })
@@ -464,6 +468,7 @@
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
             },
             credentials: 'same-origin',
         })

@@ -21,12 +21,21 @@ from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import current_user as _current_user
+from flask_wtf import CSRFProtect
 from config import Config
 
 
 # ── SQLAlchemy ─────────────────────────────────────────────────────────────
 # Tüm modeller `from extensions import db` kullanır.
 db = SQLAlchemy()
+
+
+# ── Flask-WTF CSRF Protection (Faz 10A) ────────────────────────────────────
+# Tüm POST/PUT/PATCH/DELETE isteklerinde otomatik token doğrulama.
+# Form'larda: <input name="csrf_token" value="{{ csrf_token() }}">
+# AJAX'larda: 'X-CSRFToken' header (base.html'deki meta tag'den okunur).
+# TestConfig'te WTF_CSRF_ENABLED=False olduğu için testler etkilenmez.
+csrf = CSRFProtect()
 
 
 # ── Flask-Login ────────────────────────────────────────────────────────────

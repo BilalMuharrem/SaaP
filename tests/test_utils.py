@@ -187,22 +187,29 @@ def test_resolve_groq_key_rejects_short(app):
 
 
 def test_resolve_groq_key_falls_back_to_env(app, monkeypatch):
-    """Config.GROQ_API_KEY ve Setting boşsa env'e düşer.
+    """Config.GROQ_API_KEY boşsa env'e düşer.
 
-    NOT: Config import zamanı yüklendiği için, gerçek fallback zincirini
-    test etmek için Config.GROQ_API_KEY'i geçici olarak temizliyoruz.
+    Faz 10A: Setting tablosu fallback'i KALDIRILDI — sadece Config + env.
     """
     from services.ai import groq as groq_mod
     from config import Config
     monkeypatch.setattr(Config, 'GROQ_API_KEY', '', raising=False)
     monkeypatch.setenv('GROQ_API_KEY', 'gsk_env_test_value_xxxxxxxxxxxxxxxx')
     with app.app_context():
-        # Setting tablosunda da yok — env'e düşmeli
-        from models import Setting
-        from extensions import db as _db
-        Setting.query.filter_by(key='groq_api_key').delete()
-        _db.session.commit()
         assert groq_mod.resolve_groq_key() == 'gsk_env_test_value_xxxxxxxxxxxxxxxx'
+
+
+def test_resolve_groq_key_ignores_setting_table(app, monkeypatch):
+    """Faz 10A: Setting tablosunda groq_api_key olsa BİLE okunmaz."""
+    from services.ai import groq as groq_mod
+    from config import Config
+    from models import Setting
+    monkeypatch.setattr(Config, 'GROQ_API_KEY', '', raising=False)
+    monkeypatch.delenv('GROQ_API_KEY', raising=False)
+    with app.app_context():
+        Setting.set('groq_api_key', 'gsk_setting_should_be_ignored_xxxxxxxx')
+        # Config boş + env boş + Setting'i artık okumuyoruz → '' dönmeli
+        assert groq_mod.resolve_groq_key() == ''
 
 
 # ─────────────────────────────────────────────────────────────────────────────

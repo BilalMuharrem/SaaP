@@ -12,6 +12,7 @@
             <div class="auth-title">Kayıt Ol</div>
             <div class="auth-subtitle">14 günlük ücretsiz deneme ile başlayın</div>
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label class="form-label">Ad Soyad *</label>
                     <input type="text" name="full_name" class="form-input" placeholder="Ahmet Yılmaz" required>

@@ -12,6 +12,7 @@
             <div class="auth-title">Giriş Yap</div>
             <div class="auth-subtitle">Hesabınıza giriş yaparak analize başlayın</div>
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label class="form-label">E-posta Adresi</label>
                     <input type="email" name="email" class="form-input" placeholder="ornek@firma.com" required autofocus>

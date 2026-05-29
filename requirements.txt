@@ -2,6 +2,8 @@ Flask>=3.1.0
 Flask-Login>=0.6.3
 Flask-Limiter>=4.1.1
 Flask-SQLAlchemy>=3.1.1
+# Faz 10A: CSRF koruması — tüm POST form'larında otomatik token doğrulama
+Flask-WTF>=1.2.0
 SQLAlchemy>=2.0.36
 Werkzeug>=3.1.3
 gunicorn>=23.0.0
