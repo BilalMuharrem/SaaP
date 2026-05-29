@@ -1,6 +1,11 @@
 import json
 import logging
 from datetime import datetime, timedelta
+try:
+    from zoneinfo import ZoneInfo  # Python 3.9+
+    _TR_TZ = ZoneInfo("Europe/Istanbul")
+except Exception:  # pragma: no cover — eski Python fallback
+    _TR_TZ = None
 
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -11,7 +16,19 @@ log = logging.getLogger(__name__)
 
 
 def get_tr_now():
-    """Returns current Turkey time (UTC+3)."""
+    """Türkiye saati (Europe/Istanbul). DÖNÜŞ: naive datetime — eski uyumlu.
+
+    Faz 10B düzeltmesi: Eskiden `datetime.utcnow() + timedelta(hours=3)` idi —
+    DST geri gelirse (Türkiye değiştirebilir) yanlış saat verirdi. ZoneInfo
+    kullanımı doğru/sürdürülebilir.
+
+    DB kolonlarımız hâlâ naive `DateTime` olduğu için tzinfo'yu çıkarıp döndürürüz
+    (aware vs naive karşılaştırması TypeError verir). Tam TZ-aware geçiş
+    ileride yapılacak (db migration + worker.py'de tüm karşılaştırmalar).
+    """
+    if _TR_TZ is not None:
+        return datetime.now(_TR_TZ).replace(tzinfo=None)
+    # Fallback: ZoneInfo yoksa eski davranış
     return datetime.utcnow() + timedelta(hours=3)
 
 
@@ -33,7 +50,7 @@ class Plan(db.Model):
     def get_features(self):
         try:
             return json.loads(self.features)
-        except:
+        except (json.JSONDecodeError, TypeError):
             return ['price', 'review', 'combined']
 
     def __repr__(self):
@@ -197,7 +214,7 @@ class Job(db.Model):
                 # Filter out metadata markers like __COST__: from the UI-facing URL list
                 return [u for u in raw_urls if not str(u).startswith('__COST__:')]
             return raw_urls
-        except:
+        except (json.JSONDecodeError, TypeError):
             return []
 
     def set_urls(self, url_list):
@@ -631,382 +648,26 @@ def init_db(app):
     """Initialize the database with default data."""
     with app.app_context():
         db.create_all()
-        
-        # Auto-migrate schema to add new columns if missing
-        from sqlalchemy import text
-        try:
-            db.session.execute(text('ALTER TABLE plans ADD COLUMN max_tracked_products INTEGER DEFAULT 5'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-            
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN group_id VARCHAR(50)'))
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN is_base_product BOOLEAN DEFAULT 0'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN current_stock INTEGER DEFAULT -1'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-
-        try:
-            db.session.execute(text("ALTER TABLE tracked_products ADD COLUMN tracking_type VARCHAR(20) DEFAULT 'price'"))
-            db.session.commit()
-        except:
-            db.session.rollback()
-
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN previous_price FLOAT DEFAULT 0.0'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-
-        # FAZ 1 Migration — Birim Maliyet (Net Kâr & ROI Simülatörü)
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN unit_cost FLOAT'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-
-        # FAZ 4 Migration — Yorum ve Kalite İstihbaratı (rating + review_count)
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN rating FLOAT'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN review_count INTEGER DEFAULT 0'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-
-        # HOTFIX 1.35 Migration — Satıcı adı + Mağaza Puanı
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN seller_name VARCHAR(100)'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN seller_rating FLOAT'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-
-        # ── Multi-Tracking Migration (is_price_tracked / is_radar_tracked) ──
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN is_price_tracked BOOLEAN DEFAULT 1'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-
-        try:
-            db.session.execute(text('ALTER TABLE tracked_products ADD COLUMN is_radar_tracked BOOLEAN DEFAULT 0'))
-            db.session.commit()
-        except:
-            db.session.rollback()
-
-        # ── HOTFIX 1.87: Özel grup etiketi kolonu ──
-        try:
-            db.session.execute(text(
-                'ALTER TABLE tracked_products ADD COLUMN group_label VARCHAR(100)'
-            ))
-            db.session.commit()
-            log.info('[Migration] tracked_products.group_label KOLON EKLENDİ.')
-        except Exception:
-            db.session.rollback()
-
-        # ── HOTFIX 1.54: Notification.category kolon migration'ı ──────────────
-        try:
-            db.session.execute(text(
-                'ALTER TABLE notifications ADD COLUMN category VARCHAR(30)'
-            ))
-            db.session.commit()
-            log.info('[Migration] notifications.category KOLON EKLENDİ.')
-        except Exception:
-            db.session.rollback()
-        # ── HOTFIX 1.99: Notification.internal_link kolon migration'ı ──────────
-        try:
-            db.session.execute(text(
-                'ALTER TABLE notifications ADD COLUMN internal_link VARCHAR(500)'
-            ))
-            db.session.commit()
-            log.info('[Migration] notifications.internal_link KOLON EKLENDİ.')
-        except Exception:
-            db.session.rollback()
-        # Performans: kategori bazlı filtre sorgu sıklığı yüksek olduğu için index
-        try:
-            db.session.execute(text(
-                'CREATE INDEX IF NOT EXISTS ix_notifications_category '
-                'ON notifications (category)'
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-        # FAZ 5A: User.onboarding_completed kolonu
-        try:
-            db.session.execute(text(
-                'ALTER TABLE users ADD COLUMN onboarding_completed BOOLEAN DEFAULT FALSE'
-            ))
-            db.session.commit()
-            log.info('[Migration] users.onboarding_completed KOLON EKLENDİ.')
-        except Exception:
-            db.session.rollback()
-
-        # FAZ 7C: TrackedProduct.is_demo kolonu — örnek/demo ürünleri ayırt etmek için
-        try:
-            db.session.execute(text(
-                'ALTER TABLE tracked_products ADD COLUMN is_demo BOOLEAN DEFAULT FALSE'
-            ))
-            db.session.commit()
-            log.info('[Migration] tracked_products.is_demo KOLON EKLENDİ.')
-        except Exception:
-            db.session.rollback()
-
-        # Backfill: Eski verileri çoklu takip modeline taşı (sadece NULL değerleri).
-        # KURAL: Her uygulama başlangıcında çalışır — sadece is_price_tracked NULL ise yaz.
-        # ASLA: "WHERE tracking_type='radar'" ile toplu güncelleme yapma — kullanıcı verisi silinir!
-        # HOTFIX 1.26: PostgreSQL boolean (TRUE/FALSE) — eski 1/0 integer literali
-        # PG'de DatatypeMismatch atıyordu (column boolean / expression integer).
-        try:
-            # Sadece NULL olan kayıtları varsayılan TRUE ile doldur
-            db.session.execute(text(
-                "UPDATE tracked_products SET is_price_tracked = TRUE "
-                "WHERE is_price_tracked IS NULL"
-            ))
-            db.session.execute(text(
-                "UPDATE tracked_products SET is_radar_tracked = FALSE "
-                "WHERE is_radar_tracked IS NULL"
-            ))
-            db.session.commit()
-        except Exception as e:
-            log.info(f"[Migration] Multi-tracking backfill error: {e}")
-            db.session.rollback()
-
-        # Generate new tables if any
-        try:
-            AiReport.__table__.create(db.engine, checkfirst=True)
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            log.info(f"Error creating AiReport table: {e}")
-
-        # HOTFIX 1.45: AiReport — grup filtresi + özel prompt alanları
-        for col_ddl in [
-            'ALTER TABLE ai_reports ADD COLUMN group_id VARCHAR(50)',
-            'ALTER TABLE ai_reports ADD COLUMN group_name VARCHAR(255)',
-            'ALTER TABLE ai_reports ADD COLUMN custom_prompt TEXT',
-        ]:
-            try:
-                db.session.execute(text(col_ddl))
-                db.session.commit()
-            except:
-                db.session.rollback()
-
-        # FAZ 4 Migration — KeywordTracker (SEO / Arama Sırası Takibi)
-        try:
-            KeywordTracker.__table__.create(db.engine, checkfirst=True)
-            db.session.commit()
-            log.info("[Migration] keyword_trackers CREATE OK (SEO Takibi).")
-        except Exception as e:
-            db.session.rollback()
-            log.info(f"Error creating KeywordTracker table: {e}")
-
-        # ── HOTFIX 1.84: KeywordTracker.group_id kolonu (fiyat takip grubu köprüsü) ──
-        try:
-            db.session.execute(text(
-                'ALTER TABLE keyword_trackers ADD COLUMN group_id VARCHAR(50)'
-            ))
-            db.session.commit()
-            log.info('[Migration] keyword_trackers.group_id KOLON EKLENDİ.')
-        except Exception:
-            db.session.rollback()
-        try:
-            db.session.execute(text(
-                'CREATE INDEX IF NOT EXISTS ix_keyword_trackers_group_id '
-                'ON keyword_trackers (group_id)'
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-        # ── HOTFIX 1.84: SEOHistory tablosu (tarihsel SEO sırası — grafik için) ──
-        try:
-            SEOHistory.__table__.create(db.engine, checkfirst=True)
-            db.session.commit()
-            log.info('[Migration] seo_history CREATE OK (tarihsel SEO).')
-        except Exception as e:
-            db.session.rollback()
-            log.info(f'Error creating SEOHistory table: {e}')
-
-        # ═════════════════════════════════════════════════════════════════
-        # HOTFIX 1.91: Global Ürün Havuzu — yeni tablolar + FK kolonları
-        # ═════════════════════════════════════════════════════════════════
-        try:
-            GlobalProduct.__table__.create(db.engine, checkfirst=True)
-            db.session.commit()
-            log.info('[Migration] global_products CREATE OK.')
-        except Exception as e:
-            db.session.rollback()
-            log.info(f'Error creating GlobalProduct table: {e}')
-
-        try:
-            KeywordPool.__table__.create(db.engine, checkfirst=True)
-            db.session.commit()
-            log.info('[Migration] keyword_pools CREATE OK.')
-        except Exception as e:
-            db.session.rollback()
-            log.info(f'Error creating KeywordPool table: {e}')
-
-        # FK kolonları (mevcut tablolara)
-        for col_ddl in [
-            'ALTER TABLE tracked_products ADD COLUMN global_product_id INTEGER',
-            'ALTER TABLE keyword_trackers ADD COLUMN pool_id INTEGER',
-        ]:
-            try:
-                db.session.execute(text(col_ddl))
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-        # Indexler
-        for idx_ddl in [
-            'CREATE INDEX IF NOT EXISTS ix_tp_global_pid ON tracked_products (global_product_id)',
-            'CREATE INDEX IF NOT EXISTS ix_kt_pool_id ON keyword_trackers (pool_id)',
-        ]:
-            try:
-                db.session.execute(text(idx_ddl))
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-
-        # ── Backfill: Mevcut TrackedProduct'ları GlobalProduct'a bağla ──
-        # URL'ye göre kümele, her unique URL için bir GlobalProduct yarat,
-        # active_users_count = kullanıcı sayısı, last_checked = en son tarama.
-        try:
-            from sqlalchemy import func as _f
-            # URL'leri unique olarak topla — kullanıcı sayısı + temsil ürün adı
-            rows = (db.session.query(
-                        TrackedProduct.url,
-                        _f.count(_f.distinct(TrackedProduct.user_id)).label('uc'),
-                        _f.min(TrackedProduct.product_name).label('pname'),
-                        _f.max(TrackedProduct.current_price).label('cp'),
-                        _f.max(TrackedProduct.last_checked).label('lc'),
-                        _f.max(TrackedProduct.platform_name).label('plat'),
-                        _f.max(TrackedProduct.rating).label('rating'),
-                        _f.max(TrackedProduct.review_count).label('rc'),
-                    )
-                    .filter(TrackedProduct.is_active == True,
-                            TrackedProduct.global_product_id.is_(None))
-                    .group_by(TrackedProduct.url)
-                    .all())
-            backfilled = 0
-            for r in rows:
-                if not r.url:
-                    continue
-                # Mevcut GP var mı?
-                gp = GlobalProduct.query.filter_by(url=r.url).first()
-                if not gp:
-                    gp = GlobalProduct(
-                        url=r.url,
-                        platform=r.plat,
-                        product_name=r.pname,
-                        current_price=float(r.cp or 0),
-                        rating=r.rating,
-                        review_count=int(r.rc or 0),
-                        last_checked=r.lc,
-                        active_users_count=int(r.uc or 0),
-                        is_dormant=False,
-                    )
-                    db.session.add(gp)
-                    db.session.flush()
-                # Tüm bağlı TP'leri bu GP'ye işaretle (tek UPDATE)
-                db.session.execute(text(
-                    'UPDATE tracked_products SET global_product_id = :gid '
-                    'WHERE url = :url AND global_product_id IS NULL'
-                ), {'gid': gp.id, 'url': r.url})
-                backfilled += 1
-            db.session.commit()
-            if backfilled:
-                log.info(f'[Migration] GlobalProduct backfill OK: {backfilled} URL → GP eşleştirildi.')
-        except Exception as e:
-            db.session.rollback()
-            log.info(f'[Migration] GP backfill error: {e}')
-
-        # ── Backfill: KeywordTracker → KeywordPool ──
-        try:
-            from sqlalchemy import func as _f2
-            rows = (db.session.query(
-                        KeywordTracker.platform,
-                        KeywordTracker.keyword,
-                        KeywordTracker.target_url,
-                        _f2.count(_f2.distinct(KeywordTracker.user_id)).label('uc'),
-                        _f2.max(KeywordTracker.current_page).label('cp'),
-                        _f2.max(KeywordTracker.current_rank).label('cr'),
-                        _f2.max(KeywordTracker.last_checked).label('lc'),
-                    )
-                    .filter(KeywordTracker.is_active == True,
-                            KeywordTracker.pool_id.is_(None))
-                    .group_by(KeywordTracker.platform,
-                              KeywordTracker.keyword,
-                              KeywordTracker.target_url)
-                    .all())
-            backfilled = 0
-            for r in rows:
-                if not (r.keyword and r.target_url):
-                    continue
-                pool = KeywordPool.query.filter_by(
-                    platform=r.platform, keyword=r.keyword, target_url=r.target_url
-                ).first()
-                if not pool:
-                    pool = KeywordPool(
-                        platform=r.platform,
-                        keyword=r.keyword,
-                        target_url=r.target_url,
-                        current_page=int(r.cp or 0),
-                        current_rank=int(r.cr or 0),
-                        last_checked=r.lc,
-                        active_users_count=int(r.uc or 0),
-                        is_dormant=False,
-                    )
-                    db.session.add(pool)
-                    db.session.flush()
-                db.session.execute(text(
-                    'UPDATE keyword_trackers SET pool_id = :pid '
-                    'WHERE platform = :plat AND keyword = :kw AND target_url = :url '
-                    'AND pool_id IS NULL'
-                ), {'pid': pool.id, 'plat': r.platform, 'kw': r.keyword, 'url': r.target_url})
-                backfilled += 1
-            db.session.commit()
-            if backfilled:
-                log.info(f'[Migration] KeywordPool backfill OK: {backfilled} combo → Pool eşleştirildi.')
-        except Exception as e:
-            db.session.rollback()
-            log.info(f'[Migration] Pool backfill error: {e}')
-
-        # ── FAZ 10A: Yıkıcı PriceAlert DROP+CREATE kaldırıldı ──────────────
-        # Eski davranış (Faz 2.1 / HOTFIX 1.7):
-        #   price_below/above kolonu eksikse DROP TABLE + CREATE.
-        #   Probe hatası → "güvenli tarafta kal" diye yine DROP. Bu yanlış —
-        #   probe geçici bağlantı sorunuyla başarısız olabilir ve TÜM
-        #   kullanıcıların alarm verisi silinir.
+        # ── FAZ 10B: ALTER TABLE migration blokları kaldırıldı ─────────────
+        # Eski (Faz 0-9): 25+ kolon için elle yazılmış try/except ALTER TABLE
+        # blokları (yaklaşık 380 satır). İdempotent ama: hata mesajları kayboldu,
+        # yeni dev için okunamaz hale geldi, "şu an hangi state?" sorusu imkânsız.
         #
-        # Yeni davranış: SADECE tablo hiç yoksa CREATE. Şema uyumsuzluğu
-        # olursa Alembic migration ile (Faz 10B) düzeltilir, otomatik silme YOK.
+        # Yeni (Faz 10B): Alembic devraldı.
+        #   • Yeni kolon eklemek: model değiştir + `alembic revision --autogenerate -m "..."`
+        #   • Üretime uygulamak:  `alembic upgrade head` (önce backup_db.py!)
+        #   • Mevcut durum:       `alembic current`
+        #   • Geçmiş:             `alembic history`
         #
-        # Üretim DB'sinde eski şemada price_alerts varsa manuel migration:
-        #   ALTER TABLE price_alerts ADD COLUMN price_below FLOAT;
-        #   ALTER TABLE price_alerts ADD COLUMN price_above FLOAT;
-        #   ALTER TABLE price_alerts DROP COLUMN target_price_threshold;
-        try:
-            PriceAlert.__table__.create(db.engine, checkfirst=True)
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            log.info(f"Error creating PriceAlert table: {e}")
+        # init_db artık SADECE:
+        #   1) Yeni DB'de tablo yaratma (db.create_all → models metadata'sından)
+        #   2) Plan seed/update (kod-kaynağı plan tanımlarıyla sync)
+        #   3) Env'den admin yaratma (ADMIN_EMAIL/PASSWORD varsa)
+        #   4) Default Setting'ler (approval_mode, free_trial_days)
+        #   5) Hayalet TrackedProduct cleanup (Zafiyet Radarı geçişinden kalan)
+        #
+        # NOT: Üretim DB'sinde init_db ÇALIŞTIRMA (zaten çalıştırılmıştı).
+        #      Sadece yeni feature kolonu eklerken alembic migration üret + uygula.
 
         # Create or Update plans to match code definitions
         plans_data = [

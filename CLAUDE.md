@@ -21,13 +21,16 @@ Bu proje büyük bir refactor'dan geçti (Faz 0 → 9). Önceki durum:
 - Test yok, CI yok, Sentry yok, backup yok
 - Git deposu bile yoktu
 
-Şu anki durum:
-- 13 Flask blueprint, services/ ayrımı, utils/ yardımcıları
-- 138 pytest test + GitHub Actions CI
+Şu anki durum (Faz 10 sonrası):
+- 12 Flask blueprint, services/ ayrımı, utils/ yardımcıları
+- 148 pytest test + GitHub Actions CI
 - Sentry + DB backup script + healthz endpoint + ops docs
 - Public demo sayfası (signup'sız)
 - Onboarding wizard + demo data seed
 - Dürüst landing (Beta konumlandırma, sahte içerik temizliği)
+- **Faz 10A güvenlik:** CSRF aktif (Flask-WTF), admin env-tabanlı, GROQ key env-only
+- **Faz 10B sağlamlaştırma:** Alembic devrede, `get_tr_now()` ZoneInfo tabanlı,
+  bare `except:` temizliği (46 yerde + models)
 
 ---
 
@@ -43,6 +46,7 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 celery = Celery(...)
 limiter = Limiter(...)
+csrf = CSRFProtect()    # Faz 10A
 
 # app.py — factory
 def create_app(config_object=Config):
@@ -51,6 +55,7 @@ def create_app(config_object=Config):
     db.init_app(flask_app)
     login_manager.init_app(flask_app)
     limiter.init_app(flask_app)
+    csrf.init_app(flask_app)    # Faz 10A
     register_filters(flask_app)
     register_blueprints(flask_app)
     return flask_app
@@ -85,11 +90,26 @@ def register_blueprints(app):
 ### Modeller (`models.py`)
 
 Tek dosyada tüm SQLAlchemy modelleri. `init_db(app)` fonksiyonu:
-- `db.create_all()` çağırır
-- Eski DB'lerde eksik kolonlar için `ALTER TABLE ... ADD COLUMN` çalıştırır (idempotent)
-- Yeni bir kolon eklerken: model'e ekle + `init_db`'ye matching `ALTER TABLE` ekle
+- `db.create_all()` çağırır (yeni DB'de tabloları yaratır)
+- Plan'ları seed/update eder, default Setting'ler, env-tabanlı admin
+- **ARTIK ALTER TABLE YAPMAZ** (Faz 10B'de kaldırıldı, Alembic devraldı)
 
-**Alembic kullanmıyoruz** — `init_db` tarzı ALTER TABLE migration yeterli olduğu sürece. Schema kompleksleşirse Alembic'e geçilebilir.
+### Alembic Migrations (Faz 10B)
+
+Şema değişiklikleri artık `migrations/versions/` altında versiyonlu dosyalarda.
+
+```bash
+# Yeni kolon eklediğinde:
+./.venv/bin/alembic revision --autogenerate -m "açıklayıcı_isim"
+# Üretilen dosyayı GÖZDEN GEÇİR — autogenerate kusursuz değil
+./.venv/bin/alembic upgrade head     # uygula
+./.venv/bin/pytest                   # testler geçmeli
+```
+
+Üretime deploy ederken: `backup_db.py` → `alembic upgrade head` → restart.
+Detay: `docs/operations.md` Bölüm 7.
+
+**KURAL:** init_db'ye yeni `ALTER TABLE` ekleme — Alembic kullan.
 
 ### Worker (`worker.py`)
 
@@ -230,12 +250,47 @@ Tests arası `limiter.reset()` her fixture'da çağrılır AMA bazı senaryolard
 
 macOS AirPlay Receiver port 5000'i tutar. App 5005'te çalışır. `PORT` env ile override edilebilir.
 
+### 10. CSRF her POST'ta zorunlu (Faz 10A)
+
+Yeni form eklerken **mutlaka** içine şu satırı koy:
+```html
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+```
+Yeni AJAX POST yaparken header'a şunu ekle:
+```js
+'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+```
+TestConfig'te `WTF_CSRF_ENABLED=False` — testler etkilenmez. Ama gerçek
+sunucuda token'sız POST → 400. `tests/test_csrf.py`'da örnek pattern var.
+
+### 11. Admin env-tabanlı (Faz 10A)
+
+Hard-coded `admin@bmk.com / bmk2024admin` artık YOK. İlk admin:
+- `.env`'e `ADMIN_EMAIL` + `ADMIN_PASSWORD` koy → ilk açılışta init_db yaratır
+- Veya `python scripts/create_admin.py` (interaktif)
+Sonra `.env`'den admin satırlarını sil (hesap DB'de).
+
+### 12. GROQ key SADECE .env'den (Faz 10A)
+
+Eskiden admin/settings panelinden değiştirilebiliyordu (DB'de saklı). Artık
+sadece `Config.GROQ_API_KEY` (`.env`) okunur. Setting tablosu fallback'i
+`services/ai/groq.py`'den kaldırıldı. Admin panel sadece "✓ Yapılandırıldı /
+✗ Eksik" read-only status gösterir.
+
+### 13. `get_tr_now()` ZoneInfo tabanlı naive (Faz 10B)
+
+`datetime.now(ZoneInfo("Europe/Istanbul")).replace(tzinfo=None)` döner. DST
+geri gelirse otomatik düzelir. **Naive** dönmesi kasıtlı — DB kolonlarımız
+hâlâ TZ-naive, tam aware geçiş ileri faza ertelendi. Yeni karşılaştırma
+yazarken naive datetime kullan, `datetime.now(tz=...)` ile karşılaştırma
+yapma — TypeError.
+
 ---
 
 ## Test Konvansiyonları
 
 ```bash
-./.venv/bin/pytest                     # tüm suite (138 test, ~14sn)
+./.venv/bin/pytest                     # tüm suite (148 test, ~17sn)
 ./.venv/bin/pytest -k "demo"           # adında demo geçen testler
 ./.venv/bin/pytest tests/test_X.py -v  # tek dosya verbose
 ```
@@ -269,7 +324,7 @@ Detaylar git log'da — her faz commit'i Faz numarasıyla başlar (`feat(faz7d):
 ## Bana (Sonraki Claude'a) Notlar
 
 1. **Önce git log oku** — son 10-15 commit, projenin ne yöne gittiğini söyler.
-2. **138 test güvenliğindir** — değişiklik yaparken `pytest` çalıştırmadan commit etme.
+2. **148 test güvenliğindir** — değişiklik yaparken `pytest` çalıştırmadan commit etme.
 3. **Sahte içerik yazma** — kullanıcı bunu en sevmediği şey. Beta hikayesi her zaman dürüst yol.
 4. **`worker.py`'ye sakin yaklaş** — 7400 satır, refactor edilmedi (Faz 1H sadece tek bir helper modülü ayırdı). Büyük dokunuş risk taşır.
 5. **`docs/operations.md`** — Sentry/UptimeRobot/backup gibi ops konularında kullanıcıya açıklama yaparken o dosyayı referans göster.

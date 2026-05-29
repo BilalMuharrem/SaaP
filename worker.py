@@ -2288,7 +2288,7 @@ def extract_product_name(page):
             return document.title.split('|')[0].split('-')[0].trim();
         }""")
         return urun_ismi_temizle(raw)
-    except:
+    except Exception:
         return "İsim Bulunamadı"
 
 
@@ -3558,7 +3558,7 @@ def extract_price(page):
             });
             return res;
         }""")
-    except:
+    except Exception:
         return "Bulunamadı"
 
 
@@ -3642,13 +3642,13 @@ def attach_stock_network_interceptor(page):
     """
     try:
         page._bmk_stock_hits = []
-    except:
+    except Exception:
         pass
     return
     # -- Orijinal interceptor mantığı aşağıda uyku modunda kapsüllendi. --
     try:
         page._bmk_stock_hits = []
-    except:
+    except Exception:
         pass
 
     def _on_response(response):
@@ -3672,12 +3672,12 @@ def attach_stock_network_interceptor(page):
                 clen = int(response.headers.get('content-length', '0'))
                 if clen > 2_000_000:
                     return
-            except:
+            except Exception:
                 pass
             ctype = ''
             try:
                 ctype = (response.headers.get('content-type') or '').lower()
-            except:
+            except Exception:
                 pass
 
             body_text = None
@@ -3687,10 +3687,10 @@ def attach_stock_network_interceptor(page):
                     body_json = response.json()
                 else:
                     body_text = response.text()
-            except:
+            except Exception:
                 try:
                     body_text = response.text()
-                except:
+                except Exception:
                     return
 
             hit = None
@@ -3700,7 +3700,7 @@ def attach_stock_network_interceptor(page):
                     try:
                         import json as _json
                         body_text = _json.dumps(body_json, ensure_ascii=False)
-                    except:
+                    except Exception:
                         pass
             if hit is None and body_text:
                 # Önce text'te Türkçe toast regex
@@ -3719,14 +3719,14 @@ def attach_stock_network_interceptor(page):
                                 if 0 < n <= 500:
                                     hit = n
                                     break
-                            except:
+                            except Exception:
                                 pass
 
             if hit and hit > 0:
                 try:
                     page._bmk_stock_hits.append(int(hit))
                     log.info(f"[Worker] 🌐 Network stock intercept: {hit} ({url[:80]})")
-                except:
+                except Exception:
                     pass
         except Exception:
             pass
@@ -3735,7 +3735,7 @@ def attach_stock_network_interceptor(page):
         page.on('response', _on_response)
         # Referansı sakla (sonra detach için — test ortamı hariç zaten nadir)
         page._bmk_stock_listener = _on_response
-    except:
+    except Exception:
         pass
 
 
@@ -3791,7 +3791,7 @@ def extract_stock_active_trendyol(page):
         try:
             page.evaluate("window.scrollTo(0, 300);")
             page.wait_for_timeout(400)
-        except:
+        except Exception:
             pass
 
         # ───────── C) Sepete Ekle butonuna tıkla — NATIVE PLAYWRIGHT force=True ─────────
@@ -3822,7 +3822,7 @@ def extract_stock_active_trendyol(page):
                     add_clicked = True
                     log.info(f"[Worker] 🛒 Sepete Ekle tıklandı: {sel}")
                     break
-            except:
+            except Exception:
                 continue
 
         # Text-based fallback — innerText ile buton bul
@@ -3835,7 +3835,7 @@ def extract_stock_active_trendyol(page):
                         add_clicked = True
                         log.info(f"[Worker] 🛒 Sepete Ekle (text) tıklandı")
                         break
-            except:
+            except Exception:
                 pass
 
         if add_clicked:
@@ -3862,7 +3862,7 @@ def extract_stock_active_trendyol(page):
                     panel_appeared = True
                     log.info(f"[Worker] 🎯 Sepet paneli tespit edildi: {cps}")
                     break
-                except:
+                except Exception:
                     continue
 
             # 2) Animasyonun BİTMESİ için hard wait — panel visible olsa da slide-in devam ediyor
@@ -3946,7 +3946,7 @@ def extract_stock_active_trendyol(page):
                     cart_qty = loc
                     log.info(f"[Worker] 📦 Sepet input bulundu: {sel}")
                     break
-            except:
+            except Exception:
                 continue
 
         # Geniş fallback: JS ile işaretle, Playwright locator ile yakala
@@ -3974,7 +3974,7 @@ def extract_stock_active_trendyol(page):
                     if loc.count() > 0:
                         cart_qty = loc
                         log.info("[Worker] 📦 Geniş fallback ile input bulundu")
-            except:
+            except Exception:
                 pass
 
         # ── D3) NATIVE PLAYWRIGHT — Input stabil → click → temizle → "10" → Enter ──
@@ -4012,7 +4012,7 @@ def extract_stock_active_trendyol(page):
                 log.info(f"[Worker] ⚠ Native keyboard hata: {e} — Tab fallback deneniyor")
                 try:
                     page.keyboard.press('Tab')
-                except:
+                except Exception:
                     pass
 
             # Toast'ın DOM'a render olması için 4 saniye bekle (Trendyol AJAX gecikmesi)
@@ -4103,7 +4103,7 @@ def extract_stock_active_trendyol(page):
         log.info(f"[Worker] Active stock scraping failed: {e}")
         try:
             _cleanup_cart(page)
-        except:
+        except Exception:
             pass
         return None
 
@@ -4139,7 +4139,7 @@ def _cleanup_cart(page):
             }
         }""")
         page.wait_for_timeout(400)
-    except:
+    except Exception:
         pass
 
 
@@ -4170,7 +4170,7 @@ def extract_stock_active_hepsiburada(page):
             }
             document.querySelectorAll('.modal, .popup, [id*="onetrust"]').forEach(el => el.style.display='none');
         }""")
-    except:
+    except Exception:
         pass
 
     try:
@@ -4243,7 +4243,7 @@ def extract_stock_active_hepsiburada(page):
                 }
                 return false;
             }""")
-        except:
+        except Exception:
             pass
         if hb_qty_set:
             page.wait_for_timeout(500)
@@ -4272,7 +4272,7 @@ def extract_stock_active_hepsiburada(page):
                     add_clicked = True
                     log.info(f"[Worker] 🛒 HB Sepete Ekle: {sel}")
                     break
-            except:
+            except Exception:
                 continue
 
         # Text fallback
@@ -4285,7 +4285,7 @@ def extract_stock_active_hepsiburada(page):
                         add_clicked = True
                         log.info(f"[Worker] 🛒 HB Sepete Ekle (text): {txt}")
                         break
-            except:
+            except Exception:
                 pass
 
         if add_clicked:
@@ -4322,7 +4322,7 @@ def extract_stock_active_hepsiburada(page):
                     cart_qty = loc
                     log.info(f"[Worker] 📦 HB sepet input: {sel}")
                     break
-            except:
+            except Exception:
                 continue
 
         if cart_qty:
@@ -4341,7 +4341,7 @@ def extract_stock_active_hepsiburada(page):
                 log.info(f"[Worker] HB keyboard hata: {e}")
                 try:
                     page.keyboard.press('Tab')
-                except:
+                except Exception:
                     pass
             page.wait_for_timeout(2000)
         elif add_clicked:
@@ -4376,7 +4376,7 @@ def extract_stock_active_hepsiburada(page):
                 if plus_stock and plus_stock > 0:
                     log.info(f"[Worker] ➕ HB plus butonu {plus_stock} kez tıklandı")
                     page.wait_for_timeout(2000)
-            except:
+            except Exception:
                 pass
 
         # E) Network hit kontrolü
@@ -4489,7 +4489,7 @@ def extract_stock_active_hepsiburada(page):
                 rs = int(dom_stock)
                 log.info(f"[Worker] ✅ HB DOM stok ipucu: {rs}")
                 return 11 if rs > 10 else rs
-        except:
+        except Exception:
             pass
 
         # Son çare: add-to-cart butonu aktifse (clickable) → 10
@@ -4507,7 +4507,7 @@ def extract_stock_active_hepsiburada(page):
             }""")
             if can_buy:
                 return 10  # satın alınabilir → en az 10
-        except:
+        except Exception:
             pass
 
         return None
@@ -4515,7 +4515,7 @@ def extract_stock_active_hepsiburada(page):
         log.info(f"[Worker] HB active scraping failed: {e}")
         try:
             _cleanup_hb_cart(page)
-        except:
+        except Exception:
             pass
         return None
 
@@ -4539,7 +4539,7 @@ def _cleanup_hb_cart(page):
             }
         }""")
         page.wait_for_timeout(400)
-    except:
+    except Exception:
         pass
 
 
@@ -4557,7 +4557,7 @@ def extract_stock(page):
         if early_net is not None and early_net >= 0:
             log.info(f"[Worker] ⚡ Early network stock hit: {early_net} adet")
             return int(early_net) if early_net <= 10 else 11
-    except:
+    except Exception:
         pass
 
     # ══════════ ÖNCELİK 0: AKTİF KAZIMA — Platform bazlı ══════════
@@ -4928,7 +4928,7 @@ def extract_stock(page):
             return -1;
         }""")
         return int(result) if result is not None else -1
-    except:
+    except Exception:
         return -1
 
 
@@ -5822,7 +5822,7 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
                 page.wait_for_timeout(6000)
                 page.evaluate("window.scrollBy(0, 2000);")
                 page.wait_for_timeout(2000)
-            except:
+            except Exception:
                 pass
     elif is_hepsiburada:
         # ══════════ HEPSİBURADA TAB-BASED REVIEW NAVIGATION ══════════
@@ -5916,7 +5916,7 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
             page.wait_for_timeout(5000)
             page.evaluate("window.scrollBy(0, 4000);")
             page.wait_for_timeout(2000)
-        except:
+        except Exception:
             pass
 
     # Extraction loop
@@ -5927,7 +5927,7 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
                 page.wait_for_timeout(5000)
                 page.evaluate("window.scrollBy(0, 3000);")
                 page.wait_for_timeout(2000)
-            except:
+            except Exception:
                 pass
 
         if is_trendyol:
@@ -5947,7 +5947,7 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
                         }
                     });
                 }""")
-            except:
+            except Exception:
                 pass
 
         # Pagination clicker
@@ -5973,7 +5973,7 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
         }}"""
         try:
             page.evaluate(js_click)
-        except:
+        except Exception:
             pass
 
         page.wait_for_timeout(1500)
@@ -6060,7 +6060,7 @@ def extract_reviews(page, url, is_trendyol, is_hepsiburada):
                     if len(clean_text.split()) >= min_words and clean_text not in raw_data_set:
                         if not any(banned in clean_text.lower() for banned in banned_phrases):
                             raw_data_set.add(clean_text)
-        except:
+        except Exception:
             pass
 
     # ── HOTFIX 1.33: Trendyol için API güvenlik ağı (yalnızca Playwright boş kaldıysa) ──
@@ -6423,7 +6423,7 @@ def run_price_headless(urls, api_key):
                 if durum == "OK":
                     try:
                         page.evaluate("document.querySelectorAll('.modal, .popup, [id*=\"onetrust\"]').forEach(el => el.style.display='none');")
-                    except:
+                    except Exception:
                         pass
                     
                     if "hepsiburada.com" in url:
@@ -6561,7 +6561,7 @@ def run_price_headless(urls, api_key):
                     model="llama-3.3-70b-versatile", temperature=0.3, max_tokens=300
                 )
                 ai_ozet = response.choices[0].message.content.strip()
-            except:
+            except Exception:
                 ai_ozet = "⚠️ AI Analizi Başarısız."
 
     # Build HTML
@@ -6854,7 +6854,7 @@ def run_review_headless(urls, api_key):
                 if durum == "OK":
                     try:
                         page.evaluate("document.querySelectorAll('.modal, .popup, [id*=\"onetrust\"]').forEach(el => el.style.display='none');")
-                    except:
+                    except Exception:
                         pass
                     
                     raw_data_set = set()

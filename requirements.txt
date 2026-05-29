@@ -4,6 +4,8 @@ Flask-Limiter>=4.1.1
 Flask-SQLAlchemy>=3.1.1
 # Faz 10A: CSRF koruması — tüm POST form'larında otomatik token doğrulama
 Flask-WTF>=1.2.0
+# Faz 10B: Veritabanı şema migrasyonları (init_db'deki manuel ALTER TABLE blokları yerine)
+alembic>=1.13.0
 SQLAlchemy>=2.0.36
 Werkzeug>=3.1.3
 gunicorn>=23.0.0

@@ -18,6 +18,30 @@ def test_turkdate_basic():
     assert turkdate(dt) == '25 May 2026 14:30'
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# FAZ 10B: get_tr_now() — ZoneInfo tabanlı
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_get_tr_now_returns_naive_datetime():
+    """Eski karşılaştırma kodu kırılmasın diye dönüş naive olmalı."""
+    from models import get_tr_now
+    now = get_tr_now()
+    assert isinstance(now, datetime)
+    assert now.tzinfo is None  # naive — DB kolonlarıyla uyumlu
+
+
+def test_get_tr_now_is_close_to_real_turkey_time():
+    """ZoneInfo ile gerçek TR saatine yakın olmalı (UTC+3 saat farkı civarı).
+    DST gözlenmediği sürece sabit +3. Türkiye 2016'dan beri DST'siz."""
+    from models import get_tr_now
+    import datetime as dt_mod
+    utc_now = dt_mod.datetime.utcnow()
+    tr_now = get_tr_now()
+    diff_hours = (tr_now - utc_now).total_seconds() / 3600
+    # 2.5 - 3.5 arası kabul (saniye farkı tolere)
+    assert 2.5 < diff_hours < 3.5
+
+
 def test_turkdate_none():
     assert turkdate(None) == '-'
 

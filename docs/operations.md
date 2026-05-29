@@ -182,3 +182,85 @@ Eğer production DB'nizde eski hard-coded admin varsa:
 psql $DATABASE_URL -c "DELETE FROM users WHERE email='admin@bmk.com';"
 ```
 Önce yeni admin yarattığınızdan emin olun — yoksa hiç admin kalmaz.
+
+---
+
+## 7. Veritabanı Migrasyonları (Alembic, Faz 10B)
+
+**ESKİ DAVRANIŞ (kaldırıldı):** `init_db` içinde 380 satırlık manuel
+`ALTER TABLE ... try/except` blokları vardı. Her yeni kolon, listeye eklenen
+bir satırdı. Yeni dev "şu an hangi state?" sorusunu cevaplayamıyordu.
+
+**YENİ DAVRANIŞ:** Alembic devraldı. Migration dosyaları
+`migrations/versions/` altında versiyonlu olarak tutulur.
+
+### İlk geçiş (mevcut üretim DB'si için TEK SEFER)
+
+Üretim DB'sinde `init_db` çoktan çalıştı, şema "baseline" durumunda.
+Alembic'i bu durumdan başlatmak için:
+
+```bash
+# 1) Önce backup al — herhangi bir adım hatalı giderse geri dönüş için
+./.venv/bin/python scripts/backup_db.py
+
+# 2) Mevcut DB'yi baseline olarak işaretle (HİÇBİR ALTER ÇALIŞTIRMAZ)
+./.venv/bin/alembic stamp head
+```
+
+`stamp head` çalıştıktan sonra DB'de `alembic_version` adında küçük bir tablo
+oluşur, baseline revision ID'sini tutar.
+
+Eğer DB'nizde küçük drift varsa (örn. `is_demo` NULLABLE, FK constraint eksik),
+baseline migration uygulamak daha temiz:
+
+```bash
+# 1) Backup
+./.venv/bin/python scripts/backup_db.py
+
+# 2) Baseline migration'ı UYGULA (drift düzeltir)
+./.venv/bin/alembic upgrade head
+```
+
+### Yeni kolon eklemek (geliştirme döngüsü)
+
+1. `models.py`'de modeli değiştir (yeni kolon, yeni tablo, vs.).
+2. Otomatik migration üret:
+   ```bash
+   ./.venv/bin/alembic revision --autogenerate -m "kullanıcıya bildirim ayarı eklendi"
+   ```
+3. Üretilen dosyayı `migrations/versions/` altında aç, kontrol et — `op.add_column`,
+   `op.alter_column` vs. doğru mu? Default değer? Backfill gerekir mi?
+4. Lokal test:
+   ```bash
+   ./.venv/bin/alembic upgrade head     # uygula
+   ./.venv/bin/pytest                   # testler geçiyor mu
+   ./.venv/bin/alembic downgrade -1     # geri al + uygula tekrar (idempotent mi?)
+   ./.venv/bin/alembic upgrade head
+   ```
+5. Commit + push.
+6. Production'a deploy ederken:
+   ```bash
+   ./.venv/bin/python scripts/backup_db.py
+   ./.venv/bin/alembic upgrade head
+   systemctl restart bmk-web bmk-worker
+   ```
+
+### Sık komutlar
+
+| Komut | Ne yapar |
+|---|---|
+| `alembic current` | DB'nin şu anki revision'ı (en güncel migration) |
+| `alembic history` | Tüm migration'ların listesi (yeni → eski) |
+| `alembic upgrade head` | Tüm bekleyen migration'ları uygula |
+| `alembic upgrade +1` | Sadece bir sonraki migration'ı uygula |
+| `alembic downgrade -1` | Son migration'ı geri al |
+| `alembic stamp head` | DB'yi şu revision'da say (uygulamaz) |
+| `alembic upgrade head --sql` | Çalıştırmaz, sadece SQL yazdırır (DBA onayı için) |
+
+### DİKKAT
+
+- **Production'da `init_db` çalıştırmayın.** Sadece ilk kurulumda. Sonrasında
+  Alembic devrede.
+- **`downgrade` üretimde tehlikeli.** Backup'tan restore daha güvenli.
+- **Autogenerate kusursuz değil.** Üretilen dosyayı her zaman gözden geçir.
+  Özellikle: kolon rename'leri "drop + add" olarak algılanır → veri kaybı.
