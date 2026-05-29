@@ -49,7 +49,9 @@ cd bmk
 # 2. Sanal ortam
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt   # pin'li lock dosyası (deterministik)
+# Geliştirme için top-level paketleri görmek istiyorsan: requirements.in
+# Yeni paket eklemek: requirements.in'e ekle → pip install + pip freeze > requirements.txt
 
 # 3. Playwright tarayıcıları
 playwright install chromium
@@ -157,13 +159,18 @@ SaaS App/
 │   ├── migrate_url_for.py  # Tek seferlik template url_for migration (kullanıldı)
 │   ├── dev/                # Geliştirici tool'ları (baslat.py, seed_opportunity.py)
 │   └── _archive/           # Eski/tek seferlik script'ler (referans için saklı)
-├── tests/                  # pytest test suite (138 test)
+├── tests/                  # pytest test suite (148 test)
 │   ├── conftest.py         # Fixtures (app, client, kullanıcılar, db cleanup)
 │   └── test_*.py
+├── migrations/             # Alembic — versiyonlu DB şema değişiklikleri
+│   ├── env.py              # Config'den DB URL + models.metadata
+│   └── versions/           # Her migration ayrı dosya
 ├── docs/
-│   └── operations.md       # Sentry/UptimeRobot/Backup/Staging rehberi
+│   └── operations.md       # Sentry/UptimeRobot/Backup/Admin/Alembic rehberi
 ├── procfile                # Heroku-tarzı: web + worker + beat
-├── requirements.txt
+├── alembic.ini             # Alembic config (sqlalchemy.url env.py'de set edilir)
+├── requirements.in         # Top-level paketler (kaynak, açıklamalı)
+├── requirements.txt        # Pin'li lock (pip freeze çıktısı, deterministik)
 ├── pytest.ini
 ├── .env.example            # Tüm env değişkenleri (yorumlu)
 └── .github/workflows/ci.yml # GitHub Actions — push'ta pytest çalıştırır

@@ -44,6 +44,23 @@ DEMO_PRODUCTS = [
 DEMO_GROUP_LABEL = 'Örnek Ürünler'
 
 
+def _broker_alive(timeout_seconds=2):
+    """Celery broker'ı (Redis) ping et. Erişilemezse False döner.
+
+    Demo seed sırasında broker kapalıysa, sessizce `.delay()` çağırmak yerine
+    önce probe edip kullanıcıyı/log'u bilgilendirmek için.
+    """
+    try:
+        from extensions import celery
+        conn = celery.broker_connection()
+        conn.ensure_connection(max_retries=1, timeout=timeout_seconds)
+        conn.close()
+        return True
+    except Exception as e:
+        log.info("[Demo seed] Broker probe başarısız: %s", e)
+        return False
+
+
 def seed_demo_products(user_id):
     """Verilen kullanıcı için DEMO_PRODUCTS'ı takibe ekler.
 
@@ -98,14 +115,27 @@ def seed_demo_products(user_id):
 
         db.session.commit()
 
-        # Worker'a fiyat taramasını async tetikle — ilk veri birkaç dakikada gelir
+        # Worker'a fiyat taramasını async tetikle — ilk veri birkaç dakikada gelir.
+        # FAZ 10C: Broker (Redis) erişimini ÖNCEDEN probe et — kapalıysa daha açıklayıcı
+        # log + sessiz devam (kullanıcı kaydı bozulmasın). Bir sonraki periyodik beat
+        # taraması (03:15/09:15/15:15/21:15) bu ürünleri yine de yakalar.
         if added_ids:
-            try:
-                from worker import check_single_product_task
-                for pid in added_ids:
-                    check_single_product_task.delay(pid)
-            except Exception:
-                log.exception("[Demo seed] Celery tetikleme başarısız (sessiz)")
+            broker_ok = _broker_alive()
+            if broker_ok:
+                try:
+                    from worker import check_single_product_task
+                    for pid in added_ids:
+                        check_single_product_task.delay(pid)
+                    log.info("[Demo seed] %d ürün için Celery scan tetiklendi", len(added_ids))
+                except Exception:
+                    log.exception("[Demo seed] Celery tetikleme başarısız (broker UP ama task patladı)")
+            else:
+                log.warning(
+                    "[Demo seed] Broker (Redis) erişilemez — demo ürünler eklendi "
+                    "ama anlık scan tetiklenemedi. Bir sonraki periyodik beat "
+                    "(en geç 4 saat) bunları tarayacak. user_id=%s, eklenen=%d",
+                    user_id, len(added_ids),
+                )
 
         log.info("[Demo seed] user_id=%s için %d demo ürün eklendi", user_id, len(added_ids))
         return len(added_ids)

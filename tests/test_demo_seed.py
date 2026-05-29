@@ -109,3 +109,28 @@ def test_tracked_products_demo_badge_visible(auth_client, starter_user):
     r = auth_client.get('/tracked-products')
     body = r.data.decode('utf-8')
     assert 'Örnek' in body or 'ÖRNEK' in body
+
+
+# ── FAZ 10C: Broker-down dayanıklılığı ──────────────────────────────────────
+
+def test_demo_seed_succeeds_even_when_broker_down(starter_user, monkeypatch):
+    """Redis kapalı olsa bile demo ürünler eklenmeli — scan başlamaz ama kayıt korunur."""
+    from services import demo_data as dd
+
+    # Broker probe'unu zorla False döndür
+    monkeypatch.setattr(dd, '_broker_alive', lambda *_, **__: False)
+
+    n = dd.seed_demo_products(starter_user.id)
+    assert n == len(dd.DEMO_PRODUCTS)
+    # Ürünler DB'de
+    rows = TrackedProduct.query.filter_by(
+        user_id=starter_user.id, is_demo=True
+    ).all()
+    assert len(rows) == len(dd.DEMO_PRODUCTS)
+
+
+def test_broker_alive_probe_returns_bool():
+    """_broker_alive sadece True/False döner, exception fırlatmaz."""
+    from services.demo_data import _broker_alive
+    result = _broker_alive(timeout_seconds=1)
+    assert isinstance(result, bool)
