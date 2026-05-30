@@ -196,10 +196,10 @@
     }
     </script>
 
-    <style>
-    {# Faz 10C: CSS static/landing.css'e taşındı (eskiden 880 satır inline <style>) #}
+    {# Faz 10C: CSS static/landing.css'e taşındı (eskiden 880 satır inline <style>).
+       HOTFIX 10.2: extraction script'i <style>...</style> wrapper'ını silmemişti;
+       <link> tag'i <style> içinde HTML olarak görününce CSS hiç yüklenmiyordu. #}
     <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
-    </style>
 </head>
 <body>
 
