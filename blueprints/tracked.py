@@ -310,13 +310,24 @@ def rename_tracked_group(group_id):
         base = TrackedProduct.query.filter_by(
             user_id=current_user.id, group_id=group_id
         ).first()
-    if not base:
-        flash('Grup bulunamadı.', 'warning')
-        return redirect(url_for('tracked.tracked_products'))
+
+    # HOTFIX 10.3: Sadece SEO takibi olan gruplar için TP yok — yine de
+    # rename mümkün olmalı (KT.keyword senkronizasyonu yapılır). Eskiden
+    # "Grup bulunamadı" diyordu ve kullanıcı SEO grup adını DEĞİŞTİREMİYORDU.
+    seo_only_group = (base is None)
+    if seo_only_group:
+        # SEO-only grup: sahiplik kontrolünü KT üzerinden yap
+        any_kt = KeywordTracker.query.filter_by(
+            user_id=current_user.id, group_id=group_id
+        ).first()
+        if not any_kt:
+            flash('Grup bulunamadı.', 'warning')
+            return redirect(url_for('tracked.tracked_products'))
 
     try:
-        base.group_label = new_label
-        db.session.commit()
+        if base is not None:
+            base.group_label = new_label
+            db.session.commit()
 
         # HOTFIX 1.97: Grup adı = SEO anahtar kelime senkronizasyonu
         seo_synced = 0

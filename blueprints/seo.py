@@ -29,6 +29,36 @@ from models import (
 
 log = logging.getLogger(__name__)
 
+
+# ── HOTFIX 10.3: Grup adı fallback zinciri ──────────────────────────────────
+# Eskiden f'Grup {gid[:14]}' fallback'ı kullanıcıya çirkin UUID gösteriyordu.
+# Yeni zincir (öncelik sırası):
+#   1. Kullanıcının özel verdiği group_label (TP.group_label)
+#   2. Base TP'nin ürün adı (kısaltılmış)
+#   3. Gruba bağlı SEO takip listesindeki ilk KT.keyword (kullanıcıyı en iyi
+#      anlatan değer — neyi takip ettiğini söyler)
+#   4. Son çare: "Grup" + ekleme yok (UUID DEĞİL)
+def _resolve_seo_group_label(group_id, user_id, kt_list=None, max_len=60):
+    """Bir SEO/fiyat grubunun gösterim adını çöz. UUID asla göstermez."""
+    base = TrackedProduct.query.filter_by(
+        user_id=user_id, group_id=group_id, is_base_product=True
+    ).first()
+    rep = base or TrackedProduct.query.filter_by(
+        user_id=user_id, group_id=group_id
+    ).first()
+
+    if base and base.group_label:
+        return base.group_label[:max_len]
+    if rep and rep.product_name:
+        name = rep.product_name.strip()
+        return name[:max_len] + ('…' if len(name) > max_len else '')
+    # Son çare: SEO takibinden keyword
+    if kt_list:
+        kw = (kt_list[0].keyword or '').strip()
+        if kw:
+            return kw[:max_len] + ('…' if len(kw) > max_len else '')
+    return 'İsimsiz Grup'
+
 bp = Blueprint('seo', __name__)
 
 
@@ -134,19 +164,14 @@ def seo_tracker():
         grouped_seo.setdefault(gid, []).append(kt)
 
     group_seo_labels = {}
-    for gid in grouped_seo.keys():
+    for gid, kt_list in grouped_seo.items():
         if gid == '__bireysel__':
             group_seo_labels[gid] = 'Bireysel Aramalar'
             continue
-        base = TrackedProduct.query.filter_by(
-            user_id=current_user.id, group_id=gid, is_base_product=True
-        ).first()
-        if base and base.group_label:
-            group_seo_labels[gid] = base.group_label
-        elif base and base.product_name:
-            group_seo_labels[gid] = base.product_name[:60]
-        else:
-            group_seo_labels[gid] = f'Grup {gid[:14]}'
+        # HOTFIX 10.3: UUID fallback yerine düzgün isim zinciri
+        group_seo_labels[gid] = _resolve_seo_group_label(
+            gid, current_user.id, kt_list=kt_list
+        )
 
     return render_template(
         'seo_tracker.html',
@@ -513,18 +538,10 @@ def seo_graph():
         if gkey == '__solo__':
             group_labels[gkey] = 'Tekil Kelime Takipleri'
             continue
-        base = TrackedProduct.query.filter_by(
-            user_id=current_user.id, group_id=gkey, is_base_product=True
-        ).first()
-        rep = base or TrackedProduct.query.filter_by(
-            user_id=current_user.id, group_id=gkey
-        ).first()
-        if base and base.group_label:
-            group_labels[gkey] = base.group_label[:80]
-        elif rep and rep.product_name:
-            group_labels[gkey] = rep.product_name[:60] + ('…' if len(rep.product_name) > 60 else '')
-        else:
-            group_labels[gkey] = f'Grup {gkey[:10]}'
+        # HOTFIX 10.3: UUID fallback yerine düzgün isim zinciri
+        group_labels[gkey] = _resolve_seo_group_label(
+            gkey, current_user.id, kt_list=kt_list, max_len=80
+        )
 
     return render_template(
         'seo_graph.html',
