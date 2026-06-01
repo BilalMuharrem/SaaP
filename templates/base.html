@@ -124,5 +124,10 @@
     {% endwith %}
 
     {% block body %}{% endblock %}
-<script src="https://unpkg.com/lucide@latest"></script>\n<script>lucide.createIcons();</script>\n</body>
+    {# Faz 10 vizüel cila: \n karakterleri HTML'de LITERAL "\n\n" olarak görünüyordu
+       (Python string escape sanılmış). Tüm authenticated sayfaların sol altında
+       kaçak metin oluşturuyordu. Düzgün satır sonlarıyla yeniden yazıldı. #}
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>lucide.createIcons();</script>
+</body>
 </html>

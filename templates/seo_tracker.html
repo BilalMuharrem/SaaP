@@ -81,7 +81,12 @@
 
         <!-- Ekleme formu (HOTFIX 1.15: Trendyol + Hepsiburada platform seçici) -->
         <div class="card" style="padding: 24px; margin-bottom: 24px;">
-            <form method="POST" action="{{ url_for('seo.seo_tracker') }}" style="display:grid; grid-template-columns: 180px 1fr 1.3fr auto; gap:14px; align-items:end;">
+            {# HOTFIX 10.6: Mobile audit — eskiden grid-template-columns: 180px 1fr 1.3fr auto
+               sabitti ve 375px ekranda form sıkışıp kullanılamaz hale geliyordu (URL
+               alanı görünmüyordu). class="seo-tracker-form" eklendi, style.css'te
+               max-width:768px breakpoint'inde tek kolona iniyor. #}
+            <form method="POST" action="{{ url_for('seo.seo_tracker') }}" class="seo-tracker-form"
+                  style="display:grid; grid-template-columns: 180px 1fr 1.3fr auto; gap:14px; align-items:end;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <!-- Platform Seçici -->
                 <div>

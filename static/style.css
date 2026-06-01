@@ -1431,3 +1431,12 @@ details[open] .accordion-chevron {
 @media (max-width: 640px) {
     .help-tip::before { min-width: 180px; max-width: 260px; font-size: 11.5px; }
 }
+
+/* HOTFIX 10.6: SEO takibi formu mobilde 4 kolon sıkışıp URL alanı kayboluyordu.
+   768px altında tek kolona in — her alan tam genişlik, kullanıcı tüm input'lara erişir. */
+@media (max-width: 768px) {
+    .seo-tracker-form {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+}
