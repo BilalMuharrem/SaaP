@@ -226,6 +226,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+{# HOTFIX 10.4: Lejant "İzole Et ve Kıyasla" davranışı — global helper #}
+<script src="{{ url_for('static', filename='js/isolate-legend.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof ApexCharts === 'undefined') return;
@@ -355,6 +357,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         };
+
+        // HOTFIX 10.4: Lejant tıklaması → izole/kıyasla davranışı
+        if (window.applyIsolateLegendBehavior) {
+            window.applyIsolateLegendBehavior(options);
+        }
 
         var chart = new ApexCharts(el, options);
         chart.render();

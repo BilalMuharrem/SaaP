@@ -164,6 +164,8 @@
         </script>
 
         <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+        {# HOTFIX 10.4: Lejant "İzole Et ve Kıyasla" davranışı — global helper #}
+        <script src="{{ url_for('static', filename='js/isolate-legend.js') }}"></script>
 
         <!-- ADD PRODUCT WIDGET (HOTFIX 1.65: sticky kaldırıldı, statik konumda) -->
         <div style="margin-bottom: 30px; padding-top: 10px;">
@@ -816,6 +818,13 @@
                                     }
                                 ]
                             };
+                        }
+
+                        // ── HOTFIX 10.4: Lejant "İzole Et ve Kıyasla" davranışı ──
+                        // static/js/isolate-legend.js global helper'ı:
+                        // tüm görünürken bir isime tıklama → izole, gizliyse → kıyaslama ekle.
+                        if (window.applyIsolateLegendBehavior) {
+                            window.applyIsolateLegendBehavior(options);
                         }
 
                         var chart = new ApexCharts(document.querySelector("#chart-{{ gid }}"), options);
