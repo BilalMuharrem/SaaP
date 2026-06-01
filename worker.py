@@ -2098,7 +2098,16 @@ def check_keyword_trackers(app, tracker_ids=None):
         tracker_ids (list[int] | None): None → son 1 saatte kontrol edilmemiş aktif tüm kayıtlar.
                                         Liste → sadece bu ID'ler (yeni eklenen anlık kontrol için).
     """
-    from models import db, KeywordTracker, SEOHistory, KeywordPool, get_tr_now
+    # ── HOTFIX 10.5: Notification + TrackedProduct import'ları EKSİKTİ ──
+    # Bu fonksiyonun SEO sıralama değişim bildirimi üreten bloğunda (line ~2214)
+    # Notification(...) ve TrackedProduct.query çağrıları vardı ama yukarıdaki
+    # import setine dahil edilmemişti → NameError. Hata sessizce yutuluyordu
+    # (`except Exception` + `log.info`), kullanıcı panelinde SEO bildirimi
+    # ASLA görünmüyordu. Eksik isimler eklendi.
+    from models import (
+        db, KeywordTracker, SEOHistory, KeywordPool, Notification,
+        TrackedProduct, get_tr_now,
+    )
     from datetime import timedelta
 
     if tracker_ids:
@@ -2218,9 +2227,24 @@ def check_keyword_trackers(app, tracker_ids=None):
                             internal_link=seo_internal,
                             category='seo',
                         ))
+                        # HOTFIX 10.5: Başarılı bildirim üretimi log'u (görev gereği —
+                        # bir daha sessizce kaybolmasın diye). Eski 'log.info' tek
+                        # taraflıydı (sadece hata için), oysa pozitif sinyal de gerek.
+                        log.info(
+                            "[SEO Notif] user_id=%s tracker=%s '%s' %s→%s "
+                            "(sayfa %s→%s, sıra %s→%s) bildirim oluşturuldu",
+                            kt.user_id, kt.id, kt.keyword, old_overall, new_overall,
+                            prev_page_for_notif, page, prev_rank_for_notif, rank,
+                        )
             except Exception as _seo_notif_e:
-                # SEO bildirim üretimi başarısızsa ana akış bozulmasın
-                log.info(f"[SEO Notif] tracker {kt.id} bildirim hatası: {_seo_notif_e}")
+                # SEO bildirim üretimi başarısızsa ana akış bozulmasın.
+                # HOTFIX 10.5: log.info → log.exception (stack trace dahil). Eski
+                # davranışta NameError gibi kritik hatalar SEVİYE INFO ile
+                # geçiyordu, Sentry'ye düşmüyordu, sebebi hiç anlaşılmıyordu.
+                log.exception(
+                    "[SEO Notif] tracker %s bildirim oluşturma BAŞARISIZ: %s",
+                    kt.id, _seo_notif_e,
+                )
             # HOTFIX 1.91: Bağlı KeywordPool'a da yaz (paylaşımlı state)
             if kt.pool_id:
                 try:
