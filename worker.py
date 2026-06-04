@@ -889,7 +889,7 @@ def _hepsiburada_api_fallback(url):
     import requests
     
     # Extract product SKU from URL
-    sku_match = re.search(r'-p-([A-Z0-9]+)', url)
+    sku_match = re.search(r'-pm?-([A-Z0-9]+)', url)  # HOTFIX 11.0: -p- VE -pm- formatları
     if not sku_match:
         return None
     
@@ -1078,7 +1078,7 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
 
     # FAZ 4: rating + review_count alanları eklendi
     result = {"price": None, "name": None, "stock": -1, "reviews": [],
-              "rating": None, "review_count": 0}
+              "rating": None, "review_count": 0, "seller": None}  # HOTFIX 11.0: seller
 
     try:
         from curl_cffi import requests as cffi_requests
@@ -1103,7 +1103,7 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
         """HTML'den __NEXT_DATA__, ld+json ve DOM'u parse ederek fiyat/isim/stok/puan/yorum çıkar."""
         # FAZ 4: rating + review_count alanları eklendi
         _r = {"price": None, "name": None, "stock": -1, "reviews": [],
-              "rating": None, "review_count": 0}
+              "rating": None, "review_count": 0, "seller": None}  # HOTFIX 11.0: seller
         soup = BeautifulSoup(html, "lxml")
 
         # --- 1. __NEXT_DATA__ JSON state (En güvenilir kaynak) ---
@@ -1239,6 +1239,8 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
                 ld = json.loads(tag.string or "")
                 items = ld if isinstance(ld, list) else ld.get("@graph", [ld])
                 for item in items:
+                    if not isinstance(item, dict):
+                        continue
                     if item.get("@type") == "Product":
                         _r["name"] = _r["name"] or item.get("name")
                         offers = item.get("offers", {})
@@ -1246,8 +1248,21 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
                             offers = offers[0] if offers else {}
                         if not _r["price"]:
                             _r["price"] = offers.get("price") or offers.get("lowPrice")
+                        # HOTFIX 11.0: Satıcı — ld+json offers.seller.name. HB
+                        # __NEXT_DATA__'dan vazgeçtiği için (artık yok) satıcı bilgisi
+                        # yalnızca buradan geliyor. Önceki kod bu alanı hiç okumuyordu
+                        # → "Satıcı: Bulunamadı". seller dict ({"name": "..."}) veya
+                        # düz string olabilir; ikisini de karşıla.
+                        if not _r.get("seller"):
+                            seller_obj = offers.get("seller")
+                            if isinstance(seller_obj, dict):
+                                snm = seller_obj.get("name") or seller_obj.get("legalName")
+                                if isinstance(snm, str) and len(snm.strip()) > 1:
+                                    _r["seller"] = snm.strip()
+                            elif isinstance(seller_obj, str) and len(seller_obj.strip()) > 1:
+                                _r["seller"] = seller_obj.strip()
                         for rev in item.get("review", []):
-                            body = rev.get("reviewBody", "")
+                            body = rev.get("reviewBody", "") if isinstance(rev, dict) else ""
                             if len(body) > 15 and body not in _r["reviews"]:
                                 _r["reviews"].append(body)
                         # FAZ 4: aggregateRating ld+json (rating boşsa fallback)
@@ -1264,12 +1279,19 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
                                     _r["review_count"] = int(rc)
                             except (TypeError, ValueError):
                                 pass
+                    # HOTFIX 11.0: Standalone Review blokları. HB yorumları artık
+                    # Product içinde DEĞİL, ayrı @type=Review ld+json blokları olarak
+                    # geliyor. Önceki kod sadece Product.review'ı okuyordu → "0 Yorum".
+                    elif item.get("@type") == "Review":
+                        body = item.get("reviewBody") or item.get("description") or ""
+                        if isinstance(body, str) and len(body) > 15 and body not in _r["reviews"]:
+                            _r["reviews"].append(body)
             except Exception:
                 pass
 
         # --- 3. SKU-based direct API (last resort for price) ---
         if not _r["price"]:
-            sku_m = re.search(r"-p-([A-Z0-9]+)", src_url)
+            sku_m = re.search(r"-pm?-([A-Z0-9]+)", src_url)
             if sku_m:
                 sku = sku_m.group(1)
                 try:
@@ -1287,7 +1309,7 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
                         _r["price"] = price_obj.get("value") or price_obj.get("amount")
                     # --- 4. Hepsiburada Public Reviews API & JSON State Fallback ---
                     if fetch_reviews and not _r["reviews"]:
-                        sku_m = re.search(r"-p-([A-Z0-9]+)", src_url)
+                        sku_m = re.search(r"-pm?-([A-Z0-9]+)", src_url)
                         if sku_m:
                             sku = sku_m.group(1)
                             
@@ -1385,7 +1407,7 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
 
         # --- REVIEWS: Try AJAX review API endpoints ---
         if len(result["reviews"]) < 3:
-            sku_m = re.search(r"-p-([A-Z0-9]+)", url)
+            sku_m = re.search(r"-pm?-([A-Z0-9]+)", url)
             if sku_m:
                 sku = sku_m.group(1)
                 review_apis = [
@@ -2053,7 +2075,7 @@ def _extract_hepsiburada_product_id(url):
     if not url:
         return None
     # HB SKU formatı: -p-HBCV000... veya -p-HBV000... veya -p-HB...
-    m = _re.search(r'-p-([A-Z0-9]+)', url)
+    m = _re.search(r'-pm?-([A-Z0-9]+)', url)  # HOTFIX 11.0: -p- VE -pm- formatları
     return m.group(1) if m else None
 
 
@@ -7236,9 +7258,13 @@ def run_review_headless(urls, api_key):
                             if cffi_data.get("name") and urun_ismi == "İsim Bulunamadı":
                                 urun_ismi = cffi_data["name"]
                                 durum = "OK"
+                            # HOTFIX 11.0: HB satıcı ld+json offers.seller'dan geliyor.
+                            # Eskiden cffi sonucu seller taşımıyordu → "Satıcı: Bulunamadı".
+                            if cffi_data.get("seller") and satici in (None, "Bulunamadı", "Marka Bulunamadı"):
+                                satici = cffi_data["seller"]
                             for rev_text in cffi_data.get("reviews", []):
                                 raw_data_set.add(rev_text)
-                            log.info(f"[Worker] HB cffi reviews — got {len(cffi_data.get('reviews', []))} reviews")
+                            log.info(f"[Worker] HB cffi reviews — got {len(cffi_data.get('reviews', []))} reviews, seller={cffi_data.get('seller')!r}")
                     except Exception as cffi_e:
                         log.info(f"[Worker] HB cffi failed in review analysis: {cffi_e}")
 
