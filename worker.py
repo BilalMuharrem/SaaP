@@ -1296,6 +1296,23 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
             except Exception:
                 pass
 
+        # HOTFIX 10.7: GERÇEK BUYBOX SATICISI.
+        # ld+json offers.seller çoğu üründe MARKAYI veriyor (örn "Samsung"),
+        # Buybox'ı kazanan asıl satıcıyı (örn "BittiBitiyor") değil. HB sayfa-içi
+        # gömülü JSON'da satışı yapan listing'in "merchantName" alanı bulunuyor;
+        # ilk geçen merchantName = Buybox kazananı (canlı debug ile doğrulandı).
+        # Daha doğru olduğu için ld+json seller'ı EZER. Promo/CTA metinleri elenir.
+        try:
+            mm = re.search(r'"merchantName"\s*:\s*"([^"]{2,60})"', html)
+            if mm:
+                buybox = mm.group(1).strip()
+                if buybox and not re.search(
+                    r'(satış\s*yap|mağazanı?\s*aç|hesap\s*oluştur)', buybox, re.IGNORECASE
+                ):
+                    _r["seller"] = buybox
+        except Exception:
+            pass
+
         # --- 3. SKU-based direct API (last resort for price) ---
         if not _r["price"]:
             sku_m = re.search(r"-pm?-([A-Z0-9]+)", src_url)

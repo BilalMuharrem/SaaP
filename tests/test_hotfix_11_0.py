@@ -109,6 +109,42 @@ def test_hb_seller_extracted_from_ldjson(_mock_cffi):
     )
 
 
+_HB_BUYBOX_HTML = """<!doctype html><html><head>
+<script type="application/ld+json">
+{
+  "@type": "Product",
+  "name": "Samsung Galaxy Buds",
+  "brand": {"@type": "Brand", "name": "Samsung"},
+  "offers": {"@type": "Offer", "price": "1299.00",
+             "seller": {"@type": "Organization", "name": "Samsung"}},
+  "aggregateRating": {"@type": "AggregateRating", "ratingValue": 4.5, "ratingCount": 500}
+}
+</script>
+</head><body>
+<script>window.__data = {"listingId":"abc","merchantName":"BittiBitiyor","merchantId":"xyz"}</script>
+</body></html>"""
+
+
+def test_hb_buybox_merchant_preferred_over_brand(monkeypatch):
+    """HOTFIX 10.7: Buybox satıcısı (merchantName) markadan (offers.seller) önce gelmeli.
+    ld+json seller='Samsung' (marka) ama gerçek satıcı merchantName='BittiBitiyor'."""
+    from curl_cffi import requests as cffi_requests
+
+    class _R:
+        status_code = 200
+        text = _HB_BUYBOX_HTML
+        def json(self): return {}
+
+    monkeypatch.setattr(cffi_requests, "get", lambda *a, **k: _R())
+    result = worker._scrape_hepsiburada_cffi(
+        "https://www.hepsiburada.com/samsung-buds-pm-HBC999", fetch_reviews=False
+    )
+    assert result is not None
+    assert result.get("seller") == "BittiBitiyor", (
+        f"Buybox satıcısı yerine '{result.get('seller')}' geldi (marka olmamalı)"
+    )
+
+
 def test_hb_standalone_reviews_extracted(_mock_cffi):
     """HOTFIX 11.0 Bug 3: ayrı @type=Review blokları yorum olarak çekilmeli."""
     url = "https://www.hepsiburada.com/nobera-tuy-toplayici-pm-HBC0000AS54Y9"
