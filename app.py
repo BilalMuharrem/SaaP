@@ -126,4 +126,26 @@ if __name__ == '__main__':
     logging.info("[App] Celery Beat scheduling aktif. Stratejik 4 nokta tarama otomatik.")
     # HOTFIX 1.36: macOS AirPlay Receiver port 5000'i tutuyor → 5005
     _port = int(os.environ.get("PORT", "5005"))
+
+    # Konsola net başlangıç banner'ı. debug=True reloader __main__'i iki kez
+    # çalıştırır (parent izleyici + child servis); banner'ı yalnızca asıl servis
+    # sürecinde (WERKZEUG_RUN_MAIN='true') bas → çift basımı önler. print kasıtlı:
+    # bu bir başlangıç UX'i, log event'i değil.
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        try:
+            import redis as _redis
+            _bu = app.config.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+            _redis.from_url(_bu).ping()
+            _broker_ok = "✓ açık"
+        except Exception:
+            _broker_ok = "✗ KAPALI (worker çalışmaz!)"
+        print("\n" + "=" * 60)
+        print("  🚀 BMK WEB SUNUCUSU BAŞLADI")
+        print(f"     → http://localhost:{_port}")
+        print(f"     Redis broker : {_broker_ok}")
+        print(f"     Mod          : debug (otomatik yeniden yükleme açık)")
+        print("     ⚠️  Arka plan işleri (analiz/tarama) için AYRI bir")
+        print("        terminalde Celery worker'ı da başlatman gerekir.")
+        print("=" * 60 + "\n", flush=True)
+
     app.run(debug=True, host='0.0.0.0', port=_port)

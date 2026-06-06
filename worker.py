@@ -356,6 +356,13 @@ try:
     def _on_worker_ready_catchup(sender=None, **kwargs):
         """Worker hazır olur olmaz tracked-products taramasını ASINKRON tetikle.
         delay() = .apply_async() — task queue'ya yollanır, worker hemen alır."""
+        # Konsola net başlangıç banner'ı — kullanıcı worker'ın gerçekten
+        # ayağa kalktığını tek bakışta görsün. print kasıtlı (başlangıç UX'i).
+        print("\n" + "=" * 60)
+        print("  ⚙️  BMK CELERY WORKER HAZIR — işleri dinliyor")
+        print("     Analiz/tarama istekleri artık işlenecek.")
+        print("     Adımlar bu konsola canlı akacak (Ctrl+C ile durdur).")
+        print("=" * 60 + "\n", flush=True)
         try:
             log.info("[Worker] 🟢 worker_ready — ilk catch-up taraması (asenkron) tetikleniyor...")
             check_tracked_products_task.apply_async(countdown=5)  # 5s gecikme: worker stabilize olsun
