@@ -2104,21 +2104,117 @@ def _extract_hepsiburada_product_id(url):
 
 
 def _track_keyword_hepsiburada(keyword, target_url, max_pages=5):
-    """HOTFIX 1.23: HEPSİBURADA — STRATEJİK GERİ ÇEKİLME (Graceful Degradation).
+    """HOTFIX 11.1: HEPSİBURADA SEO — curl_cffi ile arama sırası tarama.
 
-    Stratejik karar: Hepsiburada DataDome anti-bot çözümü ek altyapı (residential
-    proxy ~$30-50/ay) gerektiriyor. MVP fazında maliyetleri sıfırda tutmak için
-    HB SEO Takibi GEÇİCİ olarak devre dışı bırakıldı.
+    HOTFIX 1.23'te bu modül "HB arama sayfaları DataDome ile korunuyor, residential
+    proxy (~$30-50/ay) gerekir" gerekçesiyle kapatılıp sentinel (-1,-1) döndürüyordu.
+    2026-06 canlı testi bu varsayımı ÇÜRÜTTÜ: HB arama sayfaları (/ara?q=...) artık
+    curl_cffi Chrome TLS taklidiyle SORUNSUZ çekiliyor — DataDome bloğu yok, proxy
+    gerekmez. Ürün sayfalarıyla aynı motor (bkz. _scrape_hepsiburada_cffi).
 
-    Bu fonksiyon artık siteye HİÇ istek atmaz, Playwright başlatmaz, kaynak yormaz.
-    Doğrudan sentinel sinyal (-1, -1) döner → caller bunu "Bakımda / Yakında"
-    olarak yorumlar ve UI'da sarı uyarı rozetiyle gösterir.
+    Strateji (Trendyol mantığının curl_cffi/HTTP karşılığı — tarayıcı YOK):
+      1) https://www.hepsiburada.com/ara?q=<kw>&sayfa=<n>  (n = 1..max_pages)
+      2) Ürün linklerindeki -p-/-pm- SKU'larını document order'da topla
+      3) target SKU eşleşirse o sayfadaki sıra döner → (page, rank)
+      4) Bot/captcha tespiti → zarif çıkış (0, 0)
+      5) Bulunamazsa (0, 0)
 
-    Trendyol odaklı ana ürün stratejimiz tam kapasite çalışır durumda.
+    Playwright'tan daha hafif/hızlı. Caller (page, rank)'i Trendyol ile aynı işler.
+
+    NOT (bilinen yaklaşım): HB arama sayfasında sponsorlu/öneri kartları organik
+    sonuçlara karışabilir; rank document-order'dır (Trendyol ile aynı kabul).
     """
-    log.info(f"[SEO Hepsiburada] '{keyword}' — modül geçici olarak bakımda (HOTFIX 1.23 stratejik karar). Atlanıyor.")
-    # Sentinel: (-1, -1) → "Bakımda / Yakında"
-    return (-1, -1)
+    import urllib.parse
+    import re as _re_hb
+
+    target_sku = _extract_hepsiburada_product_id(target_url)
+    if not target_sku:
+        log.info(f"[SEO Hepsiburada] Hedef URL'de SKU bulunamadı: {target_url}")
+        return (0, 0)
+    target_sku = str(target_sku).strip().upper()
+
+    try:
+        from curl_cffi import requests as cffi_requests
+    except ImportError:
+        log.info("[SEO Hepsiburada] curl_cffi yüklü değil — modül kullanılamaz.")
+        return (0, 0)
+
+    from bs4 import BeautifulSoup
+
+    enc = urllib.parse.quote_plus(keyword.strip())
+    HEADERS = {
+        "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+    }
+
+    empty_streak = 0  # arka arkaya boş sayfa koruması (sonsuz döngü engeli)
+    for page_no in range(1, max_pages + 1):
+        search_url = f"https://www.hepsiburada.com/ara?q={enc}"
+        if page_no > 1:
+            search_url += f"&sayfa={page_no}"
+
+        try:
+            resp = cffi_requests.get(search_url, headers=HEADERS,
+                                     impersonate="chrome110", timeout=20)
+        except Exception as nav_err:
+            log.info(f"[SEO Hepsiburada] Sayfa {page_no} istek hatası: {nav_err}")
+            break
+
+        if resp.status_code != 200:
+            log.info(f"[SEO Hepsiburada] Sayfa {page_no} status={resp.status_code} — çıkılıyor.")
+            break
+
+        # Bot/captcha tespiti — zarif çıkış
+        low = resp.text.lower()
+        if any(sig in low for sig in ("datadome", "px-captcha", "geo.captcha",
+                                      "robot musunuz", "access denied", "are you a human")):
+            log.info(f"[SEO Hepsiburada] ⚠️ Bot koruması algılandı (sayfa {page_no}), çıkılıyor.")
+            break
+
+        # ── DOM document order'da SKU topla (birincil) ──
+        ordered = []
+        seen = set()
+        try:
+            soup = BeautifulSoup(resp.text, "lxml")
+            for a in soup.select('a[href]'):
+                m = _re_hb.search(r'-p[m]?-([A-Z0-9]{8,})', a.get('href', '') or '')
+                if m:
+                    sku = m.group(1)
+                    if sku not in seen:
+                        seen.add(sku)
+                        ordered.append(sku)
+        except Exception as dom_err:
+            log.info(f"[SEO Hepsiburada] DOM parse hatası: {dom_err}")
+
+        # ── HTML regex fallback (DOM boşsa) ──
+        if not ordered:
+            for m in _re_hb.finditer(r'-p[m]?-([A-Z0-9]{8,})', resp.text):
+                sku = m.group(1)
+                if sku not in seen:
+                    seen.add(sku)
+                    ordered.append(sku)
+
+        log.info(f"[SEO Hepsiburada] '{keyword}' Sayfa {page_no} — Eşsiz SKU: {len(ordered)}")
+
+        if ordered and target_sku in ordered:
+            rank = ordered.index(target_sku) + 1
+            log.info(f"[SEO Hepsiburada] '{keyword}' → ✅ EŞLEŞME: sayfa {page_no}, "
+                     f"sıra {rank} (sku={target_sku})")
+            return (page_no, rank)
+
+        if not ordered:
+            empty_streak += 1
+            if empty_streak >= 2:
+                log.info(f"[SEO Hepsiburada] Arda arda {empty_streak} boş sayfa → güvenli çıkış.")
+                break
+        else:
+            empty_streak = 0
+
+    log.info(f"[SEO Hepsiburada] '{keyword}' → ilk {max_pages} sayfada bulunamadı (sku={target_sku}).")
+    return (0, 0)
 
 
 @celery.task
@@ -2181,7 +2277,9 @@ def check_keyword_trackers(app, tracker_ids=None):
         try:
             platform = (kt.platform or '').strip().lower()
 
-            # HOTFIX 1.23: Trendyol birincil & yegane motor; HB sentinel (-1,-1) döner.
+            # HOTFIX 11.1: Trendyol (Playwright) + Hepsiburada (curl_cffi) — ikisi de
+            # gerçek (page, rank) döner. (-1,-1) sentinel dalı artık tetiklenmez ama
+            # geriye dönük güvenlik için aşağıda korundu.
             if platform == 'trendyol':
                 page, rank = _track_keyword_trendyol(kt.keyword, kt.target_url, max_pages=5)
             elif platform == 'hepsiburada':

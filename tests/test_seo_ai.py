@@ -20,14 +20,37 @@ def test_seo_graph_renders(auth_client):
     assert r.status_code == 200
 
 
-def test_seo_tracker_rejects_hepsiburada(auth_client):
-    """HB SEO yakında — POST reddedilir, yönlendirir."""
+def test_seo_tracker_accepts_hepsiburada(auth_client, monkeypatch):
+    """HOTFIX 11.1: HB SEO artık AKTİF — POST kabul edilir, tracker oluşur.
+    (Eskiden 'yakında' diye reddediliyordu.)"""
+    import worker
+    # İlk-kontrol task'ı eager modda gerçek scrape yapmasın → no-op
+    monkeypatch.setattr(worker, 'check_keyword_trackers', lambda *a, **k: None)
+
     r = auth_client.post('/seo-tracker', data={
         'platform': 'Hepsiburada',
-        'keyword': 'test',
-        'target_url': 'https://www.hepsiburada.com/test-p-HBV123',
+        'keyword': 'kedi tüy toplayıcı',
+        'target_url': 'https://www.hepsiburada.com/x-pm-HBC0000AS54Y9',
     }, follow_redirects=False)
     assert r.status_code == 302
+
+    from models import KeywordTracker
+    kt = KeywordTracker.query.filter_by(platform='Hepsiburada').first()
+    assert kt is not None, "Hepsiburada tracker oluşturulmadı"
+    assert kt.keyword == 'kedi tüy toplayıcı'
+
+
+def test_seo_tracker_rejects_hepsiburada_platform_url_mismatch(auth_client, monkeypatch):
+    """HB platformu seçilip Trendyol URL'i verilirse reddedilmeli."""
+    import worker
+    monkeypatch.setattr(worker, 'check_keyword_trackers', lambda *a, **k: None)
+    r = auth_client.post('/seo-tracker', data={
+        'platform': 'Hepsiburada',
+        'keyword': 'gecerli kelime',
+        'target_url': 'https://www.trendyol.com/x-p-12345',  # yanlış platform
+    }, follow_redirects=True)
+    body = r.data.decode('utf-8')
+    assert 'Hepsiburada' in body and ('değil' in body or 'link' in body.lower())
 
 
 def test_seo_tracker_rejects_invalid_keyword(auth_client):

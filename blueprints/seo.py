@@ -75,12 +75,10 @@ def seo_tracker():
         group_label = group_label_raw or None
         return_to = (request.form.get('return_to') or '').strip()
 
-        # Faz 3E: Hepsiburada SEO entegrasyonu yakında — şu an Trendyol-only.
+        # HOTFIX 11.1: Hepsiburada SEO artık AKTİF (curl_cffi ile arama tarama,
+        # proxy gerekmiyor). Trendyol + Hepsiburada ikisi de destekleniyor.
         raw_platform = (request.form.get('platform') or 'Trendyol').strip().lower()
-        if raw_platform.startswith('hep'):
-            flash('🛠️ Hepsiburada SEO takibi yakında geliyor. Şu an Trendyol arama sırası takibi aktif.', 'info')
-            return redirect(url_for(return_to or 'seo.seo_tracker'))
-        platform = 'Trendyol'
+        platform = 'Hepsiburada' if raw_platform.startswith('hep') else 'Trendyol'
 
         if not keyword or len(keyword) < 2:
             flash('⚠️ Lütfen geçerli bir arama kelimesi girin.', 'warning')
@@ -89,8 +87,13 @@ def seo_tracker():
             flash('⚠️ Hedef URL geçerli bir ürün linki olmalı.', 'warning')
             return redirect(url_for(return_to or 'seo.seo_tracker'))
 
-        if platform == 'Trendyol' and 'trendyol.com' not in target_url.lower():
+        # Platform ↔ URL tutarlılık kontrolü
+        _url_low = target_url.lower()
+        if platform == 'Trendyol' and 'trendyol.com' not in _url_low:
             flash('⚠️ "Trendyol" platformu seçildi ama URL Trendyol ürün linki değil.', 'warning')
+            return redirect(url_for(return_to or 'seo.seo_tracker'))
+        if platform == 'Hepsiburada' and 'hepsiburada.com' not in _url_low:
+            flash('⚠️ "Hepsiburada" platformu seçildi ama URL Hepsiburada ürün linki değil.', 'warning')
             return redirect(url_for(return_to or 'seo.seo_tracker'))
 
         exists = KeywordTracker.query.filter_by(
