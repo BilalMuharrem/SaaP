@@ -12,6 +12,7 @@ Tüm route'lar `blueprints/` altındaki modüllerde tanımlıdır:
 """
 import logging
 import os
+import sys
 
 from flask import render_template
 from flask_login import current_user
@@ -120,6 +121,62 @@ def _too_many_requests(e):
 app = create_app()
 
 
+def _spawn_background_services():
+    """app.py tek başına çalıştırıldığında Celery worker + beat'i (ve macOS'ta
+    caffeinate'i) otomatik alt-süreç olarak başlatır → tek `python app.py` ile
+    web + işçi + zamanlayıcı birden ayağa kalkar, Ctrl+C ile hepsi kapanır.
+
+    Neden burada (reloader parent'ında): debug=True reloader __main__'i iki kez
+    çalıştırır. Alt-süreçleri SADECE parent'ta (WERKZEUG_RUN_MAIN tanımsız) bir
+    kez başlatırız; child her kod-reload'unda yeniden doğsa da worker/beat parent'a
+    bağlı kaldığı için tekrar tekrar açılmaz.
+
+    Kapatmak için: BMK_AUTOSTART_WORKERS=0 (örn. ./scripts/start.sh kullanırken).
+    """
+    import subprocess
+    import atexit
+    import signal
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    py = sys.executable  # app.py'yi çalıştıran aynı (.venv) yorumlayıcı
+    services = [
+        ("worker", [py, "-m", "celery", "-A", "extensions.celery", "worker",
+                    "--pool=solo", "--loglevel=info"]),
+        ("beat",   [py, "-m", "celery", "-A", "extensions.celery", "beat",
+                    "--loglevel=info", "--schedule=./celerybeat-schedule"]),
+    ]
+    # macOS: caffeinate ile sistemi uyanık tut → gece 03:15 taraması kaçmasın.
+    if sys.platform == "darwin":
+        services.append(("caffeinate", ["caffeinate", "-i"]))
+
+    procs = []
+    for name, cmd in services:
+        try:
+            # stdout/stderr terminale miras kalır → worker/beat adımları aynı
+            # konsolda canlı görünür (kullanıcının istediği "tek yerden izleme").
+            p = subprocess.Popen(cmd, cwd=here)
+            procs.append((name, p))
+            print(f"  ✅ {name} başlatıldı (pid={p.pid})")
+        except Exception as exc:  # bir servis açılmazsa web yine çalışsın
+            print(f"  ⚠️  {name} başlatılamadı: {exc}")
+
+    def _cleanup(*_args):
+        for name, p in procs:
+            if p.poll() is None:  # hâlâ çalışıyorsa
+                try:
+                    p.terminate()
+                except Exception:
+                    pass
+    atexit.register(_cleanup)
+    # Ctrl+C / kill durumunda da çocukları topla
+    for _sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            signal.signal(_sig, lambda *_a: (_cleanup(), sys.exit(0)))
+        except Exception:
+            pass
+    return procs
+
+
 if __name__ == '__main__':
     init_db(app)
     # Periyodik tarama Celery Beat tarafından yönetiliyor (extensions.py beat_schedule)
@@ -127,10 +184,18 @@ if __name__ == '__main__':
     # HOTFIX 1.36: macOS AirPlay Receiver port 5000'i tutuyor → 5005
     _port = int(os.environ.get("PORT", "5005"))
 
-    # Konsola net başlangıç banner'ı. debug=True reloader __main__'i iki kez
-    # çalıştırır (parent izleyici + child servis); banner'ı yalnızca asıl servis
-    # sürecinde (WERKZEUG_RUN_MAIN='true') bas → çift basımı önler. print kasıtlı:
-    # bu bir başlangıç UX'i, log event'i değil.
+    _autostart = os.environ.get("BMK_AUTOSTART_WORKERS", "1") != "0"
+
+    # ── Arka plan servislerini otomatik başlat (reloader parent'ında, bir kez) ──
+    if _autostart and not os.environ.get("WERKZEUG_RUN_MAIN"):
+        print("\n" + "=" * 60)
+        print("  ⚙️  ARKA PLAN SERVİSLERİ OTOMATİK BAŞLATILIYOR")
+        print("     (worker + beat" + (" + caffeinate" if sys.platform == "darwin" else "") + ")")
+        _spawn_background_services()
+        print("=" * 60 + "\n", flush=True)
+
+    # Konsola net başlangıç banner'ı. Banner'ı yalnızca asıl servis sürecinde
+    # (WERKZEUG_RUN_MAIN='true') bas → reloader çift basımını önle. print kasıtlı.
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         try:
             import redis as _redis
@@ -139,13 +204,13 @@ if __name__ == '__main__':
             _broker_ok = "✓ açık"
         except Exception:
             _broker_ok = "✗ KAPALI (worker çalışmaz!)"
+        _auto_txt = ("worker + beat OTOMATİK başlatıldı (aynı pencerede)"
+                     if _autostart else "otomatik başlatma KAPALI (BMK_AUTOSTART_WORKERS=0)")
         print("\n" + "=" * 60)
         print("  🚀 BMK WEB SUNUCUSU BAŞLADI")
         print(f"     → http://localhost:{_port}")
         print(f"     Redis broker : {_broker_ok}")
-        print(f"     Mod          : debug (otomatik yeniden yükleme açık)")
-        print("     ⚠️  Arka plan işleri (analiz/tarama) için AYRI bir")
-        print("        terminalde Celery worker'ı da başlatman gerekir.")
+        print(f"     Arka plan    : {_auto_txt}")
         print("=" * 60 + "\n", flush=True)
 
     app.run(debug=True, host='0.0.0.0', port=_port)
