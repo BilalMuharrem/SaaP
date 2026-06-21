@@ -39,7 +39,24 @@ Trendyol & Hepsiburada satıcıları için yapay zeka destekli rekabet istihbara
 - Redis 6+ (yerel ya da Upstash gibi managed)
 - `pg_dump` (PostgreSQL client tools — yedekleme scripti için)
 
-### Adımlar
+### Hızlı yol — tek komut (önerilen)
+
+Yeni bir makinede klonladıktan sonra:
+
+```bash
+git clone https://github.com/BilalMuharrem/SaaP.git
+cd SaaP
+./setup.sh              # venv + bağımlılıklar + Playwright + .env + DB şeması
+# .env'deki sırları doldur (GROQ_API_KEY, ADMIN_EMAIL, ADMIN_PASSWORD), sonra:
+./setup.sh              # (gerekiyorsa) DB şemasını tamamlamak için tekrar
+./.venv/bin/python app.py   # web + worker + beat hepsi otomatik → http://localhost:5005
+```
+
+`setup.sh` idempotenttir — tekrar çalıştırmak güvenlidir, yapılmış adımları atlar.
+Ön koşullar (script kurmaz, kuruluysa kullanır): **Redis** ve **PostgreSQL** çalışıyor olmalı
+(`brew install redis postgresql@15 && brew services start redis postgresql@15`).
+
+### Adımlar (elle — setup.sh ne yapıyor)
 
 ```bash
 # 1. Klonla
