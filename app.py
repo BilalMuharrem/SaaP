@@ -186,6 +186,25 @@ if __name__ == '__main__':
 
     _autostart = os.environ.get("BMK_AUTOSTART_WORKERS", "1") != "0"
 
+    # ── Port çakışması kontrolü (orphan süreç önleme) ──
+    # Arka plan servisleri app.run() BIND'inden ÖNCE spawn ediliyor. Port doluysa
+    # eskiden worker/beat bir an açılıp orphan kalıyordu. Artık: parent'ta önce
+    # portu kontrol et — doluysa HİÇ spawn etme, net mesajla çık.
+    if not os.environ.get("WERKZEUG_RUN_MAIN"):
+        import socket as _socket
+        with _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM) as _sck:
+            _sck.settimeout(0.5)
+            if _sck.connect_ex(("127.0.0.1", _port)) == 0:  # 0 = bağlanıldı = dolu
+                print("\n" + "=" * 60)
+                print(f"  ⛔ PORT {_port} ZATEN KULLANIMDA")
+                print("     Muhtemelen uygulama başka bir pencerede hâlâ açık.")
+                print("     Çözüm — birini yap:")
+                print(f"       • Eski pencereyi kapat (PyCharm'da kırmızı ⏹ Stop)")
+                print(f"       • Veya kullanan süreci bul/durdur:  lsof -ti :{_port} | xargs kill")
+                print(f"       • Veya farklı port:  PORT={_port + 1} python app.py")
+                print("=" * 60 + "\n", flush=True)
+                sys.exit(1)
+
     # ── Arka plan servislerini otomatik başlat (reloader parent'ında, bir kez) ──
     if _autostart and not os.environ.get("WERKZEUG_RUN_MAIN"):
         print("\n" + "=" * 60)

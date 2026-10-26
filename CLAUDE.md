@@ -23,7 +23,7 @@ Bu proje büyük bir refactor'dan geçti (Faz 0 → 9). Önceki durum:
 
 Şu anki durum (Faz 10 sonrası):
 - 12 Flask blueprint, services/ ayrımı, utils/ yardımcıları
-- 148 pytest test + GitHub Actions CI
+- 199 pytest test + GitHub Actions CI
 - Sentry + DB backup script + healthz endpoint + ops docs
 - Public demo sayfası (signup'sız)
 - Onboarding wizard + demo data seed
@@ -31,6 +31,26 @@ Bu proje büyük bir refactor'dan geçti (Faz 0 → 9). Önceki durum:
 - **Faz 10A güvenlik:** CSRF aktif (Flask-WTF), admin env-tabanlı, GROQ key env-only
 - **Faz 10B sağlamlaştırma:** Alembic devrede, `get_tr_now()` ZoneInfo tabanlı,
   bare `except:` temizliği (46 yerde + models)
+
+### Son değişiklikler (HOTFIX 10.7 – 11.1, DX)
+
+- **HOTFIX 11.0 — Hepsiburada parser onarımı:** HB `__NEXT_DATA__`'yı kaldırdı.
+  Satıcı artık ld+json `offers.seller`'dan, yorumlar ayrı `@type=Review`
+  bloklarından; SKU regex `-p-` yanında `-pm-` formatını da yakalar.
+- **HOTFIX 10.7 — HB gerçek Buybox satıcısı:** ld+json seller çoğu üründe
+  MARKAYI veriyor; sayfa-içi gömülü JSON'daki ilk `merchantName` = buybox
+  kazananı. `_parse_hb_html` bunu ld+json seller'ın üstüne yazar.
+- **HOTFIX 11.1 — Hepsiburada SEO AKTİF:** Eskiden "DataDome proxy gerekir"
+  diye kapalıydı (sentinel -1,-1). Canlı test çürüttü: `/ara?q=...` curl_cffi
+  ile sorunsuz çekiliyor. `_track_keyword_hepsiburada` artık gerçek tarama
+  yapıyor (Trendyol mantığının HTTP karşılığı). **Artık TY + HB SEO ikisi de
+  aktif.** HB yorum derinliği hâlâ ~5 (yorum API'si Bearer token istiyor).
+- **DX — `app.py` tek komut:** `python app.py` artık worker + beat +
+  (macOS'ta) caffeinate'i otomatik alt-süreç olarak başlatır (reloader
+  parent'ında, bir kez; Ctrl+C hepsini kapatır). Port doluysa orphan spawn
+  etmeden net mesajla çıkar. Kapatmak: `BMK_AUTOSTART_WORKERS=0`.
+- **DX — Taşınabilirlik:** GitHub'a push'landı (github.com/BilalMuharrem/SaaP).
+  `setup.sh` (tek komut kurulum) + `KURULUM.md` (yeni makine rehberi) eklendi.
 
 ---
 
@@ -290,7 +310,7 @@ yapma — TypeError.
 ## Test Konvansiyonları
 
 ```bash
-./.venv/bin/pytest                     # tüm suite (148 test, ~17sn)
+./.venv/bin/pytest                     # tüm suite (199 test, ~24sn)
 ./.venv/bin/pytest -k "demo"           # adında demo geçen testler
 ./.venv/bin/pytest tests/test_X.py -v  # tek dosya verbose
 ```
@@ -324,7 +344,7 @@ Detaylar git log'da — her faz commit'i Faz numarasıyla başlar (`feat(faz7d):
 ## Bana (Sonraki Claude'a) Notlar
 
 1. **Önce git log oku** — son 10-15 commit, projenin ne yöne gittiğini söyler.
-2. **148 test güvenliğindir** — değişiklik yaparken `pytest` çalıştırmadan commit etme.
+2. **199 test güvenliğindir** — değişiklik yaparken `pytest` çalıştırmadan commit etme.
 3. **Sahte içerik yazma** — kullanıcı bunu en sevmediği şey. Beta hikayesi her zaman dürüst yol.
 4. **`worker.py`'ye sakin yaklaş** — 7400 satır, refactor edilmedi (Faz 1H sadece tek bir helper modülü ayırdı). Büyük dokunuş risk taşır.
 5. **`docs/operations.md`** — Sentry/UptimeRobot/backup gibi ops konularında kullanıcıya açıklama yaparken o dosyayı referans göster.
