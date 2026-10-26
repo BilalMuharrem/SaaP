@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ legal_title }}{% endblock %}
+{% block body %}
+<div style="max-width:820px; margin:0 auto; padding:40px 20px 80px;">
+
+  {# ⚠️ TASLAK uyarısı — gerçek metinler avukat onayından geçene kadar görünür.
+     Onaylı metinler girilince bu bloğu SİL. #}
+  <div style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.45);
+              border-radius:12px; padding:14px 18px; margin-bottom:28px; color:#b45309;
+              font-size:13px; line-height:1.6;">
+    <b>⚠️ TASLAK METİN</b> — Bu belge bir başlangıç şablonudur ve <b>hukuki onay
+    gerektirir</b>. Halka açık kullanımdan önce bir avukat/hukuk danışmanı tarafından
+    gözden geçirilmeli; [köşeli parantez] içindeki alanlar doldurulmalıdır.
+  </div>
+
+  <a href="{{ url_for('auth.index') }}" style="color:var(--accent); text-decoration:none;
+     font-size:14px; display:inline-block; margin-bottom:16px;">← Ana sayfa</a>
+
+  <h1 style="font-size:28px; margin:0 0 6px; color:var(--text-primary);">{{ legal_title }}</h1>
+  <p style="color:var(--text-muted); font-size:13px; margin:0 0 32px;">
+    Son güncelleme: [GÜNCELLEME TARİHİ] · Yürürlük: [YÜRÜRLÜK TARİHİ]
+  </p>
+
+  <div class="legal-body" style="color:var(--text-primary); font-size:15px; line-height:1.75;">
+    {% block legal_content %}{% endblock %}
+  </div>
+
+  {# Çapraz linkler — tüm yasal belgeler birbirine bağlı #}
+  <hr style="border:none; border-top:1px solid var(--border); margin:40px 0 20px;">
+  <nav style="display:flex; flex-wrap:wrap; gap:16px; font-size:13px;">
+    <a href="{{ url_for('legal.terms') }}" style="color:var(--text-muted); text-decoration:none;">Kullanım Koşulları</a>
+    <a href="{{ url_for('legal.privacy') }}" style="color:var(--text-muted); text-decoration:none;">Gizlilik Politikası</a>
+    <a href="{{ url_for('legal.kvkk') }}" style="color:var(--text-muted); text-decoration:none;">KVKK Aydınlatma Metni</a>
+    <a href="{{ url_for('legal.cookies') }}" style="color:var(--text-muted); text-decoration:none;">Çerez Politikası</a>
+  </nav>
+</div>
+<style>
+  .legal-body h2 { font-size:19px; margin:30px 0 10px; color:var(--text-primary); }
+  .legal-body h3 { font-size:16px; margin:22px 0 8px; color:var(--text-primary); }
+  .legal-body p  { margin:0 0 14px; }
+  .legal-body ul { margin:0 0 14px; padding-left:22px; }
+  .legal-body li { margin:0 0 7px; }
+  .legal-body .ph { color:#d97706; font-weight:600; }  /* [placeholder] vurgusu */
+</style>
+{% endblock %}

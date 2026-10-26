@@ -45,6 +45,7 @@ def test_register_seeds_demo_products(client):
         'full_name': 'Demo Test',
         'company': '',
         'phone': '',
+        'accept_terms': '1',  # KVKK/Koşullar onayı zorunlu
     }, follow_redirects=False)
 
     assert r.status_code == 302  # → /login

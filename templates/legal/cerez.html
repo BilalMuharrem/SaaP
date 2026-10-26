@@ -1,0 +1,31 @@
+{% extends "legal/_base.html" %}
+{% set legal_title = "Çerez Politikası" %}
+{% block legal_content %}
+<p>Bu Çerez Politikası, <span class="ph">[HİZMET ADI]</span> üzerinde çerezleri (cookies)
+ve benzeri teknolojileri nasıl kullandığımızı açıklar.</p>
+
+<h2>1. Çerez Nedir?</h2>
+<p>Çerezler, siteyi ziyaret ettiğinizde tarayıcınıza kaydedilen küçük metin
+dosyalarıdır. Oturumunuzu sürdürmek ve deneyiminizi iyileştirmek için kullanılır.</p>
+
+<h2>2. Kullandığımız Çerez Türleri</h2>
+<ul>
+  <li><b>Zorunlu çerezler:</b> Oturum açma, güvenlik (CSRF) ve temel işlevler için
+      gereklidir. Bunlar olmadan Platform çalışmaz; devre dışı bırakılamaz.</li>
+  <li><b>Tercih çerezleri:</b> Tema (açık/koyu), menü durumu gibi tercihlerinizi
+      hatırlar. (Bu veriler yalnızca tarayıcınızda tutulur.)</li>
+  <li><b>Analitik çerezler:</b> <span class="ph">[ANALİTİK ARAÇ, ör. Plausible/PostHog —
+      kuruluyorsa]</span> Platform kullanımını anlamak için. Yoksa bu satır silinir.</li>
+</ul>
+
+<h2>3. Çerezleri Yönetme</h2>
+<p>Tarayıcı ayarlarınızdan çerezleri silebilir veya engelleyebilirsiniz. Ancak zorunlu
+çerezleri engellerseniz oturum açma gibi işlevler çalışmayabilir.</p>
+
+<h2>4. Üçüncü Taraf Çerezleri</h2>
+<p><span class="ph">[Varsa ödeme/analitik gibi üçüncü taraf hizmetlerin çerezleri burada
+listelenmeli]</span></p>
+
+<h2>5. İletişim</h2>
+<p>Sorularınız için: <span class="ph">[İLETİŞİM E-POSTASI]</span></p>
+{% endblock %}

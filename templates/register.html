@@ -37,6 +37,18 @@
                     <label class="form-label">Şifre Tekrar *</label>
                     <input type="password" name="confirm_password" class="form-input" placeholder="Şifrenizi tekrar girin" required>
                 </div>
+                <div class="form-group" style="margin-top:4px;">
+                    <label style="display:flex; align-items:flex-start; gap:9px; font-size:13px; line-height:1.5; cursor:pointer; color:var(--text-secondary,var(--text-muted));">
+                        <input type="checkbox" name="accept_terms" value="1" required
+                               style="margin-top:2px; width:16px; height:16px; flex-shrink:0; cursor:pointer;">
+                        <span>
+                            <a href="{{ url_for('legal.terms') }}" target="_blank" style="color:var(--accent);">Kullanım Koşulları</a>,
+                            <a href="{{ url_for('legal.privacy') }}" target="_blank" style="color:var(--accent);">Gizlilik Politikası</a> ve
+                            <a href="{{ url_for('legal.kvkk') }}" target="_blank" style="color:var(--accent);">KVKK Aydınlatma Metni</a>'ni
+                            okudum, kabul ediyorum. *
+                        </span>
+                    </label>
+                </div>
                 <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:8px;">
                     Hesap Oluştur →
                 </button>

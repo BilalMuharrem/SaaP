@@ -1,0 +1,58 @@
+{% extends "legal/_base.html" %}
+{% set legal_title = "Gizlilik Politikası" %}
+{% block legal_content %}
+<p>Bu Gizlilik Politikası, <span class="ph">[ŞİRKET ADI]</span> olarak kişisel
+verilerinizi nasıl topladığımızı, kullandığımızı ve koruduğumuzu açıklar. KVKK
+kapsamındaki haklarınız ve veri işleme detayları için ayrıca
+<a href="{{ url_for('legal.kvkk') }}">KVKK Aydınlatma Metni</a>'ni inceleyin.</p>
+
+<h2>1. Topladığımız Veriler</h2>
+<ul>
+  <li><b>Hesap bilgileri:</b> ad soyad, e-posta, telefon, firma adı.</li>
+  <li><b>Kullanım verileri:</b> takip ettiğiniz ürün/mağaza bağlantıları, analiz
+      talepleri, oluşturduğunuz raporlar.</li>
+  <li><b>Teknik veriler:</b> IP adresi, tarayıcı/cihaz bilgisi, oturum çerezleri.</li>
+  <li><b>Ödeme verileri:</b> <span class="ph">[ÖDEME SAĞLAYICI, ör. iyzico]</span>
+      aracılığıyla işlenir; kart bilgileriniz sunucularımızda saklanmaz.</li>
+</ul>
+
+<h2>2. Verileri Kullanma Amaçlarımız</h2>
+<ul>
+  <li>Hizmeti sunmak, hesabınızı yönetmek ve sizinle iletişim kurmak,</li>
+  <li>Fiyat/sıralama değişikliklerinde bildirim göndermek,</li>
+  <li>Hizmeti iyileştirmek ve güvenliği sağlamak,</li>
+  <li>Yasal yükümlülükleri yerine getirmek.</li>
+</ul>
+
+<h2>3. Üçüncü Taraflarla Paylaşım</h2>
+<p>Kişisel verilerinizi satmayız. Yalnızca hizmetin işlemesi için gerekli altyapı
+sağlayıcılarıyla paylaşırız:</p>
+<ul>
+  <li><b>Barındırma/altyapı:</b> <span class="ph">[HOSTING SAĞLAYICI]</span></li>
+  <li><b>E-posta gönderimi:</b> <span class="ph">[E-POSTA SAĞLAYICI, ör. Resend]</span></li>
+  <li><b>Yapay zeka analizi:</b> <span class="ph">[YZ SAĞLAYICI, ör. Groq]</span> — analiz
+      için gönderilen veriler</li>
+  <li><b>Hata izleme:</b> <span class="ph">[Sentry vb.]</span></li>
+  <li><b>Ödeme:</b> <span class="ph">[ÖDEME SAĞLAYICI]</span></li>
+</ul>
+<p>Yurt dışına veri aktarımı söz konusuysa KVKK md. 9 kapsamında gerekli şartlar sağlanır.
+<span class="ph">[YURT DIŞI AKTARIM DURUMU — danışmanla netleştirilmeli]</span></p>
+
+<h2>4. Saklama Süresi</h2>
+<p>Verileriniz, hesabınız aktif olduğu sürece ve yasal saklama yükümlülükleri boyunca
+saklanır. Hesabınızı sildiğinizde kişisel verileriniz
+<span class="ph">[SİLME SÜRESİ, ör. 30 gün]</span> içinde silinir veya anonimleştirilir.</p>
+
+<h2>5. Güvenlik</h2>
+<p>Verilerinizi korumak için teknik ve idari tedbirler alırız: şifreli bağlantı (HTTPS),
+şifrelerin özetlenerek (hash) saklanması, erişim kısıtlamaları ve güvenlik güncellemeleri.</p>
+
+<h2>6. Haklarınız</h2>
+<p>KVKK md. 11 kapsamında verilerinize erişme, düzeltme, silme ve işlemeye itiraz etme
+haklarınız vardır. Hesap ayarlarınızdan verilerinizi silebilir veya
+<span class="ph">[KVKK BAŞVURU E-POSTASI]</span> adresine başvurabilirsiniz.</p>
+
+<h2>7. İletişim</h2>
+<p>Veri sorumlusu: <span class="ph">[ŞİRKET ADI]</span> ·
+<span class="ph">[ADRES]</span> · <span class="ph">[KVKK/İLETİŞİM E-POSTASI]</span></p>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "legal/_base.html" %}
+{% set legal_title = "KVKK Aydınlatma Metni" %}
+{% block legal_content %}
+<p>6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca, veri sorumlusu
+sıfatıyla <span class="ph">[ŞİRKET ADI]</span> tarafından kişisel verilerinizin
+işlenmesine ilişkin olarak sizi aydınlatmak isteriz.</p>
+
+<h2>1. Veri Sorumlusu</h2>
+<p><span class="ph">[ŞİRKET ADI]</span> · <span class="ph">[ADRES]</span> ·
+<span class="ph">[MERSİS/VERGİ NO]</span> · <span class="ph">[E-POSTA]</span></p>
+
+<h2>2. İşlenen Kişisel Veriler</h2>
+<ul>
+  <li><b>Kimlik/İletişim:</b> ad soyad, e-posta, telefon, firma bilgisi.</li>
+  <li><b>Müşteri İşlem:</b> takip edilen ürünler, analiz talepleri, rapor geçmişi.</li>
+  <li><b>İşlem Güvenliği:</b> IP adresi, oturum ve log kayıtları, çerez verileri.</li>
+</ul>
+
+<h2>3. İşleme Amaçları</h2>
+<p>Kişisel verileriniz; hizmetin sunulması, hesap yönetimi, bildirim gönderimi, hizmetin
+iyileştirilmesi, güvenliğin sağlanması ve yasal yükümlülüklerin yerine getirilmesi
+amaçlarıyla işlenir.</p>
+
+<h2>4. Hukuki Sebepler (KVKK md. 5)</h2>
+<ul>
+  <li>Bir sözleşmenin kurulması/ifası için veri işlemenin gerekli olması,</li>
+  <li>Hukuki yükümlülüğün yerine getirilmesi,</li>
+  <li>Veri sorumlusunun meşru menfaati,</li>
+  <li>Gerekli hallerde <b>açık rızanız</b> (ör. pazarlama iletileri, yurt dışı aktarım).</li>
+</ul>
+
+<h2>5. Toplama Yöntemi</h2>
+<p>Verileriniz; kayıt formu, platform kullanımı ve çerezler aracılığıyla elektronik
+ortamda toplanır.</p>
+
+<h2>6. Aktarım</h2>
+<p>Verileriniz, hizmetin işlemesi için altyapı, e-posta, yapay zeka, hata izleme ve ödeme
+sağlayıcılarıyla; hukuki zorunluluk halinde yetkili kurumlarla paylaşılabilir. Ayrıntı
+için <a href="{{ url_for('legal.privacy') }}">Gizlilik Politikası</a>.
+<span class="ph">[YURT DIŞI AKTARIM — KVKK md.9 kapsamı danışmanla netleştirilmeli]</span></p>
+
+<h2>7. Haklarınız (KVKK md. 11)</h2>
+<p>Kişisel verilerinizin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltme,
+silinmesini/yok edilmesini isteme, işlemeye itiraz etme ve zarara uğramanız halinde
+tazminat talep etme haklarına sahipsiniz.</p>
+
+<h2>8. Başvuru</h2>
+<p>Haklarınızı kullanmak için <span class="ph">[KVKK BAŞVURU E-POSTASI / ADRES]</span>
+üzerinden başvurabilirsiniz. Başvurunuz en geç 30 gün içinde sonuçlandırılır.</p>
+{% endblock %}

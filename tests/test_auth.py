@@ -72,6 +72,7 @@ def test_register_success(client, app):
         'full_name': 'Yeni Kullanıcı',
         'company': 'Test Co',
         'phone': '5550001122',
+        'accept_terms': '1',  # KVKK/Koşullar onayı zorunlu
     }, follow_redirects=False)
     # Başarılıysa /login'e yönlendirir
     assert r.status_code == 302

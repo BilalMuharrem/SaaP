@@ -73,6 +73,7 @@ def register():
         full_name = request.form.get('full_name', '').strip()
         company = request.form.get('company', '').strip()
         phone = request.form.get('phone', '').strip()
+        accept_terms = request.form.get('accept_terms')  # checkbox işaretliyse '1'
 
         errors = []
         if not email or '@' not in email:
@@ -83,6 +84,9 @@ def register():
             errors.append('Şifreler eşleşmiyor.')
         if not full_name:
             errors.append('Ad Soyad zorunludur.')
+        # KVKK/Koşullar onayı zorunlu (client-side required'a ek backend güvencesi)
+        if not accept_terms:
+            errors.append('Devam etmek için Kullanım Koşulları ve KVKK metnini onaylamalısınız.')
         if User.query.filter_by(email=email).first():
             errors.append('Bu e-posta adresi zaten kayıtlı.')
 
