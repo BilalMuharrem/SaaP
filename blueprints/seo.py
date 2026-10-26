@@ -298,7 +298,8 @@ def api_generate_seo_tips(tracker_id):
             ],
             temperature=0.4,
             max_tokens=500,
-            response_format={'type': 'json_object'},
+            # Katı json_object modu gpt-oss'ta 400 json_validate_failed veriyor;
+            # aşağıda markdown fence temizliği + json.loads ile parse ediliyor.
         )
         raw = (resp.choices[0].message.content or '').strip()
         if raw.startswith('```'):

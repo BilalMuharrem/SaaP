@@ -6497,7 +6497,10 @@ def analyze_reviews_with_ai(reviews, api_key, url=None):
             model=_resolve_groq_model(),
             temperature=0.1,
             max_tokens=1500,
-            response_format={"type": "json_object"}
+            # NOT: Groq'un katı response_format={"type":"json_object"} modu gpt-oss
+            # modellerinde json_validate_failed (400) veriyor. Prompt zaten "tek JSON
+            # obje dön" diyor; aşağıdaki parser (json.loads + regex + virgül onarımı)
+            # metinden JSON'ı çıkarır → model-agnostik, daha sağlam.
         )
         raw_content = response.choices[0].message.content or ""
 
