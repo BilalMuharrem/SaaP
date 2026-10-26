@@ -19,7 +19,7 @@ from flask_login import current_user
 
 from extensions import db, login_manager, limiter, csrf
 from models import User, Notification, init_db
-from config import Config
+from config import Config, ProductionConfig
 from logging_config import setup_logging
 from utils.filters import register_filters
 from blueprints import register_blueprints
@@ -65,6 +65,10 @@ def create_app(config_object=Config):
     flask_app.register_error_handler(403, _forbidden)
     flask_app.register_error_handler(404, _not_found)
     flask_app.register_error_handler(429, _too_many_requests)
+    flask_app.register_error_handler(500, _server_error)
+
+    # Production güvenlik başlıkları (dev'de zararsız; HSTS yalnız prod+https)
+    flask_app.after_request(_security_headers)
 
     return flask_app
 
@@ -117,8 +121,55 @@ def _too_many_requests(e):
     ), 429
 
 
+def _server_error(e):
+    """500 handler. 500'ler genelde bozuk DB transaction'ından gelir → önce
+    session'ı rollback et (yoksa sonraki istek de patlar). error.html base.html'i
+    extend ettiği ve base DB sorgusu yaptığı için render DE başarısız olabilir →
+    düz HTML fallback. Gerçek hata zaten Sentry'ye + log'a düşer."""
+    try:
+        from extensions import db
+        db.session.rollback()
+    except Exception:
+        pass
+    logging.exception("[500] Sunucu hatası")
+    try:
+        return render_template('error.html', code=500,
+                               message='Beklenmeyen bir hata oluştu. '
+                                       'Ekibimiz bilgilendirildi, lütfen biraz sonra tekrar deneyin.'), 500
+    except Exception:
+        # base.html bile render edilemiyorsa (örn. DB tamamen down) minimal sayfa
+        return (
+            "<!doctype html><html lang='tr'><head><meta charset='utf-8'>"
+            "<title>Hata 500</title></head><body style='font-family:system-ui;"
+            "text-align:center;padding:60px;background:#0f172a;color:#e2e8f0;'>"
+            "<h1 style='font-size:48px;margin:0;'>500</h1>"
+            "<p>Beklenmeyen bir hata oluştu. Lütfen biraz sonra tekrar deneyin.</p>"
+            "<a href='/' style='color:#60a5fa;'>Ana sayfaya dön</a>"
+            "</body></html>", 500
+        )
+
+
+def _security_headers(response):
+    """Production güvenlik başlıkları. Dev'de (http) zararsız; HSTS yalnızca
+    gerçek https isteklerinde eklenir (lokal http'yi kilitlememek için)."""
+    from flask import request
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+    # HSTS: sadece güvenli (https) bağlantıda — aksi halde dev'de localhost'u kilitler
+    if request.is_secure:
+        response.headers.setdefault(
+            'Strict-Transport-Security', 'max-age=31536000; includeSubDomains'
+        )
+    return response
+
+
 # Modül seviyesinde tek örnek — worker.py ve gunicorn bunu bekler.
-app = create_app()
+# APP_ENV=production → güvenlik sertleştirmeli ProductionConfig; aksi halde dev Config.
+# Modül seviyesinde: gunicorn ve worker.py bu `app`'i import eder.
+_env = os.environ.get('APP_ENV', '').strip().lower()
+app = create_app(ProductionConfig if _env == 'production' else Config)
 
 
 def _spawn_background_services():

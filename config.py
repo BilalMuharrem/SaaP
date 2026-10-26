@@ -114,6 +114,24 @@ class Config:
     task_reject_on_worker_lost = True
 
 
+# ── Production Config ─────────────────────────────────────────────────────────
+# Halka açık deploy'da kullanılır. APP_ENV=production ise app.py otomatik seçer.
+# Config'in TÜM ayarlarını miras alır, sadece güvenlik sertleştirmesi ekler.
+class ProductionConfig(Config):
+    DEBUG = False
+    TESTING = False
+
+    # Çerez güvenliği — HTTPS zorunlu, JS erişemez, CSRF'e karşı SameSite
+    SESSION_COOKIE_SECURE = True       # çerez yalnızca https'te gönderilir
+    SESSION_COOKIE_HTTPONLY = True     # JS document.cookie ile okuyamaz
+    SESSION_COOKIE_SAMESITE = 'Lax'    # cross-site POST'larda çerez gitmez (CSRF savunması)
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
+    PREFERRED_URL_SCHEME = 'https'     # url_for(_external=True) https üretir
+
+    # CSRF zaten Config'te aktif (Flask-WTF). Prod'da da açık kalır.
+
+
 # ── Test Config ─────────────────────────────────────────────────────────────
 # pytest fixture'ları bu Config'i kullanır — SQLite in-memory, CSRF/limit kapalı.
 # Config'in fail-loud SECRET_KEY kontrolünden kaçınmak için BAĞIMSIZ class.
