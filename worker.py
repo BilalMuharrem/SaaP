@@ -5104,6 +5104,34 @@ def extract_stock(page):
 # HOTFIX 1.13 — OMNİKANAL YORUM KAZIMA (Amazon, N11, Çiçeksepeti, PttAVM)
 # =========================================================================
 
+def _extract_ty_comments_from_html(html):
+    """HOTFIX 11.2: Trendyol /yorumlar sayfasındaki gömülü JSON state'inden
+    yorum metinlerini çıkarır.
+
+    Neden: eski yorum API host'ları (public-mdc / public.trendyol.com) DNS-dead,
+    eski socialgw-service artık 556 "Service Unavailable" dönüyor. Ama /yorumlar
+    sayfası curl_cffi ile 200 dönüyor ve yorumlar sayfa-içi JSON state'inde
+    "comment":"..." olarak gömülü geliyor (React SSR). Bu, artık birincil kaynak.
+
+    JSON escape'leri (\\uXXXX vb.) düzgün çözer. Sıralı liste döner; tekrarların
+    ayıklanması (dedupe) ve sayaç sınırı çağrı tarafında (_add / target_count).
+    """
+    import json as _json_c
+    import re as _re_c
+    out = []
+    if not html:
+        return out
+    for m in _re_c.finditer(r'"comment"\s*:\s*"((?:[^"\\]|\\.)*)"', html):
+        try:
+            body = _json_c.loads('"' + m.group(1) + '"')
+        except Exception:
+            body = m.group(1)
+        body = (body or "").strip()
+        if 10 < len(body) < 2000:
+            out.append(body)
+    return out
+
+
 def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
     """HOTFIX 1.26: Trendyol yorum sayfalandırması.
 
@@ -5351,6 +5379,22 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
                                     log.info(f"[TY-Reviews] HARD __INITIAL_STATE__ → {len(collected)} yorum")
                         except Exception as state_re_err:
                             log.info(f"[TY-Reviews] __INITIAL_STATE__ regex hata: {state_re_err}")
+
+                        # HOTFIX 11.2: TY yorum API host'ları (public-mdc / public)
+                        # DNS-dead, eski socialgw-service artık 556. Ama /yorumlar
+                        # sayfası curl_cffi ile 200 dönüyor ve yorumlar sayfa-içi JSON
+                        # state'inde "comment":"..." olarak gömülü geliyor (React SSR).
+                        # __INITIAL_STATE__ walk yapısı kaçırırsa, doğrudan JSON
+                        # "comment" alanlarını çek (canlı doğrulandı: 30 yorum).
+                        if len(collected) < 10:
+                            try:
+                                for body in _extract_ty_comments_from_html(html_full):
+                                    _add(body)
+                                    if len(collected) >= target_count:
+                                        break
+                                log.info(f"[TY-Reviews] HARD JSON comment → {len(collected)} yorum (toplam)")
+                            except Exception as jc_err:
+                                log.info(f"[TY-Reviews] JSON comment hata: {jc_err}")
 
                         # DOM regex: <div class="review-text">...<p>...</p>... gibi
                         if len(collected) < 10:
