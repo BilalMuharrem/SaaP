@@ -54,3 +54,16 @@ def resolve_groq_model():
     except Exception:
         pass
     return (os.environ.get('GROQ_MODEL', '') or '').strip() or _DEFAULT_GROQ_MODEL
+
+
+def groq_extra_params(model=None):
+    """Modele özgü ek Groq parametreleri (chat.completions.create'e **ile geçilir).
+
+    gpt-oss modelleri içsel 'reasoning' yapıyor ve bu token harcıyor; uzun girdide
+    tüm max_tokens'ı reasoning'e harcayıp content'i BOŞ bırakabiliyor
+    (finish_reason='length'). reasoning_effort='low' bunu sınırlar → content gelir.
+    Parametreyi desteklemeyen modellere (ör. qwen/llama) GÖNDERİLMEZ."""
+    m = (model or resolve_groq_model()).lower()
+    if 'gpt-oss' in m:
+        return {'reasoning_effort': 'low'}
+    return {}

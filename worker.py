@@ -260,6 +260,7 @@ from services.scraping.proxy import (
 from services.scraping.blocked import is_blocked_response as _is_blocked_response
 from services.ai.groq import resolve_groq_key as _resolve_groq_key
 from services.ai.groq import resolve_groq_model as _resolve_groq_model
+from services.ai.groq import groq_extra_params as _groq_extra_params
 from services.notifications.classifier import (
     NOTIFICATION_CATEGORIES,
     classify_notification_rule,
@@ -6496,11 +6497,13 @@ def analyze_reviews_with_ai(reviews, api_key, url=None):
             ],
             model=_resolve_groq_model(),
             temperature=0.1,
-            max_tokens=1500,
+            max_tokens=2000,
             # NOT: Groq'un katı response_format={"type":"json_object"} modu gpt-oss
             # modellerinde json_validate_failed (400) veriyor. Prompt zaten "tek JSON
             # obje dön" diyor; aşağıdaki parser (json.loads + regex + virgül onarımı)
             # metinden JSON'ı çıkarır → model-agnostik, daha sağlam.
+            # groq_extra_params: gpt-oss reasoning'i sınırla (yoksa content boş kalıyor).
+            **_groq_extra_params()
         )
         raw_content = response.choices[0].message.content or ""
 

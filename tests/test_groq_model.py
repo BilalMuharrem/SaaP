@@ -27,6 +27,20 @@ def test_env_override(monkeypatch):
     assert m in ('test/custom-model-xyz', resolve_groq_model())
 
 
+def test_gpt_oss_gets_reasoning_effort():
+    """gpt-oss modeli için reasoning_effort=low eklenmeli (content boş kalmasın)."""
+    from services.ai.groq import groq_extra_params
+    p = groq_extra_params('openai/gpt-oss-120b')
+    assert p.get('reasoning_effort') == 'low'
+
+
+def test_non_gpt_oss_gets_no_extra():
+    """gpt-oss olmayan modellere reasoning_effort GÖNDERİLMEMELİ (hata önleme)."""
+    from services.ai.groq import groq_extra_params
+    assert groq_extra_params('qwen/qwen3.8-27b') == {}
+    assert groq_extra_params('llama-3.1-8b-instant') == {}
+
+
 def test_no_hardcoded_retired_model_in_code():
     """Kod tabanında emekli model string'i kalmamalı (config/groq.py yorumları hariç)."""
     import subprocess
