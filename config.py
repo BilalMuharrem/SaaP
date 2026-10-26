@@ -44,6 +44,11 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+    # Groq sohbet modeli — TEK yerden yönetilir. Groq modelleri periyodik emekliye
+    # ayrılıyor (örn. llama-3.3-70b-versatile kaldırıldı); model değişince SADECE
+    # bu satır / GROQ_MODEL env'i güncellenir, kod taranmaz.
+    # Mevcut erişilebilir modeller: /v1/models endpoint'inden görülebilir.
+    GROQ_MODEL = os.environ.get('GROQ_MODEL', 'openai/gpt-oss-120b')
     
     # App settings
     APP_NAME = 'BMK Rekabet İstihbaratı'

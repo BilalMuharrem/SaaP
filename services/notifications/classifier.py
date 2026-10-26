@@ -11,7 +11,7 @@ Kategoriler:
 """
 import logging
 
-from services.ai.groq import resolve_groq_key
+from services.ai.groq import resolve_groq_key, resolve_groq_model
 
 log = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ def classify_notification_ai(message, api_key=None):
             f"Mesaj: {message[:300]}"
         )
         resp = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
+            model=resolve_groq_model(),
             messages=[{'role': 'user', 'content': prompt}],
             temperature=0.0,
             max_tokens=10,

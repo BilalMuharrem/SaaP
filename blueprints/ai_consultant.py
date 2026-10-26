@@ -338,7 +338,7 @@ def generate_ai_consultant():
         )
 
     # ── 2) API anahtar kontrolü (Faz 10A: sadece env'den) ──────────────────
-    from services.ai.groq import resolve_groq_key
+    from services.ai.groq import resolve_groq_key, resolve_groq_model
     api_key = resolve_groq_key()
     if not api_key:
         flash('Sistemde GROQ API anahtarı tanımlı değil. Lütfen yöneticiyle iletişime geçin.', 'error')
@@ -354,7 +354,7 @@ def generate_ai_consultant():
     try:
         names_only = [{'name': p['urun_adi'], 'platform': p['platform']} for p in portfolio]
         sec_payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": resolve_groq_model(),
             "messages": [
                 {"role": "system", "content": (
                     "Sana verilecek ürün listesine bakarak bu ürünlerin ait olduğu ana e-ticaret sektörünü "
@@ -492,7 +492,7 @@ def generate_ai_consultant():
     # ── 5) LLM çağrısı + rapor kaydet ───────────────────────────────────────
     try:
         rep_payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": resolve_groq_model(),
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_payload_text},

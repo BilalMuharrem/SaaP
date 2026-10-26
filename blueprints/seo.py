@@ -249,6 +249,7 @@ def api_generate_seo_tips(tracker_id):
 
     try:
         from worker import _resolve_groq_key
+        from services.ai.groq import resolve_groq_model
         api_key = _resolve_groq_key()
         if not api_key:
             return jsonify({
@@ -290,7 +291,7 @@ def api_generate_seo_tips(tracker_id):
         )
 
         resp = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
+            model=resolve_groq_model(),
             messages=[
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': user_msg},

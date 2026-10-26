@@ -259,6 +259,7 @@ from services.scraping.proxy import (
 )
 from services.scraping.blocked import is_blocked_response as _is_blocked_response
 from services.ai.groq import resolve_groq_key as _resolve_groq_key
+from services.ai.groq import resolve_groq_model as _resolve_groq_model
 from services.notifications.classifier import (
     NOTIFICATION_CATEGORIES,
     classify_notification_rule,
@@ -6493,7 +6494,7 @@ def analyze_reviews_with_ai(reviews, api_key, url=None):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            model="llama-3.3-70b-versatile",
+            model=_resolve_groq_model(),
             temperature=0.1,
             max_tokens=1500,
             response_format={"type": "json_object"}
@@ -6774,7 +6775,7 @@ def run_price_headless(urls, api_key):
             try:
                 response = client.chat.completions.create(
                     messages=[{"role": "user", "content": f"Analyze pricing. Verify if products match. Write 2-3 sentence Turkish summary.\nData: {' | '.join(analiz)}"}],
-                    model="llama-3.3-70b-versatile", temperature=0.3, max_tokens=300
+                    model=_resolve_groq_model(), temperature=0.3, max_tokens=300
                 )
                 ai_ozet = response.choices[0].message.content.strip()
             except Exception:

@@ -36,3 +36,21 @@ def resolve_groq_key(user_key=None):
 
     sys_key = (os.environ.get('GROQ_API_KEY', '') or '').strip()
     return sys_key if _ok(sys_key) else ''
+
+
+# Groq modelleri periyodik emekliye ayrılıyor (örn. llama-3.3-70b-versatile
+# kaldırıldı → 404 model_not_found). Model artık TEK yerden gelir; değişince
+# sadece Config.GROQ_MODEL / GROQ_MODEL env güncellenir, kod taranmaz.
+_DEFAULT_GROQ_MODEL = 'openai/gpt-oss-120b'
+
+
+def resolve_groq_model():
+    """Aktif Groq sohbet modeli (Config.GROQ_MODEL → GROQ_MODEL env → default)."""
+    try:
+        from config import Config
+        m = (getattr(Config, 'GROQ_MODEL', '') or '').strip()
+        if m:
+            return m
+    except Exception:
+        pass
+    return (os.environ.get('GROQ_MODEL', '') or '').strip() or _DEFAULT_GROQ_MODEL
