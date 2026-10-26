@@ -5133,13 +5133,16 @@ def _extract_ty_comments_from_html(html):
 
 
 def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
-    """HOTFIX 1.26: Trendyol yorum sayfalandırması.
+    """HOTFIX 1.26 / 11.2: Trendyol yorum çekme (çok stratejili).
 
-    Trendyol'un public review API'leri (curl_cffi/cloudscraper) ile birden çok
-    sayfa gezilir, sayfada ortalama ~30 yorum olduğundan 3 sayfa ≈ 60 yorum.
-    Hem `public-mdc.trendyol.com` social-review hem de eski
-    `public.trendyol.com/discovery-web-socialgw-service` endpoint'leri denenir.
-    Hiçbiri çalışmazsa `?pi=1, ?pi=2 ...` HTML pagination'ına düşülür.
+    Strateji sırası:
+      1) apigw.trendyol.com review API'si (DNS'te var; bazı ürünlerde döner).
+      2) /yorumlar sayfasının gömülü JSON state'inden "comment" alanları
+         (_extract_ty_comments_from_html) — ASIL kaynak, en güvenilir.
+      3) __INITIAL_STATE__ walk / DOM regex / Playwright agresif fallback.
+
+    NOT (HOTFIX 11.2): Eski public-mdc / public.trendyol.com host'ları DNS-dead
+    olduğu için listeden çıkarıldı; eski socialgw-service 556 dönüyor.
 
     Returns: List[str] — yorum metinleri (tekilleştirilmiş, en fazla `target_count`).
     """
@@ -5164,13 +5167,14 @@ def _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60):
     # HOTFIX 1.34: Endpoint listesi güncellendi — Trendyol'un mevcut canlı
     # storefront review API'si en başta. Eski endpoint'ler kullanıcı talebi
     # üzerine kalıyor (DNS atlama filtresi de kaldırıldı).
+    # HOTFIX 11.2: Ölü host'lar (public-mdc / public.trendyol.com) ÇIKARILDI —
+    # canlı testle DNS'te olmadıkları kanıtlandı (her biri DNS timeout bekletip
+    # logu "Failed to resolve" hatalarıyla dolduruyordu). Sadece çözülen apigw
+    # kaldı; asıl yorum kaynağı artık /yorumlar sayfasının gömülü JSON'ı
+    # (_extract_ty_comments_from_html, HARD fallback'te).
     api_templates = [
-        # ★ CANLI (X-Ray ile keşfedildi 2026-05): apigw.trendyol.com
+        # ★ apigw.trendyol.com — DNS'te var; bazı ürünlerde yorum döndürebilir.
         "https://apigw.trendyol.com/discovery-storefront-trproductgw-service/api/review-read/product-reviews/detailed?contentId={pid}&page={p}&pageSize=20&channelId=1",
-        # Eski public review API'leri (DNS şu an dead olabilir, ama deneriz)
-        "https://public-mdc.trendyol.com/discovery-web-websfxsocialreviewrating-santral/api/v1/product-reviews?contentId={pid}&page={p}&size=30",
-        "https://public.trendyol.com/discovery-web-socialgw-service/api/review/{pid}?page={p}&order=DESC&orderBy=Score",
-        "https://public-mdc.trendyol.com/discovery-web-websfxsocialreviewrating-santral/api/v1/social/review-by-content-id?contentId={pid}&page={p}&size=30",
     ]
 
     collected = []
