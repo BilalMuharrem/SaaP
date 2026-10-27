@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Rakip Röntgeni{% endblock %}
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-icon">B</div>
+                <div class="brand-text-wrapper">
+                    <div class="brand-text">BMK</div>
+                    <div class="brand-sub">Rekabet İstihbaratı</div>
+                </div>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+                <i data-lucide="menu" width="20" height="20"></i>
+            </button>
+        </div>
+        <nav>
+            <div class="nav-section">
+                <div class="nav-label">Ana Menü</div>
+                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link"><i data-lucide="layout-dashboard" class="icon" width="20" height="20"></i> Dashboard</a>
+                <a href="{{ url_for('jobs.new_request') }}" class="nav-link"><i data-lucide="plus-circle" class="icon" width="20" height="20"></i> Yeni Analiz</a>
+                <a href="{{ url_for('competitor.xray') }}" class="nav-link active"><i data-lucide="radar" class="icon" width="20" height="20"></i> Rakip Röntgeni</a>
+                <a href="{{ url_for('tracked.tracked_products') }}" class="nav-link"><i data-lucide="line-chart" class="icon" width="20" height="20"></i> Fiyat Takibi</a>
+                <a href="{{ url_for('seo.seo_graph') }}" class="nav-link"><i data-lucide="line-chart" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Grafik Takibi</a>
+                <a href="{{ url_for('seo.seo_tracker') }}" class="nav-link"><i data-lucide="search" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> SEO Takibi</a>
+                <a href="{{ url_for('ai_consultant.ai_consultant') }}" class="nav-link"><i data-lucide="brain-circuit" class="icon" width="20" height="20" style="color:#8b5cf6;"></i> YZ Danışman</a>
+                <a href="{{ url_for('plans.user_plans') }}" class="nav-link"><i data-lucide="gem" class="icon" width="20" height="20"></i> Planlar</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-label">Hesabım</div>
+                <a href="{{ url_for('notifications.notifications') }}" class="nav-link">
+                    <i data-lucide="bell" class="icon" width="20" height="20"></i> Bildirimler
+                    {% if unread_notifications > 0 %}
+                    <span class="badge" style="background:var(--danger);color:#fff;margin-left:auto;border-radius:12px;padding:2px 8px;font-size:11px;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info"><div class="user-avatar">{{ current_user.full_name[0] }}</div><div><div class="user-name">{{ current_user.full_name }}</div><div class="user-email">{{ current_user.email }}</div></div></div>
+            <a href="{{ url_for('auth.index') }}" class="nav-link" title="BMK Ana Sayfa / Vitrin"><i data-lucide="globe" class="icon" width="20" height="20" style="color:#0ea5e9;"></i> Ana Sayfaya Git</a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="margin-top:8px;"><i data-lucide="log-out" class="icon" width="20" height="20"></i> Çıkış Yap</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">🔬 Rakip Röntgeni</h1>
+            <p class="page-subtitle">Bir rakip ürünü gir — BMK neden kazandığını, zayıf noktalarını ve <b>senin karşı hamleni</b> çıkarsın.</p>
+        </div>
+
+        <div class="card" style="max-width:720px; padding:28px;">
+            <form method="POST" action="{{ url_for('competitor.xray') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label style="display:block; font-size:13px; font-weight:700; margin-bottom:8px;">
+                    Rakip ürün linki (Trendyol veya Hepsiburada)
+                </label>
+                <input type="url" name="url" required
+                       placeholder="https://www.trendyol.com/...-p-123456789"
+                       style="width:100%; padding:13px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg-card,#fff); color:var(--text-primary); font-size:14px; margin-bottom:18px;">
+                <button type="submit" class="btn btn-primary btn-lg" style="width:100%; justify-content:center;">
+                    <i data-lucide="crosshair" width="18" height="18" style="vertical-align:-3px; margin-right:6px;"></i>
+                    Röntgeni Çıkar →
+                </button>
+            </form>
+
+            <div style="margin-top:22px; padding-top:20px; border-top:1px solid var(--border); font-size:13px; color:var(--text-muted); line-height:1.7;">
+                <b style="color:var(--text-primary);">Ne alırsın:</b>
+                <div style="display:grid; gap:7px; margin-top:10px;">
+                    <div>✅ <b>Neden kazanıyor</b> — rakibin güçlü yanları (yorumlardan + fiyat/puan)</div>
+                    <div>🎯 <b>Zayıf noktalar</b> — müşteri şikayetleri = senin saldırı yüzeyin</div>
+                    <div>💰 <b>Fiyat stratejisi</b> — rakibin fiyat konumu</div>
+                    <div>⚔️ <b>Karşı hamlelerin</b> — sana özel, uygulanabilir aksiyonlar</div>
+                </div>
+                <div style="margin-top:14px; font-size:12px; opacity:0.85;">
+                    ℹ️ Analiz arka planda scrape + YZ sentezi yapar (~1-2 dk). Tamamlanınca sonuç sayfasına yönlendirilirsin.
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<script>if (window.lucide) lucide.createIcons();</script>
+{% endblock %}

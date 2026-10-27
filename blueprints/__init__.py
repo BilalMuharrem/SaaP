@@ -17,6 +17,7 @@ from .onboarding import bp as onboarding_bp
 from .health import bp as health_bp
 from .demo import bp as demo_bp
 from .legal import bp as legal_bp
+from .competitor import bp as competitor_bp
 
 
 def register_blueprints(app):
@@ -34,3 +35,4 @@ def register_blueprints(app):
     app.register_blueprint(health_bp)
     app.register_blueprint(demo_bp)
     app.register_blueprint(legal_bp)
+    app.register_blueprint(competitor_bp)

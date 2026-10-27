@@ -800,7 +800,7 @@ def _process_job_by_id(job_id):
 
     global worker_state
     worker_state['is_active'] = True
-    jt_map = {'price': 'Fiyat Analizi', 'review': 'Yorum Analizi', 'combined': 'Kombine Analiz'}
+    jt_map = {'price': 'Fiyat Analizi', 'review': 'Yorum Analizi', 'combined': 'Kombine Analiz', 'xray': 'Rakip Röntgeni'}
     worker_state['status_text'] = f"#{job.id} {jt_map.get(job.job_type, '')} işleniyor..."
 
     job.status = 'running'
@@ -817,6 +817,8 @@ def _process_job_by_id(job_id):
             result_html = run_review_headless(urls, api_key)
         elif job.job_type == 'combined':
             result_html = run_combined_headless(urls, api_key)
+        elif job.job_type == 'xray':
+            result_html = run_competitor_xray(urls, api_key)
         else:
             result_html = "<p>Bilinmeyen analiz türü.</p>"
 
@@ -827,7 +829,7 @@ def _process_job_by_id(job_id):
 
         try:
             from models import Notification
-            type_label = "Fiyat Analizi" if job.job_type == 'price' else ("Yorum Analizi" if job.job_type == 'review' else "Kombine Analiz")
+            type_label = jt_map.get(job.job_type, "Analiz")
             msg = f"✅ '{type_label}' işleminiz başarıyla tamamlandı!"
             # HOTFIX 1.54: tüm analiz sonuçları "combined" kategorisinde (3 alt tür de
             # kullanıcı için aynı UI tab'ında listelenir)
@@ -845,7 +847,7 @@ def _process_job_by_id(job_id):
 
         try:
             from models import Notification
-            type_label = "Fiyat Analizi" if job.job_type == 'price' else ("Yorum Analizi" if job.job_type == 'review' else "Kombine Analiz")
+            type_label = jt_map.get(job.job_type, "Analiz")
             msg = f"❌ '{type_label}' işleminiz başarısız oldu: {str(e)[:50]}"
             # HOTFIX 1.54: başarısız analiz hâlâ "combined" kategorisinde (kullanıcı
             # 'Kombine Analiz' sekmesinde hem başarılı hem başarısız sonuçları görür)
@@ -7640,3 +7642,132 @@ def _extract_body_content(html_str):
     if match:
         return match.group(1)
     return html_str
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RAKİP RÖNTGENİ (Competitor X-Ray) — stratejik rakip teşhisi + karşı hamle.
+# BMK özgünlük özelliği: pasif veri değil, "bu rakibe karşı NE YAP" istihbaratı.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _xray_scrape(url):
+    """Tek rakip ürünü yapılandırılmış veriye çevirir (proven scraper'ları reuse)."""
+    ul = (url or "").lower()
+    if "hepsiburada.com" in ul:
+        d = _scrape_hepsiburada_cffi(url, fetch_reviews=True) or {}
+        return {
+            "platform": "Hepsiburada", "url": url,
+            "name": d.get("name"), "price": d.get("price"),
+            "seller": d.get("seller"), "rating": d.get("rating"),
+            "review_count": d.get("review_count"), "reviews": d.get("reviews") or [],
+        }
+    if "trendyol.com" in ul:
+        html = ""
+        try:
+            from curl_cffi import requests as _cffi_x
+            hdr = {
+                "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                               "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "tr-TR,tr;q=0.9",
+            }
+            r = _cffi_x.get(url, headers=hdr, impersonate="chrome110", timeout=20)
+            if r.status_code == 200:
+                html = r.text
+        except Exception as e:
+            log.info(f"[X-Ray] TY HTML fetch hata: {e}")
+        data = extract_data_from_html(html, url) if html else {}
+        reviews = _fetch_trendyol_reviews_api(url, max_pages=3, target_count=60)
+        return {
+            "platform": "Trendyol", "url": url,
+            "name": data.get("name"), "price": data.get("price"),
+            "seller": data.get("seller") or data.get("brand"),
+            "rating": data.get("rating"), "review_count": data.get("review_count"),
+            "reviews": reviews or [],
+        }
+    return None
+
+
+def _xray_section(title, items, color, icon):
+    """Liste bölümü HTML'i (boşsa 'veri yok' satırı)."""
+    if items:
+        lis = "".join(f"<li style='margin:0 0 9px;'>{_html_escape(x)}</li>" for x in items)
+        body = f"<ul style='margin:0;padding-left:20px;line-height:1.6;'>{lis}</ul>"
+    else:
+        body = "<p style='color:var(--report-color);font-style:italic;'>Yeterli veri bulunamadı.</p>"
+    return (f"<div style='margin:0 0 26px;'>"
+            f"<h3 style='color:{color};font-size:18px;margin:0 0 10px;'>{icon} {title}</h3>{body}</div>")
+
+
+def _html_escape(s):
+    import html as _h
+    return _h.escape(str(s or ""))
+
+
+def _build_xray_html(data, xray):
+    """Rakip Röntgeni HTML raporu."""
+    from models import get_tr_now
+    theme_html = _report_theme_block()
+    name = _html_escape(data.get("name") or "Rakip ürün")
+    platform = _html_escape(data.get("platform") or "?")
+    price = _html_escape(data.get("price") or "—")
+    seller = _html_escape(data.get("seller") or "bilinmiyor")
+    rating = _html_escape(data.get("rating") if data.get("rating") is not None else "—")
+    rc = _html_escape(data.get("review_count") if data.get("review_count") is not None else "—")
+    nrev = len(data.get("reviews") or [])
+
+    if isinstance(xray, dict) and xray.get("error"):
+        inner = (f"<div style='background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.35);"
+                 f"border-radius:12px;padding:20px;color:#dc2626;'>⚠️ Röntgen üretilemedi: "
+                 f"{_html_escape(xray['error'])}</div>")
+    else:
+        ozet = _html_escape(xray.get("ozet"))
+        fiyat = _html_escape(xray.get("fiyat_stratejisi"))
+        inner = (
+            (f"<div style='background:var(--card-bg,rgba(99,102,241,0.08));border-radius:12px;"
+             f"padding:18px 20px;margin:0 0 26px;font-size:15px;line-height:1.65;'>"
+             f"<b>🎯 Stratejik Özet:</b> {ozet}</div>" if ozet else "")
+            + _xray_section("Rakip Neden Kazanıyor", xray.get("neden_kazaniyor"), "#10b981", "✅")
+            + _xray_section("Zayıf Noktalar (Senin Fırsatın)", xray.get("zayif_noktalar"), "#ef4444", "🎯")
+            + (f"<div style='margin:0 0 26px;'><h3 style='color:#f59e0b;font-size:18px;margin:0 0 10px;'>"
+               f"💰 Fiyat Stratejisi</h3><p style='line-height:1.6;'>{fiyat}</p></div>" if fiyat else "")
+            + _xray_section("Senin Karşı Hamlelerin", xray.get("karsi_hamleler"), "#6366f1", "⚔️")
+        )
+
+    return f"""<html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">{theme_html}<style>.container{{max-width:900px;}}</style></head>
+    <body><div class="container">
+        <div style="color:var(--title);font-weight:bold;letter-spacing:2px;font-size:13px;margin-bottom:5px;">BMK RAKİP İSTİHBARATI</div>
+        <h1 style="margin:0 0 6px 0;font-size:34px;">🔬 Rakip Röntgeni</h1>
+        <p style="color:var(--report-color);margin:0 0 24px;">Pasif izleme değil — bu rakibe karşı ne yapman gerektiğinin teşhisi.</p>
+        <div style="background:var(--card-bg,rgba(99,102,241,0.06));border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:0 0 30px;">
+            <div style="font-weight:800;font-size:17px;margin-bottom:8px;">{name}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:18px;font-size:14px;color:var(--report-color);">
+                <span>🏷️ <b>{platform}</b></span>
+                <span>💵 Fiyat: <b>{price}</b></span>
+                <span>🏪 Satıcı: <b>{seller}</b></span>
+                <span>⭐ {rating} ({rc} yorum)</span>
+                <span>🗣️ {nrev} yorum analiz edildi</span>
+            </div>
+        </div>
+        {inner}
+        <div style="text-align:center;margin-top:40px;color:var(--report-color);font-size:14px;">Rapor Tarihi: {get_tr_now().strftime('%d.%m.%Y %H:%M')}</div>
+    </div></body></html>"""
+
+
+def run_competitor_xray(urls, api_key):
+    """Rakip Röntgeni raporu üretir (job_type='xray'). Tek rakip ürün linki alır."""
+    from services.ai.competitor_xray import generate_competitor_xray
+    url = (urls[0] if urls else "") or ""
+    if not url:
+        return "<html><body><p>Analiz için bir rakip ürün linki gerekli.</p></body></html>"
+
+    data = _xray_scrape(url)
+    if not data:
+        return ("<html><body><p>Bu platform Rakip Röntgeni için desteklenmiyor. "
+                "Trendyol veya Hepsiburada ürün linki girin.</p></body></html>")
+
+    if not data.get("reviews"):
+        xray = {"error": "Ürün yorumu alınamadı — röntgen için yorum verisi gerekli."}
+    else:
+        xray = generate_competitor_xray(data, api_key=api_key)
+
+    return _build_xray_html(data, xray)
