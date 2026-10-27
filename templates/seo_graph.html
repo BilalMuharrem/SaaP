@@ -152,24 +152,46 @@
                                 <i data-lucide="pencil" width="14" height="14"></i>
                             </button>
                             {% endif %}
+                            {% if group_paused.get(gkey) %}
+                            <span title="Bu grubun taraması duraklatıldı — geçmiş veri korunuyor"
+                                  style="font-size:11px; font-weight:800; color:#d97706; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); border-radius:999px; padding:3px 10px;">
+                                ⏸️ DURAKLATILDI
+                            </span>
+                            {% endif %}
                         </h3>
                         <span class="seo-keyword-pill">
                             🔍 {{ kt_list[0].keyword }}
                         </span>
                     </div>
-                    {# HOTFIX 1.85: Grup Sil butonu — fiyat takibi grupları için
-                       (gkey == '__solo__' ise tekil takipler birleşik şekildir; o blok için yok) #}
+                    {# HOTFIX 1.85 + Grup Duraklat: fiyat takibi grupları için #}
                     {% if gkey != '__solo__' %}
-                    <form method="POST" action="{{ url_for('seo.seo_graph_delete_group', group_id=gkey) }}"
-                          onsubmit="return confirm('Bu grubun SEO takibini ve tüm tarihsel sıralama verilerini kalıcı olarak silmek istediğinize emin misiniz?');"
-                          style="margin:0;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-sm"
-                                style="background:rgba(239,68,68,0.10); color:#ef4444; border:1px solid rgba(239,68,68,0.30); padding:7px 14px; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
-                            <i data-lucide="trash-2" width="14" height="14"></i>
-                            Grup SEO'sunu Sil
-                        </button>
-                    </form>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        {# Grup bazlı tarama duraklat/sürdür — hem fiyat hem SEO taramasını etkiler #}
+                        <form method="POST" action="{{ url_for('seo.toggle_group_pause', group_id=gkey) }}" style="margin:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% if group_paused.get(gkey) %}
+                            <button type="submit" class="btn btn-sm" title="Bu grubun taramasını yeniden başlat"
+                                    style="background:rgba(16,185,129,0.12); color:#059669; border:1px solid rgba(16,185,129,0.35); padding:7px 14px; display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+                                <i data-lucide="play" width="14" height="14"></i> Taramayı Sürdür
+                            </button>
+                            {% else %}
+                            <button type="submit" class="btn btn-sm" title="Bu grubun taramasını duraklat (geçmiş veri korunur)"
+                                    style="background:rgba(245,158,11,0.12); color:#d97706; border:1px solid rgba(245,158,11,0.35); padding:7px 14px; display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+                                <i data-lucide="pause" width="14" height="14"></i> Taramayı Durdur
+                            </button>
+                            {% endif %}
+                        </form>
+                        <form method="POST" action="{{ url_for('seo.seo_graph_delete_group', group_id=gkey) }}"
+                              onsubmit="return confirm('Bu grubun SEO takibini ve tüm tarihsel sıralama verilerini kalıcı olarak silmek istediğinize emin misiniz?');"
+                              style="margin:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm"
+                                    style="background:rgba(239,68,68,0.10); color:#ef4444; border:1px solid rgba(239,68,68,0.30); padding:7px 14px; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
+                                <i data-lucide="trash-2" width="14" height="14"></i>
+                                Grup SEO'sunu Sil
+                            </button>
+                        </form>
+                    </div>
                     {% endif %}
                 </div>
 

@@ -194,6 +194,12 @@ def tracked_products():
         if kt.group_id not in group_seo:
             group_seo[kt.group_id] = kt.keyword
 
+    # Grup duraklatma durumu: grubun TÜM ürünleri paused ise grup "duraklatıldı"
+    group_paused = {
+        gid: (bool(products) and all(getattr(p, 'is_paused', False) for p in products))
+        for gid, products in grouped.items()
+    }
+
     return render_template(
         'tracked_products.html',
         grouped_products=grouped,
@@ -201,6 +207,7 @@ def tracked_products():
         group_costs=group_costs,
         product_alerts=product_alerts,
         group_seo=group_seo,
+        group_paused=group_paused,
     )
 
 

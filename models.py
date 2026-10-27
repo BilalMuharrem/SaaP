@@ -320,6 +320,10 @@ class TrackedProduct(db.Model):
     # FAZ 7C: Sistem tarafından kayıt sırasında otomatik eklenen örnek ürün mü?
     # True ise UI'da "ÖRNEK" badge'i gösterilir, dashboard banner farklı renderlanır.
     is_demo = db.Column(db.Boolean, default=False, nullable=False)
+    # Grup bazlı tarama duraklatma: True ise worker bu ürünü ATLAR (yeni fiyat/stok
+    # taraması yapılmaz) ama geçmiş veri/grafik korunur. Grup butonu toplu toggle eder.
+    is_paused = db.Column(db.Boolean, default=False, nullable=False,
+                          server_default=db.false())
     last_checked = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=get_tr_now)
     # HOTFIX 1.87: Kullanıcının grup için verdiği özel ad ("Yaz Kampanyası" gibi).
@@ -429,6 +433,10 @@ class KeywordTracker(db.Model):
     previous_rank = db.Column(db.Integer, default=0)
     last_checked = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    # Grup bazlı tarama duraklatma: True ise worker bu SEO takibini ATLAR (yeni sıra
+    # taraması yapılmaz) ama geçmiş SEOHistory/grafik korunur. Grup butonu toggle eder.
+    is_paused = db.Column(db.Boolean, default=False, nullable=False,
+                          server_default=db.false())
     created_at = db.Column(db.DateTime, default=get_tr_now, index=True)
     # HOTFIX 1.84: Bir tracker, fiyat takip grubuna bağlanabilir (toplu SEO için)
     group_id = db.Column(db.String(50), nullable=True, index=True)

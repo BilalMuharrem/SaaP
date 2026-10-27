@@ -393,7 +393,8 @@ def check_tracked_products(app, product_ids=None):
         products = TrackedProduct.query.filter(
             TrackedProduct.id.in_(product_ids),
             TrackedProduct.is_active == True,
-            TrackedProduct.is_price_tracked == True
+            TrackedProduct.is_price_tracked == True,
+            TrackedProduct.is_paused == False  # grup duraklatma → tarama yok
         ).all()
     else:
         # ── HOTFIX 1.42 / 1.72: Akıllı Catch-up + Acil Tarama Kuyruğu ─────────────
@@ -414,6 +415,7 @@ def check_tracked_products(app, product_ids=None):
                     .filter(
                         TrackedProduct.is_active == True,
                         TrackedProduct.is_price_tracked == True,
+                        TrackedProduct.is_paused == False,  # grup duraklatma → tarama yok
                         # GP yoksa (eski kayıt) veya GP dormant DEĞİL
                         (GlobalProduct.id.is_(None)) | (GlobalProduct.is_dormant == False),
                         (TrackedProduct.last_checked == None) |
@@ -2259,7 +2261,8 @@ def check_keyword_trackers(app, tracker_ids=None):
     if tracker_ids:
         rows = KeywordTracker.query.filter(
             KeywordTracker.id.in_(tracker_ids),
-            KeywordTracker.is_active == True
+            KeywordTracker.is_active == True,
+            KeywordTracker.is_paused == False  # grup duraklatma → tarama yok
         ).all()
     else:
         threshold = get_tr_now() - timedelta(hours=1)
@@ -2268,6 +2271,7 @@ def check_keyword_trackers(app, tracker_ids=None):
                 .outerjoin(KeywordPool, KeywordTracker.pool_id == KeywordPool.id)
                 .filter(
                     KeywordTracker.is_active == True,
+                    KeywordTracker.is_paused == False,  # grup duraklatma → tarama yok
                     (KeywordPool.id.is_(None)) | (KeywordPool.is_dormant == False),
                     (KeywordTracker.last_checked == None) |
                     (KeywordTracker.last_checked < threshold)

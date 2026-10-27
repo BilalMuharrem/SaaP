@@ -476,6 +476,36 @@ def seo_graph_delete_group(group_id):
     return redirect(url_for('seo.seo_graph'))
 
 
+@bp.route('/group/<group_id>/toggle-pause', methods=['POST'])
+@login_required
+def toggle_group_pause(group_id):
+    """Grup bazlı tarama duraklat/sürdür. Gruba ait TÜM fiyat (TrackedProduct) VE
+    SEO (KeywordTracker) kayıtlarının is_paused'ını toplu değiştirir. Duraklatınca
+    worker bu grubu atlar (yeni tarama yok) ama geçmiş veri/grafik korunur."""
+    from models import TrackedProduct
+    tps = TrackedProduct.query.filter_by(user_id=current_user.id, group_id=group_id).all()
+    kts = KeywordTracker.query.filter_by(user_id=current_user.id, group_id=group_id).all()
+
+    if not tps and not kts:
+        flash('Grup bulunamadı.', 'warning')
+        return redirect(request.referrer or url_for('seo.seo_graph'))
+
+    # Herhangi biri hâlâ aktif (paused değil) ise → DURDUR; hepsi paused ise → SÜRDÜR
+    any_active = any(not t.is_paused for t in tps) or any(not k.is_paused for k in kts)
+    new_state = bool(any_active)  # True = duraklat
+    for t in tps:
+        t.is_paused = new_state
+    for k in kts:
+        k.is_paused = new_state
+    db.session.commit()
+
+    if new_state:
+        flash('⏸️ Grup taraması duraklatıldı. Geçmiş veriler korunuyor; yeni tarama yapılmaz.', 'info')
+    else:
+        flash('▶️ Grup taraması yeniden başlatıldı — bir sonraki periyotta taranır.', 'success')
+    return redirect(request.referrer or url_for('seo.seo_graph'))
+
+
 @bp.route('/seo-graph/tracker/<int:tracker_id>/delete', methods=['POST'])
 @login_required
 def seo_graph_delete_tracker(tracker_id):
@@ -550,9 +580,16 @@ def seo_graph():
             gkey, current_user.id, kt_list=kt_list, max_len=80
         )
 
+    # Grup duraklatma durumu: grubun TÜM trackerları paused ise grup "duraklatıldı"
+    group_paused = {
+        gkey: (bool(kt_list) and all(kt.is_paused for kt in kt_list))
+        for gkey, kt_list in grouped.items()
+    }
+
     return render_template(
         'seo_graph.html',
         grouped=grouped,
         chart_data=chart_data,
         group_labels=group_labels,
+        group_paused=group_paused,
     )

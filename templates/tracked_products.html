@@ -238,6 +238,21 @@
                             Grubu SEO Araması Yap
                         </button>
                         {% endif %}
+                        {# Grup bazlı tarama duraklat/sürdür — fiyat VE SEO taramasını etkiler #}
+                        <form method="POST" action="{{ url_for('seo.toggle_group_pause', group_id=gid) }}" style="margin:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% if group_paused and group_paused.get(gid) %}
+                            <button type="submit" class="btn btn-sm" title="Bu grubun taramasını yeniden başlat"
+                                    style="background:rgba(16,185,129,0.12); color:#059669; border:1px solid rgba(16,185,129,0.35); padding:6px 14px; display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+                                <i data-lucide="play" width="14" height="14"></i> Taramayı Sürdür
+                            </button>
+                            {% else %}
+                            <button type="submit" class="btn btn-sm" title="Bu grubun taramasını duraklat (geçmiş veri korunur)"
+                                    style="background:rgba(245,158,11,0.12); color:#d97706; border:1px solid rgba(245,158,11,0.35); padding:6px 14px; display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+                                <i data-lucide="pause" width="14" height="14"></i> Taramayı Durdur
+                            </button>
+                            {% endif %}
+                        </form>
                         <form method="POST" action="{{ url_for('tracked.delete_tracked_group', group_id=gid) }}" onsubmit="return confirm('Bu grubu ve içindeki tüm ürünlerin takibini silmek istediğinize emin misiniz?');" style="margin:0;">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm" style="background:var(--danger); color:white; border:none; padding:6px 14px;">Grubu İptal Et</button>
