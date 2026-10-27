@@ -479,30 +479,44 @@ def seo_graph_delete_group(group_id):
 @bp.route('/group/<group_id>/toggle-pause', methods=['POST'])
 @login_required
 def toggle_group_pause(group_id):
-    """Grup bazlı tarama duraklat/sürdür. Gruba ait TÜM fiyat (TrackedProduct) VE
-    SEO (KeywordTracker) kayıtlarının is_paused'ını toplu değiştirir. Duraklatınca
-    worker bu grubu atlar (yeni tarama yok) ama geçmiş veri/grafik korunur."""
-    from models import TrackedProduct
-    tps = TrackedProduct.query.filter_by(user_id=current_user.id, group_id=group_id).all()
-    kts = KeywordTracker.query.filter_by(user_id=current_user.id, group_id=group_id).all()
+    """Grup bazlı tarama duraklat/sürdür — KAPSAM AYRI.
 
-    if not tps and not kts:
+    scope='seo'   → yalnızca KeywordTracker (SEO sıra taraması)
+    scope='price' → yalnızca TrackedProduct (fiyat/stok taraması)
+
+    Fiyat ve SEO takibi aynı group_id'yi paylaşsa da BAĞIMSIZ duraklatılır:
+    SEO sayfasındaki buton fiyat takibini durdurmaz (ve tersi). Duraklatınca
+    worker o kapsamı atlar; geçmiş veri/grafik korunur."""
+    from models import TrackedProduct
+
+    scope = (request.form.get('scope') or '').strip().lower()
+    if scope not in ('price', 'seo'):
+        scope = 'seo'  # güvenli varsayılan (buton her zaman scope gönderir)
+
+    if scope == 'seo':
+        rows = KeywordTracker.query.filter_by(
+            user_id=current_user.id, group_id=group_id).all()
+        label = 'SEO'
+    else:
+        rows = TrackedProduct.query.filter_by(
+            user_id=current_user.id, group_id=group_id).all()
+        label = 'fiyat'
+
+    if not rows:
         flash('Grup bulunamadı.', 'warning')
         return redirect(request.referrer or url_for('seo.seo_graph'))
 
     # Herhangi biri hâlâ aktif (paused değil) ise → DURDUR; hepsi paused ise → SÜRDÜR
-    any_active = any(not t.is_paused for t in tps) or any(not k.is_paused for k in kts)
+    any_active = any(not r.is_paused for r in rows)
     new_state = bool(any_active)  # True = duraklat
-    for t in tps:
-        t.is_paused = new_state
-    for k in kts:
-        k.is_paused = new_state
+    for r in rows:
+        r.is_paused = new_state
     db.session.commit()
 
     if new_state:
-        flash('⏸️ Grup taraması duraklatıldı. Geçmiş veriler korunuyor; yeni tarama yapılmaz.', 'info')
+        flash(f'⏸️ Grup {label} taraması duraklatıldı. Geçmiş veriler korunuyor; yeni tarama yapılmaz.', 'info')
     else:
-        flash('▶️ Grup taraması yeniden başlatıldı — bir sonraki periyotta taranır.', 'success')
+        flash(f'▶️ Grup {label} taraması yeniden başlatıldı — bir sonraki periyotta taranır.', 'success')
     return redirect(request.referrer or url_for('seo.seo_graph'))
 
 

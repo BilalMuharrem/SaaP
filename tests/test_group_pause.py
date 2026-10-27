@@ -25,21 +25,34 @@ def test_toggle_requires_login(client):
     assert r.status_code == 302  # login'e yönlendirir
 
 
-def test_toggle_pauses_then_resumes(auth_client, starter_user, app):
+def test_seo_scope_pauses_only_seo(auth_client, starter_user, app):
+    """scope='seo' → yalnızca KeywordTracker duraklar, fiyat (TrackedProduct) DOKUNULMAZ."""
     with app.app_context():
-        tp_id, kt_id = _make_group(starter_user, 'grp-A')
+        tp_id, kt_id = _make_group(starter_user, 'grp-SEO')
 
-    # 1. toggle → DURAKLAT
-    auth_client.post('/group/grp-A/toggle-pause', follow_redirects=True)
+    auth_client.post('/group/grp-SEO/toggle-pause', data={'scope': 'seo'},
+                     follow_redirects=True)
     with app.app_context():
-        assert db.session.get(TrackedProduct, tp_id).is_paused is True
-        assert db.session.get(KeywordTracker, kt_id).is_paused is True
+        assert db.session.get(KeywordTracker, kt_id).is_paused is True   # SEO durdu
+        assert db.session.get(TrackedProduct, tp_id).is_paused is False  # fiyat etkilenmedi
 
-    # 2. toggle → SÜRDÜR
-    auth_client.post('/group/grp-A/toggle-pause', follow_redirects=True)
+    # tekrar → SEO sürdür
+    auth_client.post('/group/grp-SEO/toggle-pause', data={'scope': 'seo'},
+                     follow_redirects=True)
     with app.app_context():
-        assert db.session.get(TrackedProduct, tp_id).is_paused is False
         assert db.session.get(KeywordTracker, kt_id).is_paused is False
+
+
+def test_price_scope_pauses_only_price(auth_client, starter_user, app):
+    """scope='price' → yalnızca TrackedProduct duraklar, SEO (KeywordTracker) DOKUNULMAZ."""
+    with app.app_context():
+        tp_id, kt_id = _make_group(starter_user, 'grp-PRICE')
+
+    auth_client.post('/group/grp-PRICE/toggle-pause', data={'scope': 'price'},
+                     follow_redirects=True)
+    with app.app_context():
+        assert db.session.get(TrackedProduct, tp_id).is_paused is True   # fiyat durdu
+        assert db.session.get(KeywordTracker, kt_id).is_paused is False  # SEO etkilenmedi
 
 
 def test_paused_excluded_from_price_scan_query(app, starter_user):
@@ -80,7 +93,8 @@ def test_other_user_group_untouched(auth_client, starter_user, enterprise_user, 
         other_id = other.id
         _make_group(starter_user, 'grp-A')
 
-    auth_client.post('/group/grp-A/toggle-pause', follow_redirects=True)
+    auth_client.post('/group/grp-A/toggle-pause', data={'scope': 'price'},
+                     follow_redirects=True)
     with app.app_context():
-        # enterprise_user'ın ürünü dokunulmamış olmalı
+        # enterprise_user'ın ürünü dokunulmamış olmalı (user scoping)
         assert db.session.get(TrackedProduct, other_id).is_paused is False
