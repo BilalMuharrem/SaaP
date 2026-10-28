@@ -2459,7 +2459,12 @@ def cross_signal_analysis(app):
     from datetime import timedelta
 
     now = get_tr_now()
-    window_start = now - timedelta(days=7)
+    # Seyrek taramada da çalışsın diye SABİT pencere yerine "son 2 nokta" yaklaşımı:
+    # adaylar son `lookback` içinden, en yeni nokta `recent` içinde olmalı (güncel
+    # durum), ikisi arası en fazla `lookback`. Tarama yoğunlaştıkça doğal olarak
+    # son iki tarama (birkaç saat arayı) kıyaslanır → en güncel değişim.
+    lookback = now - timedelta(days=90)   # çiftin en fazla kapsayabileceği süre
+    recent = now - timedelta(days=30)     # en yeni nokta bundan daha eski olamaz
     dedup_since = now - timedelta(hours=20)
     RANK_TH = 2      # en az 2 basamak sıra değişimi
     PRICE_TH = 2.0   # en az %2 fiyat değişimi "değişti" sayılır
@@ -2478,25 +2483,27 @@ def cross_signal_analysis(app):
             if not product:
                 continue
 
+            # Son 2 sıra noktası (en yeni önce)
             ranks = (SEOHistory.query
                      .filter(SEOHistory.keyword_tracker_id == kt.id,
-                             SEOHistory.timestamp >= window_start,
+                             SEOHistory.timestamp >= lookback,
                              SEOHistory.overall_rank > 0)
-                     .order_by(SEOHistory.timestamp.asc()).all())
-            if len(ranks) < 2:
-                continue
-            old_rank, new_rank = ranks[0].overall_rank, ranks[-1].overall_rank
+                     .order_by(SEOHistory.timestamp.desc()).limit(2).all())
+            if len(ranks) < 2 or ranks[0].timestamp < recent:
+                continue  # yetersiz veri veya en yeni ölçüm bayat
+            new_rank, old_rank = ranks[0].overall_rank, ranks[1].overall_rank
             rank_delta = new_rank - old_rank  # + = sıra kötüleşti (sayı büyüdü)
             if abs(rank_delta) < RANK_TH:
                 continue  # sıra belirgin değişmedi → çapraz-sinyal yok
 
+            # Son 2 fiyat noktası (en yeni önce)
             prices = (PriceHistory.query
                       .filter(PriceHistory.product_id == product.id,
-                              PriceHistory.timestamp >= window_start)
-                      .order_by(PriceHistory.timestamp.asc()).all())
-            if len(prices) < 2 or prices[0].price <= 0:
+                              PriceHistory.timestamp >= lookback)
+                      .order_by(PriceHistory.timestamp.desc()).limit(2).all())
+            if len(prices) < 2 or prices[1].price <= 0:
                 continue
-            price_pct = (prices[-1].price - prices[0].price) / prices[0].price * 100.0
+            price_pct = (prices[0].price - prices[1].price) / prices[1].price * 100.0
             price_trend = ('düştü' if price_pct <= -PRICE_TH
                            else 'arttı' if price_pct >= PRICE_TH else 'sabit')
 
