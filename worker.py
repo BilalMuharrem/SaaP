@@ -2432,6 +2432,124 @@ def check_keyword_trackers(app, tracker_ids=None):
                 db.session.rollback()
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ÇAPRAZ-SİNYAL UYARILARI (özgünlük özelliği #3)
+# Tek-metrik alarm yerine, fiyat (PriceHistory) ↔ SEO sırası (SEOHistory)
+# ilişkisini kurup "neden" içeren ilişkisel bildirim üretir. BMK'yı "ne oldu"
+# diyen izleyiciden "neden oldu ve ne yap" diyen analiste çevirir.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@celery.task
+def cross_signal_analysis_task():
+    """Beat ile periyodik tetiklenir (SEO taramasından sonra)."""
+    from app import app
+    with app.app_context():
+        cross_signal_analysis(app)
+
+
+def cross_signal_analysis(app):
+    """Fiyat trendi ile SEO sıra trendini ilişkilendirip sebep-sonuç bildirimi üretir.
+
+    Yalnızca SIRA BELİRGİN DEĞİŞTİĞİNDE (>=2 basamak) tetiklenir → gürültü yok.
+    Fiyat trendi (düştü/arttı/sabit) ile birlikte yorumlanıp 'neden' üretilir.
+    Dedup: aynı ürüne 20 saatte en fazla bir çapraz-sinyal bildirimi.
+    """
+    from models import (db, KeywordTracker, TrackedProduct, PriceHistory,
+                        SEOHistory, Notification, get_tr_now)
+    from datetime import timedelta
+
+    now = get_tr_now()
+    window_start = now - timedelta(days=7)
+    dedup_since = now - timedelta(hours=20)
+    RANK_TH = 2      # en az 2 basamak sıra değişimi
+    PRICE_TH = 2.0   # en az %2 fiyat değişimi "değişti" sayılır
+
+    kts = KeywordTracker.query.filter(
+        KeywordTracker.is_active == True,
+        KeywordTracker.is_paused == False,
+    ).all()
+
+    created = 0
+    for kt in kts:
+        try:
+            product = TrackedProduct.query.filter_by(
+                user_id=kt.user_id, url=kt.target_url, is_price_tracked=True
+            ).first()
+            if not product:
+                continue
+
+            ranks = (SEOHistory.query
+                     .filter(SEOHistory.keyword_tracker_id == kt.id,
+                             SEOHistory.timestamp >= window_start,
+                             SEOHistory.overall_rank > 0)
+                     .order_by(SEOHistory.timestamp.asc()).all())
+            if len(ranks) < 2:
+                continue
+            old_rank, new_rank = ranks[0].overall_rank, ranks[-1].overall_rank
+            rank_delta = new_rank - old_rank  # + = sıra kötüleşti (sayı büyüdü)
+            if abs(rank_delta) < RANK_TH:
+                continue  # sıra belirgin değişmedi → çapraz-sinyal yok
+
+            prices = (PriceHistory.query
+                      .filter(PriceHistory.product_id == product.id,
+                              PriceHistory.timestamp >= window_start)
+                      .order_by(PriceHistory.timestamp.asc()).all())
+            if len(prices) < 2 or prices[0].price <= 0:
+                continue
+            price_pct = (prices[-1].price - prices[0].price) / prices[0].price * 100.0
+            price_trend = ('düştü' if price_pct <= -PRICE_TH
+                           else 'arttı' if price_pct >= PRICE_TH else 'sabit')
+
+            rank_better = rank_delta < 0  # sayı küçüldü = sıra YÜKSELDİ
+            kw = kt.keyword
+            if rank_better:
+                if price_trend == 'düştü':
+                    emoji, why = '🎯', "fiyat indirimin işe yaramış görünüyor."
+                elif price_trend == 'arttı':
+                    emoji, why = '💪', "zam yapmana rağmen güçlü konumdasın."
+                else:
+                    emoji, why = '📈', "fiyatın sabitken organik görünürlüğün artıyor."
+                core = f"'{kw}' aramasında sıran YÜKSELDİ ({old_rank}→{new_rank}) — {why}"
+            else:
+                if price_trend == 'sabit':
+                    emoji, why = '⚠️', "fiyatın sabit kaldı; rakiplerin öne geçiyor olabilir — görünürlüğünü gözden geçir."
+                elif price_trend == 'arttı':
+                    emoji, why = '⚠️', "fiyat artışın görünürlüğünü etkilemiş olabilir."
+                else:
+                    emoji, why = '🔎', "fiyatını düşürmene rağmen; muhtemelen rakiplerin yorum/kampanya ile öne çıkıyor."
+                core = f"'{kw}' aramasında sıran GERİLEDİ ({old_rank}→{new_rank}) — {why}"
+
+            urn = (product.product_name or (kt.target_url or '').split('/')[-1] or 'Ürün')[:45]
+            full_msg = f"{emoji} Çapraz Sinyal — {urn}: {core}"
+            internal = f'/seo-graph#group-{kt.group_id}' if kt.group_id else '/seo-graph'
+
+            # Dedup: aynı ürüne son 20 saatte çapraz-sinyal var mı?
+            if Notification.query.filter(
+                Notification.user_id == kt.user_id,
+                Notification.category == 'cross_signal',
+                Notification.link == kt.target_url,
+                Notification.created_at >= dedup_since,
+            ).first():
+                continue
+
+            db.session.add(Notification(
+                user_id=kt.user_id, message=full_msg, link=kt.target_url,
+                internal_link=internal, category='cross_signal',
+            ))
+            created += 1
+        except Exception as cs_e:
+            log.info(f"[CrossSignal] tracker {kt.id} atlandı: {cs_e}")
+            continue
+
+    if created:
+        try:
+            db.session.commit()
+            log.info(f"[CrossSignal] {created} çapraz-sinyal bildirimi üretildi.")
+        except Exception as commit_e:
+            db.session.rollback()
+            log.info(f"[CrossSignal] commit hatası: {commit_e}")
+
+
 def check_blocked(page):
     """Check if page is blocked by anti-bot."""
     import time

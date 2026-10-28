@@ -23,7 +23,7 @@ from models import Notification, TrackedProduct, KeywordTracker
 log = logging.getLogger(__name__)
 
 VALID_CATS = ('all', 'price_down', 'price_up', 'combined',
-              'opportunity', 'threat', 'system', 'seo')
+              'opportunity', 'threat', 'system', 'seo', 'cross_signal')
 
 CAT_LABEL = {
     'all': 'Tüm bildirimler',
@@ -34,6 +34,7 @@ CAT_LABEL = {
     'threat': 'Tehdit bildirimleri',
     'system': 'Sistem mesajları',
     'seo': 'SEO sıralama bildirimleri',
+    'cross_signal': 'Çapraz-sinyal uyarıları',
 }
 
 bp = Blueprint('notifications', __name__)

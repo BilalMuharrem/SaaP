@@ -156,6 +156,16 @@ celery.conf.beat_schedule = {
             'soft_time_limit': 1400,
         },
     },
+
+    # ── Özgünlük #3: Çapraz-Sinyal Uyarıları ──
+    # Fiyat ↔ SEO sırası ilişkisini kurup "neden" içeren bildirim üretir.
+    # Fiyat (:15) ve SEO (:45) taramaları bittikten SONRA (:55) çalışır ki
+    # en güncel geçmiş verisiyle korelasyon kurabilsin. Hafif (sadece DB sorgusu).
+    'cross-signal-analysis': {
+        'task': 'worker.cross_signal_analysis_task',
+        'schedule': crontab(minute=55, hour='3,9,15,21'),
+        'options': {'expires': 1200},
+    },
 }
 
 # HOTFIX 1.91: Beat config'i de aynı timezone'a hizalı olduğundan emin ol

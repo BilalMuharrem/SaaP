@@ -230,6 +230,10 @@
                        class="notif-tab tab-seo {% if active_cat == 'seo' %}active{% endif %}">
                         🔍 SEO Takibi <span class="badge-count" data-count="{{ cat_counts.get('seo', 0) }}">{{ cat_counts.get('seo', 0) }}</span>
                     </a>
+                    <a href="{{ url_for('notifications.notifications', cat='cross_signal') }}" data-cat="cross_signal"
+                       class="notif-tab {% if active_cat == 'cross_signal' %}active{% endif %}">
+                        🔀 Çapraz Sinyal <span class="badge-count" data-count="{{ cat_counts.get('cross_signal', 0) }}">{{ cat_counts.get('cross_signal', 0) }}</span>
+                    </a>
                 </div>
             </div>
 
@@ -278,6 +282,7 @@
                     'threat': '⚠️',
                     'system': '🔔',
                     'seo': '🔍',
+                    'cross_signal': '🔀',
                 } %}
                 <div class="notif-row {% if not n.is_read %}notification-unread{% endif %}">
                     {# Sol kenar — kategori renk şeridi #}
