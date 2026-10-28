@@ -62,3 +62,46 @@ def xray():
         return redirect(url_for('jobs.job_status', job_id=job.id))
 
     return render_template('competitor_xray.html')
+
+
+@bp.route('/firsat-avcisi', methods=['GET', 'POST'])
+@login_required
+def opportunity():
+    """Fırsat Avcısı (Yorum Madenciliği → Ürün Fırsatı). job_type='opportunity'."""
+    if request.method == 'POST':
+        url = (request.form.get('url') or '').strip()
+        low = url.lower()
+
+        if not url.startswith('http') or not ('trendyol.com' in low or 'hepsiburada.com' in low):
+            flash('Lütfen geçerli bir Trendyol veya Hepsiburada ürün linki girin.', 'warning')
+            return redirect(url_for('competitor.opportunity'))
+
+        if not current_user.can_submit:
+            flash('Talep hakkınız kalmadı. Planınızı yükseltin veya dönem yenilenmesini bekleyin.', 'warning')
+            return redirect(url_for('competitor.opportunity'))
+
+        from services.ai.groq import resolve_groq_key
+        api_key = resolve_groq_key()
+
+        job = Job(user_id=current_user.id, job_type='opportunity',
+                  status='pending', api_key_used=api_key)
+        job.set_urls([url])
+        db.session.add(job)
+        db.session.add(UsageLog(
+            user_id=current_user.id, action='submit_job', details=f'opportunity: {url[:80]}'
+        ))
+        db.session.commit()
+
+        try:
+            from worker import process_job_task
+            process_job_task.delay(job.id)
+            flash('💎 Fırsat Avcısı sıraya alındı! Yorum madenciliği + analiz birkaç '
+                  'dakika sürebilir; tamamlanınca bu ekranda görünecek.', 'success')
+        except Exception:
+            log.exception('[Opportunity] Celery görevi başlatılamadı')
+            flash('⚠️ Talep kaydedildi ama görev kuyruğu (Celery) şu an erişilemiyor. '
+                  'Worker yeniden başladığında otomatik işlenecek.', 'warning')
+
+        return redirect(url_for('jobs.job_status', job_id=job.id))
+
+    return render_template('opportunity_mining.html')

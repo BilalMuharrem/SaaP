@@ -802,7 +802,7 @@ def _process_job_by_id(job_id):
 
     global worker_state
     worker_state['is_active'] = True
-    jt_map = {'price': 'Fiyat Analizi', 'review': 'Yorum Analizi', 'combined': 'Kombine Analiz', 'xray': 'Rakip Röntgeni'}
+    jt_map = {'price': 'Fiyat Analizi', 'review': 'Yorum Analizi', 'combined': 'Kombine Analiz', 'xray': 'Rakip Röntgeni', 'opportunity': 'Fırsat Avcısı'}
     worker_state['status_text'] = f"#{job.id} {jt_map.get(job.job_type, '')} işleniyor..."
 
     job.status = 'running'
@@ -821,6 +821,8 @@ def _process_job_by_id(job_id):
             result_html = run_combined_headless(urls, api_key)
         elif job.job_type == 'xray':
             result_html = run_competitor_xray(urls, api_key)
+        elif job.job_type == 'opportunity':
+            result_html = run_opportunity_mining(urls, api_key)
         else:
             result_html = "<p>Bilinmeyen analiz türü.</p>"
 
@@ -7775,3 +7777,71 @@ def run_competitor_xray(urls, api_key):
         xray = generate_competitor_xray(data, api_key=api_key)
 
     return _build_xray_html(data, xray)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FIRSAT AVCISI (Yorum Madenciliği → Ürün Fırsatı) — özgünlük özelliği #2.
+# Rakip yorumlarından KARŞILANMAMIŞ İHTİYAÇLARI ve ürün fırsatlarını çıkarır.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _build_opportunity_html(data, rep):
+    """Fırsat Avcısı HTML raporu."""
+    from models import get_tr_now
+    theme_html = _report_theme_block()
+    name = _html_escape(data.get("name") or "Ürün")
+    platform = _html_escape(data.get("platform") or "?")
+    nrev = len(data.get("reviews") or [])
+
+    if isinstance(rep, dict) and rep.get("error"):
+        inner = (f"<div style='background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.35);"
+                 f"border-radius:12px;padding:20px;color:#dc2626;'>⚠️ Fırsat analizi üretilemedi: "
+                 f"{_html_escape(rep['error'])}</div>")
+    else:
+        oncelik = _html_escape(rep.get("oncelik"))
+        ozet = _html_escape(rep.get("ozet"))
+        inner = (
+            (f"<div style='background:rgba(99,102,241,0.10);border-left:4px solid #6366f1;"
+             f"border-radius:10px;padding:16px 20px;margin:0 0 26px;font-size:15px;line-height:1.65;'>"
+             f"<b>⭐ Öncelikli Fırsat:</b> {oncelik}</div>" if oncelik else "")
+            + _xray_section("Karşılanmamış İhtiyaçlar", rep.get("karsilanmayan_ihtiyaclar"), "#8b5cf6", "💡")
+            + _xray_section("Sık Tekrarlayan Şikayetler (Boşluklar)", rep.get("sik_sikayetler"), "#ef4444", "🔁")
+            + _xray_section("Ürün/Özellik Fırsatların", rep.get("firsatlar"), "#10b981", "💎")
+            + (f"<div style='margin:26px 0 0;padding-top:20px;border-top:1px solid var(--border);"
+               f"color:var(--report-color);line-height:1.6;'><b>Özet:</b> {ozet}</div>" if ozet else "")
+        )
+
+    return f"""<html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">{theme_html}<style>.container{{max-width:900px;}}</style></head>
+    <body><div class="container">
+        <div style="color:var(--title);font-weight:bold;letter-spacing:2px;font-size:13px;margin-bottom:5px;">BMK FIRSAT İSTİHBARATI</div>
+        <h1 style="margin:0 0 6px 0;font-size:34px;">💎 Fırsat Avcısı</h1>
+        <p style="color:var(--report-color);margin:0 0 24px;">Rakip yorumlarından müşterilerin istediği ama bulamadığı şeyleri çıkarır — <b>ne üreteceğin/sunacağın</b>.</p>
+        <div style="background:var(--card-bg,rgba(99,102,241,0.06));border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:0 0 30px;">
+            <div style="font-weight:800;font-size:17px;margin-bottom:8px;">{name}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:18px;font-size:14px;color:var(--report-color);">
+                <span>🏷️ <b>{platform}</b></span>
+                <span>🗣️ {nrev} yorum madenlendi</span>
+            </div>
+        </div>
+        {inner}
+        <div style="text-align:center;margin-top:40px;color:var(--report-color);font-size:14px;">Rapor Tarihi: {get_tr_now().strftime('%d.%m.%Y %H:%M')}</div>
+    </div></body></html>"""
+
+
+def run_opportunity_mining(urls, api_key):
+    """Fırsat Avcısı raporu üretir (job_type='opportunity'). Tek rakip ürün linki alır."""
+    from services.ai.opportunity_mining import generate_opportunity_report
+    url = (urls[0] if urls else "") or ""
+    if not url:
+        return "<html><body><p>Analiz için bir rakip ürün linki gerekli.</p></body></html>"
+
+    data = _xray_scrape(url)
+    if not data:
+        return ("<html><body><p>Bu platform için desteklenmiyor. "
+                "Trendyol veya Hepsiburada ürün linki girin.</p></body></html>")
+
+    if not data.get("reviews"):
+        rep = {"error": "Ürün yorumu alınamadı — fırsat analizi için yorum verisi gerekli."}
+    else:
+        rep = generate_opportunity_report(data, api_key=api_key)
+
+    return _build_opportunity_html(data, rep)
