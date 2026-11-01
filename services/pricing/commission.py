@@ -75,11 +75,12 @@ def compute_breakeven(purchase, category_key, channel="", shipping=0.0,
         shipping: opsiyonel kargo maliyeti (₺)
         vat_included: KDV'yi kesintiye kat (True) / katma (False)
         commission_override: kullanıcı komisyon %'sini elle girdiyse
-        margin_pct: opsiyonel istenen kâr marjı (satış fiyatına oranla %).
-                    >0 ise 'target' = bu marjı veren hedef satış fiyatı.
+        margin_pct: opsiyonel istenen kâr ORANI (MALİYETE göre %, markup).
+                    'maliyetin %X üstü kâr' → tavan yok (%100, %200...).
+                    >0 ise 'target' = bu kârı veren hedef satış fiyatı.
 
     Returns: dict (hata varsa {"error": ...}). 'breakeven' = zarar sınırı (marjsız),
-             'target' = istenen marjlı hedef fiyat (marj yoksa None).
+             'target' = istenen kâr oranlı hedef fiyat (marj yoksa None).
     """
     try:
         purchase = float(purchase)
@@ -108,16 +109,13 @@ def compute_breakeven(purchase, category_key, channel="", shipping=0.0,
 
     breakeven = (purchase + shipping) / (1 - deduction / 100.0)
 
-    # Opsiyonel hedef kâr fiyatı: marj, satış fiyatına oranla eklenir → kesintiye
-    # eklenir (başabaşla aynı orantısal mantık). margin yoksa target = None.
+    # Opsiyonel hedef kâr fiyatı: kâr ORANI maliyete göre (markup) → başabaşın
+    # üstüne bindirilir. hedef = başabaş × (1 + marj/100). Tavan yok. margin yoksa None.
     try:
         margin = max(0.0, float(margin_pct or 0))
     except (TypeError, ValueError):
         margin = 0.0
-    target = None
-    total_ded = deduction + margin
-    if margin > 0 and total_ded < 95:
-        target = round((purchase + shipping) / (1 - total_ded / 100.0), 2)
+    target = round(breakeven * (1 + margin / 100.0), 2) if margin > 0 else None
 
     return {
         "breakeven": round(breakeven, 2),

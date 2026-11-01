@@ -49,15 +49,20 @@ def test_breakeven_invalid_purchase():
     assert 'error' in compute_breakeven('abc', 'petshop')
 
 
-def test_margin_produces_target_above_breakeven():
-    """Opsiyonel kâr marjı → 'target' başabaştan YÜKSEK; başabaş değişmez."""
+def test_margin_markup_on_cost():
+    """Kâr oranı MALİYETE göre (markup): hedef = başabaş × (1 + marj/100)."""
     r = compute_breakeven(100, 'petshop', channel='trendyol', vat_included=False, margin_pct=20)
     assert r['target'] is not None
-    assert r['target'] > r['breakeven']
-    # komisyon 15 + marj 20 = 35 → 100/0.65
-    assert abs(r['target'] - (100 / 0.65)) < 0.01
-    # marjsız başabaş: 100/0.85
-    assert abs(r['breakeven'] - (100 / 0.85)) < 0.01
+    be = 100 / 0.85  # komisyon 15, kdv hariç
+    assert abs(r['breakeven'] - be) < 0.01
+    assert abs(r['target'] - be * 1.20) < 0.01
+
+
+def test_margin_no_cap():
+    """Kâr oranı maliyete göre → TAVAN YOK (%200 bile olur)."""
+    r = compute_breakeven(100, 'petshop', channel='hepsiburada', vat_included=True, margin_pct=200)
+    assert r['target'] is not None
+    assert abs(r['target'] - r['breakeven'] * 3.0) < 0.01  # 1 + 200/100 = 3
 
 
 def test_no_margin_target_none():

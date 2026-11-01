@@ -1292,8 +1292,8 @@
                         <input type="number" step="0.01" min="0" id="calcShipping" name="shipping_cost" placeholder="0" class="cm-input" oninput="recalcBE()">
                     </div>
                     <div class="cm-field">
-                        <label class="cm-label">Kâr Marjı % <span style="opacity:0.6; font-weight:400;">ops.</span></label>
-                        <input type="number" step="0.1" min="0" max="90" id="calcMargin" name="margin_pct" placeholder="0" class="cm-input" oninput="recalcBE()">
+                        <label class="cm-label">Kâr Oranı % <span style="opacity:0.6; font-weight:400;">maliyete göre, ops.</span></label>
+                        <input type="number" step="1" min="0" id="calcMargin" name="margin_pct" placeholder="Örn: 30" class="cm-input" oninput="recalcBE()">
                     </div>
                 </div>
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; margin-bottom:14px;">
@@ -1383,12 +1383,11 @@ function recalcBE(fromCommEdit){
     bd.innerHTML = 'Alış ' + _fmt(purchase) + (shipping>0 ? ' + Kargo ' + _fmt(shipping) : '') +
                    ' · Komisyon %' + comm + (vat ? ' + KDV %' + cat.kdv : ' (KDV hariç)') +
                    ' = kesinti %' + ded.toFixed(1);
-    // Hedef fiyat (opsiyonel kâr marjı)
-    var totalDed = ded + margin;
-    if (margin > 0 && totalDed < 95){
-        var target = (purchase + shipping) / (1 - totalDed/100);
+    // Hedef fiyat: kâr ORANI maliyete göre (markup) → başabaş × (1 + marj/100). Tavan yok.
+    if (margin > 0){
+        var target = be * (1 + margin/100);
         document.getElementById('calcTarget').textContent = _fmt(target);
-        document.getElementById('calcMarginLbl').textContent = '(%' + margin + ' kâr için)';
+        document.getElementById('calcMarginLbl').textContent = '(maliyetin %' + margin + ' üstü)';
         trow.style.display = 'block';
     } else {
         trow.style.display = 'none';
