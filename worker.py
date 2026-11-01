@@ -467,6 +467,8 @@ def check_tracked_products(app, product_ids=None):
                 # FAZ 4: rating + review_count (None → bulunamadı, mevcut değeri koru)
                 yeni_rating = None
                 yeni_review_count = None
+                # HB satıcı adı (buybox) — curl_cffi scrape'inden gelir; aşağıda assign edilir.
+                yeni_seller = None
                 # FAZ 3: Yeni marketplace branş'ları
                 _u = (product.url or "").lower()
                 is_hepsiburada = "hepsiburada.com" in _u
@@ -539,7 +541,11 @@ def check_tracked_products(app, product_ids=None):
                                 yeni_rating = cffi_data["rating"]
                             if cffi_data.get("review_count") is not None:
                                 yeni_review_count = cffi_data["review_count"]
-                            log.info(f"[Worker] HB cffi (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count})")
+                            # HOTFIX: HB buybox satıcısı (HOTFIX 10.7 ile cffi_data'da geliyor
+                            # ama periyodik taramada hiç assign edilmiyordu → "satıcı yok").
+                            if cffi_data.get("seller"):
+                                yeni_seller = cffi_data["seller"]
+                            log.info(f"[Worker] HB cffi (lightweight) p{product.id} — price: {fiyat_str} | rating: {yeni_rating} ({yeni_review_count}) | satıcı: {yeni_seller}")
                     except Exception as cffi_e:
                         log.info(f"[Worker] HB cffi failed for {product.id}: {cffi_e}")
 
@@ -744,8 +750,12 @@ def check_tracked_products(app, product_ids=None):
                                 product.seller_rating = score
                             if name:
                                 product.seller_name = name[:100]
+                    # HB: buybox satıcı adı (yukarıda cffi'den alındı). HB mağaza
+                    # puanı ayrı sayfadan gelir — şimdilik yalnızca satıcı ADI.
+                    elif is_hepsiburada and yeni_seller:
+                        product.seller_name = str(yeni_seller)[:100]
                 except Exception as sr_err:
-                    log.info(f"[Worker] seller_rating fetch hata p{product.id}: {sr_err}")
+                    log.info(f"[Worker] seller fetch hata p{product.id}: {sr_err}")
 
                 # BİREBİR ÜRÜN BAZLI COMMIT (İzolasyon için kritik)
                 product.last_checked = get_tr_now()
@@ -1304,20 +1314,22 @@ def _scrape_hepsiburada_cffi(url, fetch_reviews=False):
             except Exception:
                 pass
 
-        # HOTFIX 10.7: GERÇEK BUYBOX SATICISI.
-        # ld+json offers.seller çoğu üründe MARKAYI veriyor (örn "Samsung"),
-        # Buybox'ı kazanan asıl satıcıyı (örn "BittiBitiyor") değil. HB sayfa-içi
-        # gömülü JSON'da satışı yapan listing'in "merchantName" alanı bulunuyor;
-        # ilk geçen merchantName = Buybox kazananı (canlı debug ile doğrulandı).
-        # Daha doğru olduğu için ld+json seller'ı EZER. Promo/CTA metinleri elenir.
+        # HB SATICI — ld+json offers.seller BİRİNCİL, merchantName FALLBACK.
+        # NOT (2026-11): HOTFIX 10.7'de "ilk merchantName = buybox kazananı" idi ve
+        # ld+json seller'ı EZİYORDU. HB bu sırayı değiştirdi: artık ilk merchantName
+        # buybox kazananı DEĞİL, listedeki rastgele bir satıcı (örn 'CANDYSHINE'),
+        # oysa offers.seller doğru buybox satıcısını veriyor ('Nobera'). Bu yüzden
+        # artık offers.seller öncelikli; merchantName SADECE offers.seller boşsa
+        # fallback olarak kullanılır (o da bir tahmin).
         try:
-            mm = re.search(r'"merchantName"\s*:\s*"([^"]{2,60})"', html)
-            if mm:
-                buybox = mm.group(1).strip()
-                if buybox and not re.search(
-                    r'(satış\s*yap|mağazanı?\s*aç|hesap\s*oluştur)', buybox, re.IGNORECASE
-                ):
-                    _r["seller"] = buybox
+            if not _r.get("seller"):
+                mm = re.search(r'"merchantName"\s*:\s*"([^"]{2,60})"', html)
+                if mm:
+                    cand = mm.group(1).strip()
+                    if cand and not re.search(
+                        r'(satış\s*yap|mağazanı?\s*aç|hesap\s*oluştur)', cand, re.IGNORECASE
+                    ):
+                        _r["seller"] = cand
         except Exception:
             pass
 

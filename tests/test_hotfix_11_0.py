@@ -125,24 +125,52 @@ _HB_BUYBOX_HTML = """<!doctype html><html><head>
 </body></html>"""
 
 
-def test_hb_buybox_merchant_preferred_over_brand(monkeypatch):
-    """HOTFIX 10.7: Buybox satıcısı (merchantName) markadan (offers.seller) önce gelmeli.
-    ld+json seller='Samsung' (marka) ama gerçek satıcı merchantName='BittiBitiyor'."""
+_HB_NO_OFFERS_SELLER_HTML = """<!doctype html><html><head>
+<script type="application/ld+json">
+{"@type": "Product", "name": "Örnek Ürün",
+ "offers": {"@type": "Offer", "price": "99.00"}}
+</script>
+</head><body>
+<script>window.__data = {"listingId":"abc","merchantName":"FallbackSatici","merchantId":"xyz"}</script>
+</body></html>"""
+
+
+def test_hb_offers_seller_preferred(monkeypatch):
+    """2026-11: ld+json offers.seller BİRİNCİL — merchantName onu EZMEMELİ.
+    HB artık ilk merchantName'i buybox kazananı olarak sıralamıyor (örn CANDYSHINE),
+    offers.seller ise doğru satıcıyı veriyor → offers.seller kazanır."""
     from curl_cffi import requests as cffi_requests
 
     class _R:
         status_code = 200
-        text = _HB_BUYBOX_HTML
+        text = _HB_BUYBOX_HTML  # offers.seller='Samsung' + merchantName='BittiBitiyor'
         def json(self): return {}
 
     monkeypatch.setattr(cffi_requests, "get", lambda *a, **k: _R())
     result = worker._scrape_hepsiburada_cffi(
-        "https://www.hepsiburada.com/samsung-buds-pm-HBC999", fetch_reviews=False
+        "https://www.hepsiburada.com/x-pm-HBC999", fetch_reviews=False
     )
     assert result is not None
-    assert result.get("seller") == "BittiBitiyor", (
-        f"Buybox satıcısı yerine '{result.get('seller')}' geldi (marka olmamalı)"
+    assert result.get("seller") == "Samsung", (
+        f"offers.seller öncelikli olmalı; '{result.get('seller')}' geldi"
     )
+
+
+def test_hb_merchant_name_fallback_when_no_offers_seller(monkeypatch):
+    """offers.seller YOKSA merchantName fallback kullanılır."""
+    from curl_cffi import requests as cffi_requests
+
+    class _R:
+        status_code = 200
+        text = _HB_NO_OFFERS_SELLER_HTML
+        def json(self): return {}
+
+    monkeypatch.setattr(cffi_requests, "get", lambda *a, **k: _R())
+    result = worker._scrape_hepsiburada_cffi(
+        "https://www.hepsiburada.com/x-pm-HBC998", fetch_reviews=False
+    )
+    assert result is not None
+    assert result.get("seller") == "FallbackSatici"
 
 
 def test_hb_standalone_reviews_extracted(_mock_cffi):
