@@ -1224,58 +1224,188 @@
     #costModal .cost-modal-inner span { opacity: 1 !important; }
 </style>
 
+<style>
+    #costModal .mode-tab { flex:1; padding:9px 10px; border-radius:10px; border:1px solid var(--border,#cbd5e1);
+        background:transparent; cursor:pointer; font-size:12.5px; font-weight:700; color:var(--text-muted,#6b7280); }
+    #costModal .mode-tab.active { background:#f59e0b; color:#fff; border-color:#f59e0b; }
+    #costModal .cm-label { display:block; font-size:11.5px; font-weight:700; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.4px; opacity:0.8; }
+    #costModal .cm-input, #costModal select.cm-input { width:100%; padding:11px 12px; border-radius:10px; font-size:14px; font-weight:600; outline:none; border:1px solid var(--border,#cbd5e1); background:var(--bg-card,#fff); color:var(--text-primary,#1f2937); }
+    #costModal .cm-row { display:flex; gap:10px; }
+    #costModal .cm-field { margin-bottom:14px; flex:1; }
+    #costModal .cm-hint { font-size:11.5px; line-height:1.5; opacity:0.72; margin:4px 0 0; }
+</style>
 <div id="costModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.70); z-index:99998; align-items:center; justify-content:center;">
-    <div class="cost-modal-inner" style="padding:28px; border-radius:18px; width:100%; max-width:440px; box-shadow:0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.05); position:relative; opacity:1;">
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+    <div class="cost-modal-inner" style="padding:26px; border-radius:18px; width:100%; max-width:480px; box-shadow:0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.05); position:relative; opacity:1; max-height:92vh; overflow-y:auto;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
             <div style="width:40px; height:40px; border-radius:10px; background:#fef3c7; display:flex; align-items:center; justify-content:center;">
                 <i data-lucide="calculator" width="22" height="22" color="#f59e0b"></i>
             </div>
-            <h3 style="margin:0;">Birim Maliyet (Base Ürün)</h3>
+            <h3 style="margin:0;">Maliyet & Kârlılık</h3>
         </div>
-        <p style="font-size:13px; margin-bottom:22px; line-height:1.5; opacity:0.75;">
-            Grafikte <b style="color:#f59e0b; opacity:1;">turuncu kesik çizgi</b> olarak gösterilecek tedarik maliyetiniz. Güncel fiyatla aradaki fark otomatik <b style="color:#10b981; opacity:1;">yeşil (Kâr)</b> veya <b style="color:#ef4444; opacity:1;">kırmızı (Zarar)</b> bölge olarak boyanır.
-        </p>
+
+        <!-- Mod seçici -->
+        <div style="display:flex; gap:8px; margin-bottom:18px;">
+            <button type="button" id="modeTabDirect" class="mode-tab active" onclick="setCostMode('direct')">Satış fiyatım var</button>
+            <button type="button" id="modeTabCalc" class="mode-tab" onclick="setCostMode('calc')">Maliyet hesapla</button>
+        </div>
+
         <form id="costForm" method="POST" action="">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div style="margin-bottom:20px;">
-                <label style="display:block; font-size:12px; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; opacity:0.8;">Birim Maliyetiniz (₺)</label>
-                <div style="position:relative;">
-                    <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-weight:700; opacity:0.7;">₺</span>
-                    <input type="number" step="0.01" min="0" name="unit_cost" required placeholder="Örn: 299.90" style="width:100%; padding:12px 12px 12px 32px; border-radius:10px; font-size:15px; font-weight:600; outline:none;">
+            <input type="hidden" name="cost_mode" id="costMode" value="direct">
+
+            <!-- MOD 1 -->
+            <div id="modeDirect">
+                <div class="cm-field">
+                    <label class="cm-label">Birim Maliyetiniz (₺)</label>
+                    <input type="number" step="0.01" min="0" name="unit_cost" placeholder="Örn: 299.90" class="cm-input">
+                    <p class="cm-hint">Maliyetini zaten biliyorsan doğrudan gir. Kâr = güncel fiyat − maliyet.</p>
                 </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
+
+            <!-- MOD 2: başabaş hesaplayıcı -->
+            <div id="modeCalc" style="display:none;">
+                <div class="cm-field">
+                    <label class="cm-label">Alış / Tedarik Fiyatı (₺)</label>
+                    <input type="number" step="0.01" min="0" id="calcPurchase" name="purchase_price" placeholder="Örn: 150.00" class="cm-input" oninput="recalcBE()">
+                </div>
+                <div class="cm-row">
+                    <div class="cm-field">
+                        <label class="cm-label">Kategori</label>
+                        <select id="calcCategory" name="category" class="cm-input" onchange="onCatChange()"></select>
+                    </div>
+                    <div class="cm-field">
+                        <label class="cm-label">Satış Kanalı</label>
+                        <select id="calcChannel" name="channel" class="cm-input" onchange="onCatChange()">
+                            <option value="">Belirsiz (temkinli)</option>
+                            <option value="trendyol">Trendyol</option>
+                            <option value="hepsiburada">Hepsiburada</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="cm-row">
+                    <div class="cm-field">
+                        <label class="cm-label">Komisyon % <span style="opacity:0.6; font-weight:400;">(düzenlenebilir)</span></label>
+                        <input type="number" step="0.1" min="0" max="90" id="calcCommission" name="commission_override" class="cm-input" oninput="recalcBE(true)">
+                    </div>
+                    <div class="cm-field">
+                        <label class="cm-label">Kargo (₺) <span style="opacity:0.6; font-weight:400;">ops.</span></label>
+                        <input type="number" step="0.01" min="0" id="calcShipping" name="shipping_cost" placeholder="0" class="cm-input" oninput="recalcBE()">
+                    </div>
+                </div>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; margin-bottom:14px;">
+                    <input type="checkbox" id="calcVat" name="vat_included" value="1" checked onchange="recalcBE()" style="width:16px; height:16px;">
+                    KDV'yi hesaba kat (<span id="calcKdvLabel">%20</span>)
+                </label>
+
+                <!-- Canlı önizleme -->
+                <div style="background:rgba(245,158,11,0.10); border:1px solid rgba(245,158,11,0.35); border-radius:12px; padding:14px 16px; margin-bottom:12px;">
+                    <div style="font-size:12px; font-weight:700; opacity:0.8; margin-bottom:4px;">BAŞABAŞ SATIŞ FİYATI</div>
+                    <div id="calcBreakeven" style="font-size:24px; font-weight:800; color:#b45309;">—</div>
+                    <div id="calcBreakdown" style="font-size:11.5px; opacity:0.75; margin-top:6px; line-height:1.5;"></div>
+                </div>
+                <p class="cm-hint">Komisyon + KDV + kargo dahil <b>zarar etmeden satabileceğin en düşük fiyat</b>.
+                   Bu değer "maliyet" olarak kaydedilir; kâr/zarar buna göre gösterilir.
+                   <br>⚠️ Oranlar <b>tahmini varsayılandır</b> — kendi sözleşmendeki oranla değiştir.</p>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:6px;">
                 <button type="button" class="btn btn-outline" style="border:1px solid #cbd5e1;" onclick="document.getElementById('costModal').style.display='none'">İptal</button>
-                <button type="submit" class="btn btn-primary">Kaydet ve Simüle Et</button>
+                <button type="submit" class="btn btn-primary">Kaydet</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
+var CATEGORY_RATES = {{ category_rates|tojson }};
+var GROUP_COST_META = {{ group_cost_meta|tojson }};
+
+// Kategori dropdown'unu doldur
+(function fillCats(){
+    var sel = document.getElementById('calcCategory');
+    if (!sel) return;
+    CATEGORY_RATES.forEach(function(c){
+        var o = document.createElement('option'); o.value = c.key; o.textContent = c.label; sel.appendChild(o);
+    });
+})();
+
+function _catByKey(k){ for (var i=0;i<CATEGORY_RATES.length;i++){ if (CATEGORY_RATES[i].key===k) return CATEGORY_RATES[i]; } return CATEGORY_RATES[CATEGORY_RATES.length-1]; }
+
+function setCostMode(mode){
+    document.getElementById('costMode').value = mode;
+    document.getElementById('modeDirect').style.display = (mode==='direct')?'block':'none';
+    document.getElementById('modeCalc').style.display   = (mode==='calc')?'block':'none';
+    document.getElementById('modeTabDirect').classList.toggle('active', mode==='direct');
+    document.getElementById('modeTabCalc').classList.toggle('active', mode==='calc');
+    // required: aktif modun alanı zorunlu
+    var uc = document.querySelector('input[name="unit_cost"]');
+    var pp = document.getElementById('calcPurchase');
+    if (uc) uc.required = (mode==='direct');
+    if (pp) pp.required = (mode==='calc');
+    if (mode==='calc') { onCatChange(); }
+}
+
+// Kategori/kanal değişince komisyon varsayılanını doldur + KDV etiketi + recalc
+function onCatChange(){
+    var cat = _catByKey(document.getElementById('calcCategory').value);
+    var ch = document.getElementById('calcChannel').value;
+    var comm = (ch==='trendyol') ? cat.ty : (ch==='hepsiburada') ? cat.hb : Math.max(cat.ty, cat.hb);
+    document.getElementById('calcCommission').value = comm;
+    document.getElementById('calcKdvLabel').textContent = '%' + cat.kdv;
+    recalcBE();
+}
+
+function _fmt(n){ return n.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ₺'; }
+
+function recalcBE(fromCommEdit){
+    var purchase = parseFloat(document.getElementById('calcPurchase').value) || 0;
+    var shipping = parseFloat(document.getElementById('calcShipping').value) || 0;
+    var cat = _catByKey(document.getElementById('calcCategory').value);
+    var comm = parseFloat(document.getElementById('calcCommission').value) || 0;
+    var vat = document.getElementById('calcVat').checked;
+    var kdv = vat ? cat.kdv : 0;
+    var ded = comm + kdv;
+    var out = document.getElementById('calcBreakeven');
+    var bd = document.getElementById('calcBreakdown');
+    if (purchase <= 0 || ded >= 95){ out.textContent = '—'; bd.textContent=''; return; }
+    var be = (purchase + shipping) / (1 - ded/100);
+    out.textContent = _fmt(be);
+    bd.innerHTML = 'Alış ' + _fmt(purchase) + (shipping>0 ? ' + Kargo ' + _fmt(shipping) : '') +
+                   ' · Komisyon %' + comm + (vat ? ' + KDV %' + cat.kdv : ' (KDV hariç)') +
+                   ' = kesinti %' + ded.toFixed(1);
+}
+
 function openCostModal(gid) {
     var modal = document.getElementById('costModal');
     var form = document.getElementById('costForm');
-    if (!modal || !form) return;
-    if (!gid) return;
-
+    if (!modal || !form || !gid) return;
     form.action = '/tracked-products/group/' + gid + '/cost';
     try { form.reset(); } catch (e) {}
+
+    // Daha önce Mod 2 ile kaydedilmişse ön-doldur
+    var meta = GROUP_COST_META[gid];
+    if (meta && meta.mode === 'calc') {
+        setCostMode('calc');
+        document.getElementById('calcPurchase').value = meta.purchase || '';
+        if (meta.category) document.getElementById('calcCategory').value = meta.category;
+        document.getElementById('calcChannel').value = meta.channel || '';
+        document.getElementById('calcShipping').value = meta.shipping || '';
+        document.getElementById('calcVat').checked = (meta.kdv_included !== false);
+        onCatChange();
+        if (meta.commission_pct != null) { document.getElementById('calcCommission').value = meta.commission_pct; recalcBE(true); }
+    } else {
+        setCostMode('direct');
+    }
     modal.style.display = 'flex';
-    var costInput = form.querySelector('input[name="unit_cost"]');
-    if (costInput) { setTimeout(function(){ costInput.focus(); }, 50); }
+    if (window.lucide) lucide.createIcons();
 }
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        var modal = document.getElementById('costModal');
-        if (modal && modal.style.display === 'flex') {
-            modal.style.display = 'none';
-        }
-        var amodal = document.getElementById('alertModal');
-        if (amodal && amodal.style.display === 'flex') {
-            amodal.style.display = 'none';
-        }
+        ['costModal','alertModal'].forEach(function(id){
+            var m = document.getElementById(id);
+            if (m && m.style.display === 'flex') m.style.display = 'none';
+        });
     }
 });
 </script>

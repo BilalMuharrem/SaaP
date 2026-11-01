@@ -300,6 +300,10 @@ class TrackedProduct(db.Model):
     # Bu alan SADECE base ürüne (is_base_product=True) yazılır. Grubun tamamı base'in
     # unit_cost değerini kullanır. NULL ise grafikte "Maliyet Çizgisi" gösterilmez.
     unit_cost = db.Column(db.Float, nullable=True)
+    # Maliyet Hesaplayıcı Mod 2: başabaş hesabının girdileri (alış, kategori, kanal,
+    # kargo, kdv) JSON olarak saklanır → modal yeniden açılınca ön-doldurma + açıklama.
+    # NULL = doğrudan maliyet girildi (Mod 1). Hesaplanan başabaş unit_cost'ta durur.
+    cost_meta = db.Column(db.Text, nullable=True)
     # FAZ 4: Yorum ve Kalite İstihbaratı — scraper, fiyatla birlikte yıldız puanını ve
     # yorum sayısını da çeker. NULL/0 olabilir; YZ Danışman boş ise kalite analizini atlar.
     rating = db.Column(db.Float, nullable=True)         # 0.0 — 5.0

@@ -200,6 +200,18 @@ def tracked_products():
         for gid, products in grouped.items()
     }
 
+    # Maliyet Hesaplayıcı (Mod 2) için kategori/komisyon tablosu + grup başına cost_meta
+    from services.pricing.commission import CATEGORY_RATES
+    import json as _json
+    group_cost_meta = {}
+    for gid, products in grouped.items():
+        base = next((p for p in products if p.is_base_product), products[0] if products else None)
+        if base and getattr(base, 'cost_meta', None):
+            try:
+                group_cost_meta[gid] = _json.loads(base.cost_meta)
+            except Exception:
+                pass
+
     return render_template(
         'tracked_products.html',
         grouped_products=grouped,
@@ -208,6 +220,8 @@ def tracked_products():
         product_alerts=product_alerts,
         group_seo=group_seo,
         group_paused=group_paused,
+        category_rates=CATEGORY_RATES,
+        group_cost_meta=group_cost_meta,
     )
 
 
@@ -489,22 +503,57 @@ def update_tracked_group_cost(group_id):
         flash('🔒 Bu özellik Profesyonel ve Kurumsal planlara özeldir.', 'warning')
         return redirect(url_for('plans.user_plans'))
 
-    raw_cost = request.form.get('unit_cost')
-    if raw_cost is None or raw_cost == '':
-        raw_cost = request.form.get('target_price')
-    try:
-        cost = float(raw_cost) if raw_cost not in (None, '') else 0.0
-    except ValueError:
-        cost = 0.0
+    import json
+    mode = (request.form.get('cost_mode') or 'direct').strip()
+    new_cost = None
+    cost_meta = None
+
+    if mode == 'calc':
+        # Mod 2: başabaş hesaplayıcı → sonucu unit_cost'a yaz (kâr/zarar buna göre).
+        from services.pricing.commission import compute_breakeven
+        res = compute_breakeven(
+            purchase=request.form.get('purchase_price'),
+            category_key=(request.form.get('category') or 'diger'),
+            channel=(request.form.get('channel') or ''),
+            shipping=request.form.get('shipping_cost') or 0,
+            vat_included=(request.form.get('vat_included') == '1'),
+            commission_override=(request.form.get('commission_override') or None),
+        )
+        if res.get('error'):
+            flash(f'Hesaplama hatası: {res["error"]}', 'warning')
+            return redirect(url_for('tracked.tracked_products'))
+        new_cost = res['breakeven']
+        cost_meta = json.dumps(
+            {**res, 'mode': 'calc',
+             'category': request.form.get('category') or 'diger',
+             'channel': request.form.get('channel') or ''},
+            ensure_ascii=False)
+    else:
+        # Mod 1: doğrudan birim maliyet
+        raw_cost = request.form.get('unit_cost')
+        if raw_cost is None or raw_cost == '':
+            raw_cost = request.form.get('target_price')
+        try:
+            cost = float(raw_cost) if raw_cost not in (None, '') else 0.0
+        except ValueError:
+            cost = 0.0
+        new_cost = cost if cost > 0 else None
+        cost_meta = None  # doğrudan maliyet → eski hesap meta'sını temizle
 
     products = TrackedProduct.query.filter_by(
         user_id=current_user.id, group_id=group_id
     ).all()
-    new_cost = cost if cost > 0 else None
     for p in products:
         p.unit_cost = new_cost
+        p.cost_meta = cost_meta
     db.session.commit()
-    flash('Birim maliyet başarıyla güncellendi.', 'success')
+
+    if mode == 'calc' and new_cost:
+        be = f"{new_cost:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+        flash(f'✅ Başabaş satış fiyatı: {be} ₺ — bu fiyatın ALTINA satarsan zarar '
+              f'edersin. Kâr/zarar artık komisyon + KDV + kargo dahil hesaplanıyor.', 'success')
+    else:
+        flash('Birim maliyet başarıyla güncellendi.', 'success')
     return redirect(url_for('tracked.tracked_products'))
 
 
