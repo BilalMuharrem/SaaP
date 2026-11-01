@@ -518,6 +518,7 @@ def update_tracked_group_cost(group_id):
             shipping=request.form.get('shipping_cost') or 0,
             vat_included=(request.form.get('vat_included') == '1'),
             commission_override=(request.form.get('commission_override') or None),
+            margin_pct=(request.form.get('margin_pct') or 0),
         )
         if res.get('error'):
             flash(f'Hesaplama hatası: {res["error"]}', 'warning')
@@ -549,9 +550,13 @@ def update_tracked_group_cost(group_id):
     db.session.commit()
 
     if mode == 'calc' and new_cost:
-        be = f"{new_cost:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-        flash(f'✅ Başabaş satış fiyatı: {be} ₺ — bu fiyatın ALTINA satarsan zarar '
-              f'edersin. Kâr/zarar artık komisyon + KDV + kargo dahil hesaplanıyor.', 'success')
+        def _tr(v):
+            return f"{v:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+        msg = (f'✅ Başabaş satış fiyatı: {_tr(new_cost)} ₺ — bu fiyatın ALTINA satarsan '
+               f'zarar edersin. Kâr/zarar artık komisyon + KDV + kargo dahil hesaplanıyor.')
+        if res.get('target'):
+            msg += (f' 🎯 %{res["margin_pct"]:.0f} kâr için hedef: {_tr(res["target"])} ₺.')
+        flash(msg, 'success')
     else:
         flash('Birim maliyet başarıyla güncellendi.', 'success')
     return redirect(url_for('tracked.tracked_products'))

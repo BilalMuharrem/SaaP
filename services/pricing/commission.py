@@ -65,8 +65,8 @@ def resolve_commission(category_key, channel):
 
 
 def compute_breakeven(purchase, category_key, channel="", shipping=0.0,
-                      vat_included=True, commission_override=None):
-    """Başabaş satış fiyatını hesaplar.
+                      vat_included=True, commission_override=None, margin_pct=0.0):
+    """Başabaş satış fiyatını (+ opsiyonel hedef kâr fiyatını) hesaplar.
 
     Args:
         purchase: alış/tedarik fiyatı (₺) — zorunlu, > 0
@@ -75,8 +75,11 @@ def compute_breakeven(purchase, category_key, channel="", shipping=0.0,
         shipping: opsiyonel kargo maliyeti (₺)
         vat_included: KDV'yi kesintiye kat (True) / katma (False)
         commission_override: kullanıcı komisyon %'sini elle girdiyse
+        margin_pct: opsiyonel istenen kâr marjı (satış fiyatına oranla %).
+                    >0 ise 'target' = bu marjı veren hedef satış fiyatı.
 
-    Returns: dict (hata varsa {"error": ...})
+    Returns: dict (hata varsa {"error": ...}). 'breakeven' = zarar sınırı (marjsız),
+             'target' = istenen marjlı hedef fiyat (marj yoksa None).
     """
     try:
         purchase = float(purchase)
@@ -104,8 +107,22 @@ def compute_breakeven(purchase, category_key, channel="", shipping=0.0,
         return {"error": "Komisyon + KDV toplamı çok yüksek (≥%95) — hesaplanamıyor."}
 
     breakeven = (purchase + shipping) / (1 - deduction / 100.0)
+
+    # Opsiyonel hedef kâr fiyatı: marj, satış fiyatına oranla eklenir → kesintiye
+    # eklenir (başabaşla aynı orantısal mantık). margin yoksa target = None.
+    try:
+        margin = max(0.0, float(margin_pct or 0))
+    except (TypeError, ValueError):
+        margin = 0.0
+    target = None
+    total_ded = deduction + margin
+    if margin > 0 and total_ded < 95:
+        target = round((purchase + shipping) / (1 - total_ded / 100.0), 2)
+
     return {
         "breakeven": round(breakeven, 2),
+        "target": target,
+        "margin_pct": round(margin, 2),
         "purchase": round(purchase, 2),
         "shipping": round(shipping, 2),
         "commission_pct": round(comm_pct, 2),

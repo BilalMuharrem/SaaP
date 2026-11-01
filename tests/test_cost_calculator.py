@@ -49,6 +49,22 @@ def test_breakeven_invalid_purchase():
     assert 'error' in compute_breakeven('abc', 'petshop')
 
 
+def test_margin_produces_target_above_breakeven():
+    """Opsiyonel kâr marjı → 'target' başabaştan YÜKSEK; başabaş değişmez."""
+    r = compute_breakeven(100, 'petshop', channel='trendyol', vat_included=False, margin_pct=20)
+    assert r['target'] is not None
+    assert r['target'] > r['breakeven']
+    # komisyon 15 + marj 20 = 35 → 100/0.65
+    assert abs(r['target'] - (100 / 0.65)) < 0.01
+    # marjsız başabaş: 100/0.85
+    assert abs(r['breakeven'] - (100 / 0.85)) < 0.01
+
+
+def test_no_margin_target_none():
+    r = compute_breakeven(100, 'petshop', channel='trendyol', vat_included=False)
+    assert r['target'] is None
+
+
 def test_shipping_added():
     base = compute_breakeven(100, 'petshop', channel='trendyol', vat_included=False)['breakeven']
     with_ship = compute_breakeven(100, 'petshop', channel='trendyol', shipping=20, vat_included=False)['breakeven']

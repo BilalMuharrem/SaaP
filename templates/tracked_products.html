@@ -1291,6 +1291,10 @@
                         <label class="cm-label">Kargo (₺) <span style="opacity:0.6; font-weight:400;">ops.</span></label>
                         <input type="number" step="0.01" min="0" id="calcShipping" name="shipping_cost" placeholder="0" class="cm-input" oninput="recalcBE()">
                     </div>
+                    <div class="cm-field">
+                        <label class="cm-label">Kâr Marjı % <span style="opacity:0.6; font-weight:400;">ops.</span></label>
+                        <input type="number" step="0.1" min="0" max="90" id="calcMargin" name="margin_pct" placeholder="0" class="cm-input" oninput="recalcBE()">
+                    </div>
                 </div>
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; margin-bottom:14px;">
                     <input type="checkbox" id="calcVat" name="vat_included" value="1" checked onchange="recalcBE()" style="width:16px; height:16px;">
@@ -1299,9 +1303,13 @@
 
                 <!-- Canlı önizleme -->
                 <div style="background:rgba(245,158,11,0.10); border:1px solid rgba(245,158,11,0.35); border-radius:12px; padding:14px 16px; margin-bottom:12px;">
-                    <div style="font-size:12px; font-weight:700; opacity:0.8; margin-bottom:4px;">BAŞABAŞ SATIŞ FİYATI</div>
+                    <div style="font-size:12px; font-weight:700; opacity:0.8; margin-bottom:4px;">BAŞABAŞ SATIŞ FİYATI <span style="font-weight:400; opacity:0.7;">(zarar sınırı)</span></div>
                     <div id="calcBreakeven" style="font-size:24px; font-weight:800; color:#b45309;">—</div>
                     <div id="calcBreakdown" style="font-size:11.5px; opacity:0.75; margin-top:6px; line-height:1.5;"></div>
+                    <div id="calcTargetRow" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed rgba(245,158,11,0.4);">
+                        <div style="font-size:12px; font-weight:700; color:#059669;">🎯 HEDEF SATIŞ FİYATI <span id="calcMarginLbl" style="font-weight:400;"></span></div>
+                        <div id="calcTarget" style="font-size:20px; font-weight:800; color:#059669;">—</div>
+                    </div>
                 </div>
                 <p class="cm-hint">Komisyon + KDV + kargo dahil <b>zarar etmeden satabileceğin en düşük fiyat</b>.
                    Bu değer "maliyet" olarak kaydedilir; kâr/zarar buna göre gösterilir.
@@ -1360,6 +1368,7 @@ function _fmt(n){ return n.toLocaleString('tr-TR', {minimumFractionDigits:2, max
 function recalcBE(fromCommEdit){
     var purchase = parseFloat(document.getElementById('calcPurchase').value) || 0;
     var shipping = parseFloat(document.getElementById('calcShipping').value) || 0;
+    var margin = parseFloat(document.getElementById('calcMargin').value) || 0;
     var cat = _catByKey(document.getElementById('calcCategory').value);
     var comm = parseFloat(document.getElementById('calcCommission').value) || 0;
     var vat = document.getElementById('calcVat').checked;
@@ -1367,12 +1376,23 @@ function recalcBE(fromCommEdit){
     var ded = comm + kdv;
     var out = document.getElementById('calcBreakeven');
     var bd = document.getElementById('calcBreakdown');
-    if (purchase <= 0 || ded >= 95){ out.textContent = '—'; bd.textContent=''; return; }
+    var trow = document.getElementById('calcTargetRow');
+    if (purchase <= 0 || ded >= 95){ out.textContent = '—'; bd.textContent=''; trow.style.display='none'; return; }
     var be = (purchase + shipping) / (1 - ded/100);
     out.textContent = _fmt(be);
     bd.innerHTML = 'Alış ' + _fmt(purchase) + (shipping>0 ? ' + Kargo ' + _fmt(shipping) : '') +
                    ' · Komisyon %' + comm + (vat ? ' + KDV %' + cat.kdv : ' (KDV hariç)') +
                    ' = kesinti %' + ded.toFixed(1);
+    // Hedef fiyat (opsiyonel kâr marjı)
+    var totalDed = ded + margin;
+    if (margin > 0 && totalDed < 95){
+        var target = (purchase + shipping) / (1 - totalDed/100);
+        document.getElementById('calcTarget').textContent = _fmt(target);
+        document.getElementById('calcMarginLbl').textContent = '(%' + margin + ' kâr için)';
+        trow.style.display = 'block';
+    } else {
+        trow.style.display = 'none';
+    }
 }
 
 function openCostModal(gid) {
@@ -1390,6 +1410,7 @@ function openCostModal(gid) {
         if (meta.category) document.getElementById('calcCategory').value = meta.category;
         document.getElementById('calcChannel').value = meta.channel || '';
         document.getElementById('calcShipping').value = meta.shipping || '';
+        document.getElementById('calcMargin').value = (meta.margin_pct && meta.margin_pct > 0) ? meta.margin_pct : '';
         document.getElementById('calcVat').checked = (meta.kdv_included !== false);
         onCatChange();
         if (meta.commission_pct != null) { document.getElementById('calcCommission').value = meta.commission_pct; recalcBE(true); }
